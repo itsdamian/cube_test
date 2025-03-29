@@ -1,0 +1,26 @@
+FROM --platform=linux/arm64 maven:3.9-eclipse-temurin-17
+
+# Set working directory
+WORKDIR /app
+
+# Copy pom.xml first for better caching
+COPY pom.xml .
+
+# Download dependencies
+RUN mvn dependency:go-offline
+
+# Copy source code
+COPY src ./src
+
+# Run Maven build
+RUN mvn clean package -DskipTests
+
+# Expose application port
+EXPOSE 8080
+
+# Expose H2 console port
+EXPOSE 8082
+
+# Start Spring Boot application
+ENTRYPOINT ["java", "-jar", "target/app.jar"]
+CMD ["--spring.h2.console.settings.web-allow-others=true", "--server.port=8080", "--spring.h2.console.port=8082"] 
