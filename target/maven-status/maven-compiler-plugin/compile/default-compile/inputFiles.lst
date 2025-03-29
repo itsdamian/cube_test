@@ -1,0 +1,10 @@
+/app/src/main/java/com/currency/demo/controller/CoindeskController.java
+/app/src/main/java/com/currency/demo/service/CoindeskService.java
+/app/src/main/java/com/currency/demo/config/RestTemplateConfig.java
+/app/src/main/java/com/currency/demo/controller/HelloController.java
+/app/src/main/java/com/currency/demo/repository/CurrencyRepository.java
+/app/src/main/java/com/currency/demo/controller/CurrencyController.java
+/app/src/main/java/com/currency/demo/model/Currency.java
+/app/src/main/java/com/currency/demo/service/CurrencyService.java
+/app/src/main/java/com/currency/demo/DemoApplication.java
+/app/src/main/java/com/currency/demo/model/CoindeskResponse.java
