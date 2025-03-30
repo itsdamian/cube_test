@@ -60,7 +60,7 @@ public class CurrencyControllerTest {
     public void testCreateCurrency() throws Exception {
         // Create a new currency object
         String code = "TWD";
-        String name = "Taiwan Dollar";
+        String name = "台幣";
         
         // Check and delete existing currency first
         Currency existingCurrency = currencyService.getCurrencyByCode(code);
@@ -103,10 +103,10 @@ public class CurrencyControllerTest {
         }
         
         // Create a new currency
-        Currency currency = currencyService.createCurrency(new Currency(code, "Korean Won (initial)"));
+        Currency currency = currencyService.createCurrency(new Currency(code, "韓圓"));
 
         // Update currency name
-        currency.setName("Korean Won");
+        currency.setName("韓元");
 
         // Execute PUT request to update currency
         MvcResult result = mockMvc.perform(put("/api/currencies/{id}", currency.getId())
@@ -114,7 +114,7 @@ public class CurrencyControllerTest {
                 .content(objectMapper.writeValueAsString(currency)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(code))
-                .andExpect(jsonPath("$.name").value("Korean Won"))
+                .andExpect(jsonPath("$.name").value("韓元"))
                 .andReturn();
 
         // Print response content
@@ -125,7 +125,7 @@ public class CurrencyControllerTest {
         // Verify currency was updated
         Currency updated = currencyService.getCurrencyByCode(code);
         assertNotNull(updated);
-        assertEquals("Korean Won", updated.getName());
+        assertEquals("韓元", updated.getName());
     }
 
     /**
@@ -141,7 +141,7 @@ public class CurrencyControllerTest {
         }
         
         // Create a new currency
-        Currency currency = currencyService.createCurrency(new Currency(code, "Malaysian Ringgit"));
+        Currency currency = currencyService.createCurrency(new Currency(code, "馬來西亞令吉"));
 
         // Execute DELETE request to delete currency
         mockMvc.perform(delete("/api/currencies/{id}", currency.getId()))

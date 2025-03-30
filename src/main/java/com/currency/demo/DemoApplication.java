@@ -35,16 +35,16 @@ public class DemoApplication {
         return args -> {
             logger.info("Initializing currency data...");
             // Initialize some example data
-            currencyRepository.save(new Currency("USD", "US Dollar"));
-            currencyRepository.save(new Currency("EUR", "Euro"));
-            currencyRepository.save(new Currency("JPY", "Japanese Yen"));
-            currencyRepository.save(new Currency("GBP", "British Pound"));
-            currencyRepository.save(new Currency("CNY", "Chinese Yuan"));
-            currencyRepository.save(new Currency("HKD", "Hong Kong Dollar"));
-            currencyRepository.save(new Currency("AUD", "Australian Dollar"));
-            currencyRepository.save(new Currency("CAD", "Canadian Dollar"));
-            currencyRepository.save(new Currency("SGD", "Singapore Dollar"));
-            currencyRepository.save(new Currency("CHF", "Swiss Franc"));
+            currencyRepository.save(new Currency("USD", "美金"));
+            currencyRepository.save(new Currency("EUR", "歐元"));
+            currencyRepository.save(new Currency("JPY", "日圓"));
+            currencyRepository.save(new Currency("GBP", "英鎊"));
+            currencyRepository.save(new Currency("CNY", "人民幣"));
+            currencyRepository.save(new Currency("HKD", "港幣"));
+            currencyRepository.save(new Currency("AUD", "澳幣"));
+            currencyRepository.save(new Currency("CAD", "加幣"));
+            currencyRepository.save(new Currency("SGD", "新加坡幣"));
+            currencyRepository.save(new Currency("CHF", "瑞士法郎"));
             logger.info("Currency data initialization completed.");
         };
     }

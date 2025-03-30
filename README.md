@@ -10,6 +10,7 @@ This project is a Spring Boot application that retrieves Bitcoin price data from
 - H2 in-memory database for data storage
 - Unit tests for all functionality
 - Docker deployment support (for both ARM and x86 architectures)
+- Multi-language support for currency names (Chinese names included)
 
 ## Prerequisites
 
@@ -87,7 +88,7 @@ The application will be available at:
 ```bash
 curl -X POST http://localhost:8080/api/currencies \
   -H "Content-Type: application/json" \
-  -d '{"code":"TWD","name":"Taiwan Dollar"}'
+  -d '{"code":"TWD","name":"台幣"}'
 ```
 
 ### Get Original Coindesk API Data
@@ -100,6 +101,30 @@ curl http://localhost:8080/api/bitcoin/price/original
 
 ```bash
 curl http://localhost:8080/api/bitcoin/price
+```
+
+Example response:
+```json
+{
+  "updateTime": "2025/03/29 12:15:59",
+  "currencies": {
+    "EUR": {
+      "code": "EUR",
+      "rate": 49876.1232,
+      "chineseName": "歐元"
+    },
+    "GBP": {
+      "code": "GBP",
+      "rate": 42345.8722,
+      "chineseName": "英鎊"
+    },
+    "USD": {
+      "code": "USD",
+      "rate": 57231.4983,
+      "chineseName": "美金"
+    }
+  }
+}
 ```
 
 ## Testing the Application
@@ -169,6 +194,19 @@ mvn clean package
 java -jar target/demo-0.0.1-SNAPSHOT.jar
 ```
 
+## Multi-language Support
+
+The application provides Chinese names for currencies in the transformed data response. The currency names are initialized with Chinese characters, and the API responses include these Chinese names when transforming Bitcoin price data.
+
+Default currencies with Chinese names:
+- USD: 美金
+- EUR: 歐元
+- JPY: 日圓
+- GBP: 英鎊
+- CNY: 人民幣
+- HKD: 港幣
+- etc.
+
 ## Stopping the Application
 
 ```bash
@@ -190,6 +228,8 @@ docker-compose down -v
 3. **Container Not Starting**: Check Docker logs using `docker-compose logs app-silicon` or `docker-compose logs app-amd64`.
 
 4. **H2 Console Access**: Make sure to use the correct JDBC URL (`jdbc:h2:mem:testdb`) when accessing the H2 console.
+
+5. **Character Encoding**: If Chinese characters are not displaying correctly, ensure your system supports UTF-8 encoding.
 
 ## License
 
