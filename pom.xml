@@ -27,6 +27,8 @@
         <java.version>21</java.version>
         <!-- Not managed by the Boot BOM. Test-only fake WebSocket server. -->
         <java-websocket.version>1.6.0</java-websocket.version>
+        <!-- Empty default so @{argLine} resolves even when no other plugin sets it. -->
+        <argLine></argLine>
     </properties>
 
     <dependencies>
@@ -130,6 +132,33 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Exposes ${org.mockito:mockito-core:jar} (path to the jar) for the surefire argLine below. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Load Mockito as a proper java agent; JDK 21+ warns about (and will
+                         eventually block) agents attached dynamically at runtime. -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                    <!-- Every test runs with the "test" profile (application-test.yml), which
+                         points all external URLs at 127.0.0.1 and disables background jobs
+                         (requirement 18). Set globally so no test class can forget it. -->
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>

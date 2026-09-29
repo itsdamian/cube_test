@@ -1,0 +1,64 @@
+# Every app.* value below uses ${ENV_VAR:default}: the default works for local runs,
+# and docker compose / Kubernetes override it with an environment variable.
+# (Explicit placeholders are needed because Spring's automatic env binding maps
+# APP_FEED_STALETHRESHOLD - not APP_FEED_STALE_THRESHOLD - to app.feed.stale-threshold.)
+spring:
+  application:
+    name: currency-demo
+  # Temporary in-memory H2 until task 3 switches to PostgreSQL + Flyway.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:currency;DB_CLOSE_DELAY=-1}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.currency.demo: INFO
+
+app:
+  ingest:
+    enabled: ${APP_INGEST_ENABLED:true}
+  streams:
+    enabled: ${APP_STREAMS_ENABLED:true}
+  persist:
+    enabled: ${APP_PERSIST_ENABLED:true}
+  alerts:
+    enabled: ${APP_ALERTS_ENABLED:true}
+  feed:
+    primary:
+      name: coinbase
+      url: ${APP_FEED_PRIMARY_URL:wss://ws-feed.exchange.coinbase.com}
+    backup:
+      name: kraken
+      url: ${APP_FEED_BACKUP_URL:wss://ws.kraken.com/v2}
+    stale-threshold: ${APP_FEED_STALE_THRESHOLD:10s}
+    recovery-period: ${APP_FEED_RECOVERY_PERIOD:15s}
+    idle-timeout: ${APP_FEED_IDLE_TIMEOUT:10s}
+    reconnect-initial-backoff: ${APP_FEED_RECONNECT_INITIAL_BACKOFF:1s}
+    reconnect-max-backoff: ${APP_FEED_RECONNECT_MAX_BACKOFF:30s}
+  fx:
+    url: ${APP_FX_URL:https://open.er-api.com/v6/latest/USD}
+    refresh-interval: ${APP_FX_REFRESH_INTERVAL:30m}
+    refresh-enabled: ${APP_FX_REFRESH_ENABLED:true}
+  retention:
+    ticks: ${APP_RETENTION_TICKS:P30D}
+    interval: ${APP_RETENTION_INTERVAL:PT1H}
+  alert:
+    cooldown: ${APP_ALERT_COOLDOWN:5m}

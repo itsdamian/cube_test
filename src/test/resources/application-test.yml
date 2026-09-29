@@ -1,0 +1,17 @@
+# Shared settings for ALL tests. Activated globally by surefire
+# (systemPropertyVariables spring.profiles.active=test in pom.xml), so no test class
+# needs @ActiveProfiles. Requirement 18: tests must never reach real price/FX sources,
+# so every external URL points at 127.0.0.1:1 (nothing listens there) and the
+# background jobs that would call them are switched off.
+# NoExternalCallsGuardTest enforces this.
+app:
+  ingest:
+    enabled: false
+  feed:
+    primary:
+      url: ws://127.0.0.1:1/primary
+    backup:
+      url: ws://127.0.0.1:1/backup
+  fx:
+    url: http://127.0.0.1:1/fx
+    refresh-enabled: false
