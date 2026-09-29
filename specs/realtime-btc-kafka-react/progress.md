@@ -88,3 +88,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **踩到的坑**: `@ServiceConnection` 只套用到 Spring 建立的 Kafka factory；直接用 `KafkaProperties` 會拿到 yml 的 localhost:9092。測試改用 `KafkaAdmin` / `ConsumerFactory` bean。
 - **概念**: record key 決定 partition，順序只在同一 partition 內保證，所以 tick 一律以 `BTC-USD` 為 key；compacted topic 每個 key 只保留最新值，適合「目前狀態」；有界佇列是典型的 back-pressure 取捨（丟棄／阻塞／緩衝），這裡選丟最舊。
 - **QA CONCERN 追蹤**: (6) Currency 時間戳改用 Clock — 暫不處理（JPA callback 無法注入，影響小）；(7) task 12 的 AC5 測試不加 @Transactional — 已記下。
+
+## 2026-09-29 15:40 — Stage: implement task 5（Coinbase / Kraken parser）
+- **What changed**: `FeedMessage`（sealed interface）、`FeedMessageParser`、`CoinbaseMessageParser`、`KrakenMessageParser`；真實訊息 fixture（2026-09-29 擷取）；QA CONCERN 8（test profile 的 Kafka / datasource 指向 127.0.0.1:1 + 守門斷言）、CONCERN 9（InOrder）。task 4 已依 QA PASS 勾 [x]。
+- **Commit**: `2b13d20`
+- **Verified**: `./mvnw clean verify` → 50 tests / 0 failures，無外部 host。
+- **Plan 細節更正（非範圍變更）**: Coinbase Exchange feed 的 heartbeat 頻道名稱是 `heartbeat`（單數），plan 寫的 `heartbeats` 屬於 Advanced Trade API，實測會被拒絕（fixture `coinbase/error.json`）。兩家 heartbeat 皆約每秒一則，10 秒 idle-timeout 足夠。
+- **踩到的坑**: Jackson tree model 預設會去掉 BigDecimal 尾端的 0（84035.0 → 84035）；已關閉 `STRIP_TRAILING_BIGDECIMAL_ZEROES`。
+- **概念**: sealed interface + record 表達「結果是這幾種之一」，switch pattern matching 由編譯器檢查是否涵蓋所有情況；金額經過 double 會悄悄改變位數，JSON 數字一律讀成 BigDecimal。
