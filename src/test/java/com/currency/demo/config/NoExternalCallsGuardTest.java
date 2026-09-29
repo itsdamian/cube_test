@@ -1,9 +1,11 @@
 package com.currency.demo.config;
 
+import com.currency.demo.feed.PriceFeedClient;
 import com.currency.demo.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 
 import java.net.URI;
@@ -28,6 +30,9 @@ class NoExternalCallsGuardTest extends IntegrationTest {
     @Autowired
     AppProperties props;
 
+    @Autowired
+    ApplicationContext context;
+
     @Test
     void testProfileIsActiveWithoutAnnotation() {
         assertThat(environment.getActiveProfiles()).contains("test");
@@ -49,6 +54,13 @@ class NoExternalCallsGuardTest extends IntegrationTest {
         // the fall-back values a test would use if it forgot to extend IntegrationTest.
         assertThat(environment.getProperty("spring.kafka.bootstrap-servers")).isEqualTo("127.0.0.1:1");
         assertThat(environment.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://127.0.0.1:1/none");
+    }
+
+    @Test
+    void noRealExchangeClientIsRunning() {
+        // Task 6: with ingest disabled no WebSocket client may be connecting to an exchange.
+        assertThat(context.getBeansOfType(PriceFeedClient.class).values())
+                .noneMatch(PriceFeedClient::isRunning);
     }
 
     @Test

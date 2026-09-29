@@ -1,6 +1,7 @@
 package com.currency.demo.feed;
 
 import com.currency.demo.pricing.PriceTick;
+import com.fasterxml.jackson.databind.node.LongNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -35,6 +36,19 @@ class KrakenMessageParserTest {
             assertThat(t.receivedAt()).isEqualTo(RECEIVED);
         });
         assertThat(ticks).extracting(PriceTick::eventId).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void sameTradesParsedTwiceGetTheSameEventIdsAndDifferFromCoinbase() {
+        String text = Fixtures.read("kraken/trade-multi.json");
+        List<PriceTick> first = parser.parse(text, RECEIVED).ticks();
+        List<PriceTick> again = parser.parse(text, RECEIVED.plusSeconds(5)).ticks();
+
+        assertThat(again).extracting(PriceTick::eventId)
+                .containsExactlyElementsOf(first.stream().map(PriceTick::eventId).toList());
+        // Same trade_id number on another exchange is a different trade.
+        assertThat(FeedMessageParser.eventId("coinbase", LongNode.valueOf(109473031L)))
+                .isNotEqualTo(first.getFirst().eventId());
     }
 
     @Test

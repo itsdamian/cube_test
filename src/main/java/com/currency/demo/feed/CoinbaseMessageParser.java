@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Coinbase Exchange public feed ({@code wss://ws-feed.exchange.coinbase.com}).
@@ -67,7 +66,8 @@ public final class CoinbaseMessageParser implements FeedMessageParser {
                 return new FeedMessage.Invalid("non-positive price " + price);
             }
             return new FeedMessage.Trades(List.of(
-                    new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, price, SOURCE, time, receivedAt)));
+                    new PriceTick(FeedMessageParser.eventId(SOURCE, node.get("trade_id")), PriceTick.BTC_USD, price, SOURCE,
+                            time, receivedAt)));
         } catch (NumberFormatException | DateTimeParseException e) {
             return new FeedMessage.Invalid("bad ticker field: " + e.getMessage());
         }

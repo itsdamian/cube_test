@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Kraken WebSocket v2 ({@code wss://ws.kraken.com/v2}), channel {@code trade}.
@@ -87,7 +86,8 @@ public final class KrakenMessageParser implements FeedMessageParser {
                 if (price.signum() <= 0) {
                     throw new NumberFormatException("non-positive price " + price);
                 }
-                ticks.add(new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, price, SOURCE, time, receivedAt));
+                ticks.add(new PriceTick(FeedMessageParser.eventId(SOURCE, trade.get("trade_id")), PriceTick.BTC_USD,
+                        price, SOURCE, time, receivedAt));
             } catch (NumberFormatException | DateTimeParseException e) {
                 log.debug("Skipping malformed Kraken trade {}: {}", trade, e.getMessage());
             }

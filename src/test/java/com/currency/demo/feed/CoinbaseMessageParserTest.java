@@ -31,6 +31,17 @@ class CoinbaseMessageParserTest {
     }
 
     @Test
+    void sameTradeParsedTwiceGetsTheSameEventId() {
+        String text = Fixtures.read("coinbase/ticker.json");
+        PriceTick first = parser.parse(text, RECEIVED).ticks().getFirst();
+        PriceTick again = parser.parse(text, RECEIVED.plusSeconds(5)).ticks().getFirst();
+        PriceTick otherTrade = parser.parse(text.replace("1099886673", "1099886674"), RECEIVED).ticks().getFirst();
+
+        assertThat(again.eventId()).isEqualTo(first.eventId());
+        assertThat(otherTrade.eventId()).isNotEqualTo(first.eventId());
+    }
+
+    @Test
     void heartbeatIsRecognisedButCarriesNoTick() {
         FeedMessage msg = parser.parse(Fixtures.read("coinbase/heartbeat.json"), RECEIVED);
 
