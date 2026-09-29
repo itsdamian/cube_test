@@ -1,6 +1,7 @@
 package com.currency.demo.config;
 
 import org.junit.jupiter.api.Nested;
+import com.currency.demo.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +23,7 @@ class AppPropertiesTest {
 
     @Nested
     @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-    class Defaults {
+    class Defaults extends IntegrationTest {
 
         @Autowired
         AppProperties props;
@@ -54,7 +55,7 @@ class AppPropertiesTest {
             "APP_ALERT_COOLDOWN=30s",
             "APP_STREAMS_ENABLED=false"
     })
-    class EnvironmentOverrides {
+    class EnvironmentOverrides extends IntegrationTest {
 
         @Autowired
         AppProperties props;

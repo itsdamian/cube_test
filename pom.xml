@@ -64,12 +64,6 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Temporary: still used by the current code/tests; removed in task 3 (PostgreSQL + Flyway). -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
 
         <!-- Kafka producer/consumer + Kafka Streams -->
         <dependency>

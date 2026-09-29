@@ -1,5 +1,6 @@
 package com.currency.demo.config;
 
+import com.currency.demo.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * guard (no real WebSocket client started, FX schedule not running).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-class NoExternalCallsGuardTest {
+class NoExternalCallsGuardTest extends IntegrationTest {
 
     @Autowired
     Environment environment;

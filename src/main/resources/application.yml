@@ -5,15 +5,18 @@
 spring:
   application:
     name: currency-demo
-  # Temporary in-memory H2 until task 3 switches to PostgreSQL + Flyway.
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:currency;DB_CLOSE_DELAY=-1}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/currency}
+    username: ${SPRING_DATASOURCE_USERNAME:currency}
+    password: ${SPRING_DATASOURCE_PASSWORD:currency}
+  # Flyway (db/migration/V*.sql) owns the schema; Hibernate only checks that the
+  # entities match it and never alters tables.
+  flyway:
+    enabled: true
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
 
 server:
   port: ${SERVER_PORT:8080}
