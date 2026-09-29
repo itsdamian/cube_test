@@ -111,3 +111,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **狀態定義**: STALE = 無新鮮價格但仍有連線（前端「資料延遲」）；DISCONNECTED = 完全無連線（「已斷線」）。
 - **概念**: 備援保持「熱」連線，用多一條 socket 換取快速、可預測的切換；所有規則都透過注入的 Clock 取時間，讓時間相關的狀態機變成確定性的單元測試。
 - **仍待 QA**: task 6（b50aba1）。
+
+## 2026-09-29 15:51 — Stage: implement task 8（chaos 故障注入端點）
+- **What changed**: `FeedsChaosEndpoint`（`@Profile("chaos")`，GET /actuator/feeds、POST /{source}/block[?mode=silent]、/{source}/unblock；未知 source 404、未知 action/mode 400）；`application-chaos.yml` 開放 feeds 端點。
+- **Commit**: `253c111`
+- **Verified**: `./mvnw clean verify` → 73 tests / 0 failures，無外部 host。預設 profile：bean 不存在、端點 404；chaos profile：block → kraken、unblock 後 +14s 仍 kraken、+15s 切回 coinbase；silent 亦同。
+- **注意（README / task 27）**: Actuator 寫入操作要帶 `Content-Type: application/json`，否則 415。手動指令：`curl -X POST -H 'Content-Type: application/json' localhost:8080/actuator/feeds/coinbase/block`。
+- **概念**: profile 讓同一個 jar / image 帶著「需明確開啟」的行為；不開就連 bean 都不存在，環境之間只差設定。
+- **仍待 QA**: task 6（b50aba1）、task 7（2052a70）。
