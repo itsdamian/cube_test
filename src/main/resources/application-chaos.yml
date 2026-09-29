@@ -1,0 +1,8 @@
+# Manual acceptance testing only (AC6): exposes the fault-injection endpoint
+# /actuator/feeds. Enable with SPRING_PROFILES_ACTIVE=chaos (docker-compose.chaos.yml).
+# Never part of the default configuration.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,feeds
