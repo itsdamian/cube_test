@@ -119,3 +119,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **注意（README / task 27）**: Actuator 寫入操作要帶 `Content-Type: application/json`，否則 415。手動指令：`curl -X POST -H 'Content-Type: application/json' localhost:8080/actuator/feeds/coinbase/block`。
 - **概念**: profile 讓同一個 jar / image 帶著「需明確開啟」的行為；不開就連 bean 都不存在，環境之間只差設定。
 - **仍待 QA**: task 6（b50aba1）、task 7（2052a70）。
+
+## 2026-09-29 15:54 — Stage: implement task 9（逐筆價格落地）+ guardrail
+- **What changed (`fd1354f`)**: `V3__price_tick.sql`、`PriceTickRepository`（JDBC batch + ON CONFLICT DO NOTHING）、`TickPersister`（batch listener、group tick-persister、earliest）、`KafkaConsumerConfig`（從 Boot consumer factory 複製設定 + ErrorHandlingDeserializer）。task 6、7 已依 QA PASS 勾 [x]。
+- **Verified**: `./mvnw clean verify` → 74 tests / 0 failures；500 筆（含 20 筆重複 eventId）→ DB 恰好 480 筆且欄位一致。
+- **概念**: Kafka 預設 at-least-once（處理完才 commit，當機會重送）；寫入端用 unique key + ON CONFLICT DO NOTHING 做到冪等，不需要 Kafka transaction 也能「效果上只寫一次」。
+- **Guardrail（已上報 personal-workplace-7a）**: QA CONCERN 12 — plan 以「最後成交時間」判斷來源健康，Kraken 冷清時段成交間隔會超過 10 秒，造成 LIVE/STALE 誤報、並可能讓主來源失效時不切換。提議：連線健康改看 lastMessageAt（含每秒 heartbeat，門檻 10s），另加價格過舊門檻 `APP_FEED_PRICE_STALE_THRESHOLD`=60s。等待決定；期間不改 task 7 程式，繼續做不受影響的 task 10。
+- **待辦**: QA CONCERN 11（退避序列與歸零規則的測試）將併入 CONCERN 12 的 follow-up。
