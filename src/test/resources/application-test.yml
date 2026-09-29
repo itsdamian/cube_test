@@ -15,9 +15,15 @@ spring:
   datasource:
     url: jdbc:postgresql://127.0.0.1:1/none
 
+  # Each test context gets its own Streams state dir (tests enabling Streams must not share locks).
+  kafka.streams.state-dir: ${java.io.tmpdir}/kafka-streams-test-${random.uuid}
+
 app:
   ingest:
     enabled: false
+  # Kafka Streams is off by default in tests; tests that need candles turn it on explicitly.
+  streams:
+    enabled: ${APP_STREAMS_ENABLED:false}
   feed:
     primary:
       url: ws://127.0.0.1:1/primary

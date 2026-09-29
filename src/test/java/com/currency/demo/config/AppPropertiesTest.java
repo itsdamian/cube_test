@@ -42,7 +42,8 @@ class AppPropertiesTest {
             assertThat(props.retention().ticks()).isEqualTo(Duration.ofDays(30));
             assertThat(props.retention().interval()).isEqualTo(Duration.ofHours(1));
             assertThat(props.alert().cooldown()).isEqualTo(Duration.ofMinutes(5));
-            assertThat(props.streams().enabled()).isTrue();
+            assertThat(props.streams().enabled()).isFalse();   // off in the test profile
+            assertThat(props.streams().grace()).isEqualTo(Duration.ofSeconds(5));
             assertThat(props.persist().enabled()).isTrue();
             assertThat(props.alerts().enabled()).isTrue();
             assertThat(props.feed().publishQueueCapacity()).isEqualTo(10_000);
@@ -57,7 +58,7 @@ class AppPropertiesTest {
             "APP_RETENTION_INTERVAL=PT1S",
             "APP_FEED_STALE_THRESHOLD=20s",
             "APP_ALERT_COOLDOWN=30s",
-            "APP_STREAMS_ENABLED=false"
+            "APP_PERSIST_ENABLED=false"
     })
     class EnvironmentOverrides extends IntegrationTest {
 
@@ -70,7 +71,7 @@ class AppPropertiesTest {
             assertThat(props.retention().interval()).isEqualTo(Duration.ofSeconds(1));
             assertThat(props.feed().staleThreshold()).isEqualTo(Duration.ofSeconds(20));
             assertThat(props.alert().cooldown()).isEqualTo(Duration.ofSeconds(30));
-            assertThat(props.streams().enabled()).isFalse();
+            assertThat(props.persist().enabled()).isFalse();
         }
     }
 }

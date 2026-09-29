@@ -26,6 +26,15 @@ spring:
         request.timeout.ms: 10000
         delivery.timeout.ms: 30000
         linger.ms: 5
+    streams:
+      application-id: ${APP_STREAMS_APPLICATION_ID:currency-candles}
+      # Local state (RocksDB window stores). Mount a volume here in docker/K8s.
+      state-dir: ${APP_STREAMS_STATE_DIR:${java.io.tmpdir}/kafka-streams}
+      replication-factor: ${APP_KAFKA_REPLICATION_FACTOR:1}
+      properties:
+        processing.guarantee: at_least_once
+        # A record that cannot be deserialized is logged and skipped instead of killing the stream thread.
+        default.deserialization.exception.handler: org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
   jpa:
     open-in-view: false
     hibernate:
@@ -53,6 +62,7 @@ app:
     enabled: ${APP_INGEST_ENABLED:true}
   streams:
     enabled: ${APP_STREAMS_ENABLED:true}
+    grace: ${APP_STREAMS_GRACE:5s}
   persist:
     enabled: ${APP_PERSIST_ENABLED:true}
   alerts:

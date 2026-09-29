@@ -22,7 +22,7 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         @Valid @NotNull Toggle ingest,
-        @Valid @NotNull Toggle streams,
+        @Valid @NotNull Streams streams,
         @Valid @NotNull Toggle persist,
         @Valid @NotNull Toggle alerts,
         @Valid @NotNull Feed feed,
@@ -33,6 +33,10 @@ public record AppProperties(
 
     /** A feature switch, e.g. {@code app.ingest.enabled}. */
     public record Toggle(boolean enabled) {
+    }
+
+    /** Kafka Streams candles: on/off and how long a closed window still accepts late ticks. */
+    public record Streams(boolean enabled, @NotNull Duration grace) {
     }
 
     /** Realtime price sources (primary + hot-standby backup) and failover timing. */
