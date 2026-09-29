@@ -2,6 +2,7 @@ package com.currency.demo.config;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -27,7 +28,8 @@ public record AppProperties(
         @Valid @NotNull Feed feed,
         @Valid @NotNull Fx fx,
         @Valid @NotNull Retention retention,
-        @Valid @NotNull Alert alert) {
+        @Valid @NotNull Alert alert,
+        @Valid @NotNull Kafka kafka) {
 
     /** A feature switch, e.g. {@code app.ingest.enabled}. */
     public record Toggle(boolean enabled) {
@@ -41,7 +43,8 @@ public record AppProperties(
             @NotNull Duration recoveryPeriod,
             @NotNull Duration idleTimeout,
             @NotNull Duration reconnectInitialBackoff,
-            @NotNull Duration reconnectMaxBackoff) {
+            @NotNull Duration reconnectMaxBackoff,
+            @Positive int publishQueueCapacity) {
     }
 
     /** One exchange WebSocket endpoint. */
@@ -54,6 +57,10 @@ public record AppProperties(
 
     /** How long raw ticks are kept, and how often the cleanup job runs. */
     public record Retention(@NotNull Duration ticks, @NotNull Duration interval) {
+    }
+
+    /** Topic settings; replication 1 is fine for the single local broker (not HA, see Non-Goals). */
+    public record Kafka(@Positive int replicationFactor, @Positive int tickPartitions) {
     }
 
     /** Price-alert behaviour. */

@@ -13,6 +13,19 @@ spring:
   # entities match it and never alters tables.
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # value serializer: JSON via Spring's ObjectMapper, see KafkaConfig
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Never block a caller for long when Kafka is down (plan: Approach #9).
+        max.block.ms: 5000
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 30000
+        linger.ms: 5
   jpa:
     open-in-view: false
     hibernate:
@@ -56,6 +69,7 @@ app:
     idle-timeout: ${APP_FEED_IDLE_TIMEOUT:10s}
     reconnect-initial-backoff: ${APP_FEED_RECONNECT_INITIAL_BACKOFF:1s}
     reconnect-max-backoff: ${APP_FEED_RECONNECT_MAX_BACKOFF:30s}
+    publish-queue-capacity: ${APP_FEED_PUBLISH_QUEUE_CAPACITY:10000}
   fx:
     url: ${APP_FX_URL:https://open.er-api.com/v6/latest/USD}
     refresh-interval: ${APP_FX_REFRESH_INTERVAL:30m}
@@ -65,3 +79,6 @@ app:
     interval: ${APP_RETENTION_INTERVAL:PT1H}
   alert:
     cooldown: ${APP_ALERT_COOLDOWN:5m}
+  kafka:
+    replication-factor: ${APP_KAFKA_REPLICATION_FACTOR:1}
+    tick-partitions: ${APP_KAFKA_TICK_PARTITIONS:3}

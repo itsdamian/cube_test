@@ -44,6 +44,9 @@ class AppPropertiesTest {
             assertThat(props.streams().enabled()).isTrue();
             assertThat(props.persist().enabled()).isTrue();
             assertThat(props.alerts().enabled()).isTrue();
+            assertThat(props.feed().publishQueueCapacity()).isEqualTo(10_000);
+            assertThat(props.kafka().replicationFactor()).isEqualTo(1);
+            assertThat(props.kafka().tickPartitions()).isEqualTo(3);
         }
     }
 
