@@ -132,3 +132,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Task 7 follow-up（`730d9d0`）**: team lead 核准方案 (a)——健康 = 已連線 AND lastMessageAt < 10s（含 heartbeat）AND lastTickAt < 60s（`APP_FEED_PRICE_STALE_THRESHOLD`）。plan.md Approach #2 與 QA 表已更新；tasks.md task 21 註明 15 秒延遲計時要算所有 SSE 事件。CONCERN 11 退避序列測試。94 tests 通過；feed 測試再連跑 3 次通過。task 9 已依 QA PASS 勾 [x]。
 - **概念**: keyset 分頁從上一頁最後一個 key 繼續，每頁都是 index range scan、結果穩定；「連線活著嗎」和「資料新鮮嗎」是兩個問題——heartbeat 快速回答前者，另一個較寬的價格時效門檻回答後者，冷清時段就不會誤報。
 - **待辦**: QA CONCERN 13（listener error handler 改不限次數指數退避 + poison pill 測試）併入 task 12。
+
+## 2026-09-29 16:06 — Stage: implement task 11（Kafka Streams K 線 topology）
+- **What changed (`8371673`)**: `CandleTopology`（1m/5m tumbling、grace 5s、suppress untilWindowCloses）、`PriceTickTimestampExtractor`（事件時間）、`CandleAccumulator`、`Candle`、`TickOrder`（共用排序：時間以微秒、UUID 以無號位元組比較，和 PostgreSQL 一致）、`CandleStreamsConfig`（`app.streams.enabled` 才啟用）；`spring.kafka.streams.*`（state-dir 可設定、LogAndContinue、at_least_once）；test profile 預設關閉 Streams、每個 context 獨立 state dir。
+- **Verified**: `./mvnw clean verify` → 100 tests / 0 failures；測試中沒有任何 context 意外啟動 StreamThread。
+- **發現**: Java `UUID.compareTo` 是有號比較，PostgreSQL uuid 是無號位元組比較，最高位為 1 時排序相反 → 會讓同時間 tick 的 open/close 和 DB 對不上（AC4）。已用 `TickOrder.compareUnsigned` 統一並測試。
+- **概念**: 事件時間 vs 處理時間——視窗依成交發生時間放置，grace 決定等遲到資料多久；suppress 用延遲換取「每根 K 線只輸出一次最終值」。
