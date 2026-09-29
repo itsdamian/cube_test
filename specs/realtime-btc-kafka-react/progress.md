@@ -65,3 +65,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: `./mvnw verify` → 11 tests / 0 failures（Coindesk 測試照樣通過，未使用例外）；`dependency:tree` → testcontainers 1.21.4、spring-kafka 3.3.16、kafka 3.9.2、flyway 11.7.2；`git ls-files | grep -cE '(^|/)target/'` → 0。
 - **概念**: Boot parent POM 是 BOM，統一管理相容版本，所以相依套件不用寫版本；mvnw 讓任何機器（含 CI）都用同一版 Maven。
 - **請 QA 檢查**: 在 ae5cb0f 執行 `./mvnw verify`、`./mvnw -q dependency:tree -Dincludes=org.testcontainers`、`git ls-files | grep -E '(^|/)target/'`（應為空）。
+
+## 2026-09-29 15:27 — Stage: implement task 2（移除 Coindesk、設定骨架、測試守門）
+- **What changed**: 刪除 Coindesk 全部程式與測試、RestTemplateConfig；application.yml（`${ENV:default}`、actuator 只暴露 health,info、open-in-view=false）；`AppProperties` record + `ClockConfig`；DemoApplication 精簡；共用 test profile 由 surefire 全域啟用；`NoExternalCallsGuardTest`、`AppPropertiesTest`；Mockito javaagent；wrapper 加 `distributionSha256Sum`（QA task 1 CONCERN 2）。task 1 已依 QA PASS 勾 [x]。
+- **Commit**: `825804f`
+- **Verified**: `./mvnw verify` → 9 tests / 0 failures；test log 無任何外部 host；反向驗證：surefire 改成 default profile 時守門測試 3/3 失敗。
+- **概念**: `@ConfigurationProperties` 把整段設定綁成型別化物件，打錯字在啟動時就失敗；Spring 自動 env 綁定會把 `stale-threshold` 對到 `APP_FEED_STALETHRESHOLD`，所以 yml 明寫 `${APP_FEED_STALE_THRESHOLD:10s}` 保留文件上的變數名稱。
+- **注意**: 主程式啟動時暫時沒有預設幣別（seed runner 已移除，task 3 改由 Flyway 建立）。
