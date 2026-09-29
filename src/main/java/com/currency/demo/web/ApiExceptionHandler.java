@@ -2,6 +2,8 @@ package com.currency.demo.web;
 
 import com.currency.demo.currency.CurrencyNotFoundException;
 import com.currency.demo.currency.DuplicateCurrencyCodeException;
+import com.currency.demo.pricing.InvalidQueryException;
+import com.currency.demo.pricing.NoPriceYetException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -46,6 +48,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    @ExceptionHandler(InvalidQueryException.class)
+    ProblemDetail badQuery(InvalidQueryException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(NoPriceYetException.class)
+    ProblemDetail noPrice(NoPriceYetException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(CurrencyNotFoundException.class)

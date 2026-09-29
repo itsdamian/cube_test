@@ -1,0 +1,12 @@
+{
+  "items" : [ {
+    "eventTime" : "2026-09-29T08:00:00.123456Z",
+    "price" : 84045.5,
+    "source" : "coinbase"
+  }, {
+    "eventTime" : "2026-09-29T08:00:00.373456Z",
+    "price" : 84046.0,
+    "source" : "coinbase"
+  } ],
+  "nextCursor" : "MTc5MDY2NjgwMDoxMjM0NTYwMDA6NDI"
+}

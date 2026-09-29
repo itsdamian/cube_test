@@ -1,5 +1,6 @@
 package com.currency.demo.config;
 
+import com.currency.demo.feed.FeedStatus;
 import com.currency.demo.pricing.PriceTick;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -33,6 +34,15 @@ public class KafkaConsumerConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, PriceTick>();
         factory.setConsumerFactory(jsonConsumerFactory(bootConsumerFactory, objectMapper, PriceTick.class));
         factory.setBatchListener(true);
+        return factory;
+    }
+
+    /** Single-record listener for {@link FeedStatus} (status tracker, SSE). */
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, FeedStatus> feedStatusListenerFactory(
+            ConsumerFactory<?, ?> bootConsumerFactory, ObjectMapper objectMapper) {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, FeedStatus>();
+        factory.setConsumerFactory(jsonConsumerFactory(bootConsumerFactory, objectMapper, FeedStatus.class));
         return factory;
     }
 
