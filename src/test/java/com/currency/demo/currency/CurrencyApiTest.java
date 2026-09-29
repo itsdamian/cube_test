@@ -106,6 +106,19 @@ class CurrencyApiTest extends IntegrationTest {
     }
 
     @Test
+    void validationErrorListsEachInvalidFieldAndReason() throws Exception {
+        mvc.perform(post("/api/currencies").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"usd\",\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.length()").value(2))
+                .andExpect(jsonPath("$.errors[0].field").value("code"))
+                .andExpect(jsonPath("$.errors[0].message").value("must be 3 uppercase letters (ISO 4217), e.g. TWD"))
+                .andExpect(jsonPath("$.errors[1].field").value("name"))
+                .andExpect(jsonPath("$.errors[1].message").isNotEmpty());
+    }
+
+    @Test
     void invalidBodyIs400ProblemDetail() throws Exception {
         for (String body : new String[]{
                 "{\"code\":\"usd\",\"name\":\"x\"}",    // lowercase
