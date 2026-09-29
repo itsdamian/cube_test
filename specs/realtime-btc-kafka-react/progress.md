@@ -80,3 +80,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **踩到的坑**: 未 `clean` 時 `target/test-classes` 殘留 task 2 已刪的 `application-test.properties`（create-drop + H2Dialect），會把 Flyway 建的表 drop 掉。之後一律 `clean verify`。
 - **概念**: Flyway 每個 `V<n>__*.sql` 只執行一次並記錄在 `flyway_schema_history`，schema 跟著程式碼版本化；singleton container 讓整個測試 JVM 共用一個 Postgres，`@ServiceConnection` 自動把連線資訊交給 Spring Boot。
 - **QA CONCERN 追蹤**: (3) 本專案不使用 failsafe，所有測試走 surefire；(4) health `show-details` 於 task 17 處理。
+
+## 2026-09-29 15:37 — Stage: implement task 4（Kafka 基礎與 TickPublisher）+ task 3 follow-up
+- **What changed (task 4, `7c565b2`)**: `Topics` + `KafkaConfig`（4 個 topic、status 為 compact、JSON 值用 Boot ObjectMapper 且無 type header、producer idempotent / acks=all / max.block.ms=5s / delivery.timeout.ms=30s）；`PriceTick` record；`TickPublisher`（有界佇列、獨立 publisher thread、滿了丟最舊並累計 `feed.ticks.dropped`、錯誤 log 節流）；測試基底加入 singleton `apache/kafka:3.9.2`。task 3 已依 QA PASS 勾 [x]。
+- **Follow-up (`68dba77`)**: QA CONCERN 5 — 驗證失敗的 ProblemDetail 加上 `errors:[{field,message}]`。
+- **Verified**: `./mvnw clean verify` → 19 tests / 0 failures，無外部 host。TickPublisherTest：send() 卡住時每次 publish() < 10ms、容量 3 的佇列 8 筆中保留最新 3 筆、dropped=5；RoundTrip：topic 設定正確、JSON 為 `"price":67123.45000000` 與 ISO eventTime、無 `__TypeId__`、反序列化後 equals。
+- **踩到的坑**: `@ServiceConnection` 只套用到 Spring 建立的 Kafka factory；直接用 `KafkaProperties` 會拿到 yml 的 localhost:9092。測試改用 `KafkaAdmin` / `ConsumerFactory` bean。
+- **概念**: record key 決定 partition，順序只在同一 partition 內保證，所以 tick 一律以 `BTC-USD` 為 key；compacted topic 每個 key 只保留最新值，適合「目前狀態」；有界佇列是典型的 back-pressure 取捨（丟棄／阻塞／緩衝），這裡選丟最舊。
+- **QA CONCERN 追蹤**: (6) Currency 時間戳改用 Clock — 暫不處理（JPA callback 無法注入，影響小）；(7) task 12 的 AC5 測試不加 @Transactional — 已記下。
