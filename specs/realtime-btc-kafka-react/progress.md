@@ -96,3 +96,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Plan 細節更正（非範圍變更）**: Coinbase Exchange feed 的 heartbeat 頻道名稱是 `heartbeat`（單數），plan 寫的 `heartbeats` 屬於 Advanced Trade API，實測會被拒絕（fixture `coinbase/error.json`）。兩家 heartbeat 皆約每秒一則，10 秒 idle-timeout 足夠。
 - **踩到的坑**: Jackson tree model 預設會去掉 BigDecimal 尾端的 0（84035.0 → 84035）；已關閉 `STRIP_TRAILING_BIGDECIMAL_ZEROES`。
 - **概念**: sealed interface + record 表達「結果是這幾種之一」，switch pattern matching 由編譯器檢查是否涵蓋所有情況；金額經過 double 會悄悄改變位數，JSON 數字一律讀成 BigDecimal。
+
+## 2026-09-29 15:44 — Stage: implement task 6（WebSocketPriceFeedClient）
+- **What changed**: `PriceFeedClient` 介面、`TickListener`、`WebSocketPriceFeedClient`（指數退避、idle watchdog、連線 generation、BlockMode DISCONNECT/SILENT）；測試用 `FakeExchangeServer`（Java-WebSocket，127.0.0.1 隨機 port）；QA CONCERN 10：eventId 改為 `nameUUIDFromBytes(source:trade_id)`；守門測試加上「沒有 PriceFeedClient 在跑」。Spring 接線在 task 7。task 5 已依 QA PASS 勾 [x]。
+- **Commit**: `b50aba1`
+- **Verified**: `./mvnw clean verify` → 59 tests / 0 failures，無外部 host；WebSocket 測試連跑 5 次全過。
+- **設計決定**: 退避歸零時機改為「新連線收到第一則有效訊息」而非「連上」，避免 server 接受後立刻斷線時以最短間隔狂連。
+- **概念**: TCP 沒有流量時分不出「安靜」和「已死」，所以協定有 heartbeat、client 有 idle timeout；指數退避讓重試逐漸拉開、並設上限讓恢復仍然快。
