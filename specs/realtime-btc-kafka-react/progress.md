@@ -126,3 +126,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **概念**: Kafka 預設 at-least-once（處理完才 commit，當機會重送）；寫入端用 unique key + ON CONFLICT DO NOTHING 做到冪等，不需要 Kafka transaction 也能「效果上只寫一次」。
 - **Guardrail（已上報 personal-workplace-7a）**: QA CONCERN 12 — plan 以「最後成交時間」判斷來源健康，Kraken 冷清時段成交間隔會超過 10 秒，造成 LIVE/STALE 誤報、並可能讓主來源失效時不切換。提議：連線健康改看 lastMessageAt（含每秒 heartbeat，門檻 10s），另加價格過舊門檻 `APP_FEED_PRICE_STALE_THRESHOLD`=60s。等待決定；期間不改 task 7 程式，繼續做不受影響的 task 10。
 - **待辦**: QA CONCERN 11（退避序列與歸零規則的測試）將併入 CONCERN 12 的 follow-up。
+
+## 2026-09-29 16:00 — Stage: implement task 10 + task 7 follow-up（CONCERN 12 / 11）
+- **Task 10（`70352c1`）**: `/api/prices/latest`、`/history`（keyset 分頁、Base64 cursor）、`/trend`（`date_bin` + `DISTINCT ON` 降採樣）；`FeedStatusTracker`（每個 instance 讀 compacted status topic，超過 15 秒視為 DISCONNECTED）；`contracts/api-samples/prices-*.json` + `ContractSamplesTest`（@WebMvcTest + mock service + JSONAssert STRICT，`-Dcontracts.update=true` 重新產生，樣本保留精確小數）。86 tests 通過；12,000 筆分 3 頁取完無重複；反向驗證改樣本一字即失敗。
+- **Task 7 follow-up（`730d9d0`）**: team lead 核准方案 (a)——健康 = 已連線 AND lastMessageAt < 10s（含 heartbeat）AND lastTickAt < 60s（`APP_FEED_PRICE_STALE_THRESHOLD`）。plan.md Approach #2 與 QA 表已更新；tasks.md task 21 註明 15 秒延遲計時要算所有 SSE 事件。CONCERN 11 退避序列測試。94 tests 通過；feed 測試再連跑 3 次通過。task 9 已依 QA PASS 勾 [x]。
+- **概念**: keyset 分頁從上一頁最後一個 key 繼續，每頁都是 index range scan、結果穩定；「連線活著嗎」和「資料新鮮嗎」是兩個問題——heartbeat 快速回答前者，另一個較寬的價格時效門檻回答後者，冷清時段就不會誤報。
+- **待辦**: QA CONCERN 13（listener error handler 改不限次數指數退避 + poison pill 測試）併入 task 12。
