@@ -1,5 +1,6 @@
 package com.currency.demo.config;
 
+import com.currency.demo.feed.FeedManager;
 import com.currency.demo.feed.PriceFeedClient;
 import com.currency.demo.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,8 @@ class NoExternalCallsGuardTest extends IntegrationTest {
         // Task 6: with ingest disabled no WebSocket client may be connecting to an exchange.
         assertThat(context.getBeansOfType(PriceFeedClient.class).values())
                 .noneMatch(PriceFeedClient::isRunning);
+        // Task 7: the connections are owned by FeedManager, which must not exist when ingest is off.
+        assertThat(context.getBeansOfType(FeedManager.class)).isEmpty();
     }
 
     @Test
