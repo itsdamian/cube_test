@@ -40,3 +40,21 @@ Branch: `feat/realtime-btc-kafka-react`
 - **授權變更（使用者親自指示）**: 自此 plan / tasks / guardrail checkpoint 由 team lead session `personal-workplace-7a` 代為核准，其決定等同使用者決定。安裝系統軟體、push、開 PR、動 main 仍須問使用者本人。
 - **Commit**: 見下一筆 git log（spec.md、plan.md、progress.md）
 - **下一步**: /tasks realtime-btc-kafka-react
+
+## 2026-09-29 14:14 — Stage: tasks（草稿送 QA 審查）
+- **What changed**: 新增 tasks.md（DRAFT）：前置 P1–P2（使用者安裝 JDK 21、開 Docker）＋ 27 個 task，末尾附 AC→task 對照表。
+- **Commit**: 無（待 QA 審查與核准）
+- **請 QA 檢查**: 每條 AC 至少對應一個 task；測試隨功能同 task、未延後到最後；每個 done-when 可實際驗證（含 AC6 在 11 秒內切換的時間預算、M1/M3b/M4/S4/S6 與 C1 的落實）；task 大小與相依順序。
+
+## 2026-09-29 14:16 — Stage: tasks（依 QA 意見修訂）
+- **What changed**: M5（task 2 建共用 test profile + `NoExternalCallsGuardTest`，task 6/14 擴充）、M6（`APP_RETENTION_INTERVAL` + 排程自動刪除測試）、T1（≤11 秒自最後一則主來源訊息起算、狀態改變立即發佈 FeedStatus）、T2（新增 task 18 全鏈路整合測試，原 18–27 順延為 19–28）、T3（`contracts/api-samples/` + `ContractSamplesTest`，MSW 讀同一份樣本）、T4、T5、T6 全部採納。
+- **Commit**: 無（待 QA 覆審與核准）
+
+## 2026-09-29 14:17 — Stage: tasks（QA 覆審 PASS + R1/R2）
+- **What changed**: QA 覆審 tasks.md PASS。採納 R1（surefire/failsafe 全域 `spring.profiles.active=test`，守門測試斷言 active profile）與 R2（task 26 改用 `busybox nc -z -w 5 1.1.1.1 443`）。送 personal-workplace-7a 依使用者授權核准。
+- **Commit**: 無（待核准）
+
+## 2026-09-29 15:18 — Stage: tasks CONFIRMED + 前置完成
+- **What changed**: personal-workplace-7a 依使用者授權核准 tasks.md → Status: CONFIRMED。工程師自行驗證前置：`java -version` = 21.0.12.1、`docker info` Server Version = 29.8.0 → P1/P2 勾選。
+- **Team lead 提醒**: (1) task 1 升級後若既有 Coindesk 測試失敗，不修，留給 task 2 刪除，並於 commit message 說明（先與 QA 對齊）；(2) 每個 task 的 commit message / progress 條目用 2–3 句說明關鍵概念。QA PASS 即繼續下一個 task。
+- **下一步**: /implement，從 task 1 開始。
