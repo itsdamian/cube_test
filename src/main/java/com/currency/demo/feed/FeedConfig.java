@@ -38,7 +38,7 @@ public class FeedConfig {
                 feed.idleTimeout(), feed.reconnectInitialBackoff(), feed.reconnectMaxBackoff());
         return new FeedManager(factory, new CoinbaseMessageParser(), new KrakenMessageParser(),
                 tickPublisher, new FeedStatusPublisher(kafka), clock,
-                feed.staleThreshold(), feed.recoveryPeriod());
+                feed.staleThreshold(), feed.priceStaleThreshold(), feed.recoveryPeriod());
     }
 
     private static URI urlFor(FeedMessageParser parser, AppProperties.Feed feed) {

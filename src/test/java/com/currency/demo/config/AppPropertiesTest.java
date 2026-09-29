@@ -33,6 +33,7 @@ class AppPropertiesTest {
             assertThat(props.feed().primary().name()).isEqualTo("coinbase");
             assertThat(props.feed().backup().name()).isEqualTo("kraken");
             assertThat(props.feed().staleThreshold()).isEqualTo(Duration.ofSeconds(10));
+            assertThat(props.feed().priceStaleThreshold()).isEqualTo(Duration.ofSeconds(60));
             assertThat(props.feed().recoveryPeriod()).isEqualTo(Duration.ofSeconds(15));
             assertThat(props.feed().idleTimeout()).isEqualTo(Duration.ofSeconds(10));
             assertThat(props.feed().reconnectInitialBackoff()).isEqualTo(Duration.ofSeconds(1));

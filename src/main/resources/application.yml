@@ -64,7 +64,10 @@ app:
     backup:
       name: kraken
       url: ${APP_FEED_BACKUP_URL:wss://ws.kraken.com/v2}
+    # A source is healthy only if it sent ANY message (heartbeats count) within stale-threshold
+    # AND a trade within price-stale-threshold.
     stale-threshold: ${APP_FEED_STALE_THRESHOLD:10s}
+    price-stale-threshold: ${APP_FEED_PRICE_STALE_THRESHOLD:60s}
     recovery-period: ${APP_FEED_RECOVERY_PERIOD:15s}
     idle-timeout: ${APP_FEED_IDLE_TIMEOUT:10s}
     reconnect-initial-backoff: ${APP_FEED_RECONNECT_INITIAL_BACKOFF:1s}

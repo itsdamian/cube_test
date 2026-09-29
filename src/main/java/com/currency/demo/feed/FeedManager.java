@@ -20,8 +20,9 @@ import java.util.concurrent.TimeUnit;
  * <p>Both clients stay connected; only ticks from the <em>active</em> source are handed to
  * {@link TickPublisher}. {@link #check()} runs once per second and applies these rules:
  * <ol>
- *   <li>A source is <b>healthy</b> when it is connected and its last tick is younger than
- *       {@code staleThreshold} (exactly the threshold already counts as stale).</li>
+ *   <li>A source is <b>healthy</b> when it is connected, its last message of any kind
+ *       (heartbeats included) is younger than {@code staleThreshold}, and its last trade is
+ *       younger than {@code priceStaleThreshold} (exactly a threshold already counts as stale).</li>
  *   <li>If the active source is unhealthy and the other one is healthy, switch immediately.</li>
  *   <li>While on the backup, switch back to the primary once the primary has been
  *       continuously healthy for {@code recoveryPeriod}; any unhealthy moment restarts that timer.</li>
@@ -48,6 +49,7 @@ public class FeedManager implements SmartLifecycle, TickListener {
     private final FeedStatusPublisher statusPublisher;
     private final Clock clock;
     private final Duration staleThreshold;
+    private final Duration priceStaleThreshold;
     private final Duration recoveryPeriod;
 
     private volatile PriceFeedClient active;
@@ -59,11 +61,12 @@ public class FeedManager implements SmartLifecycle, TickListener {
 
     public FeedManager(ClientFactory factory, FeedMessageParser primaryParser, FeedMessageParser backupParser,
                        TickPublisher tickPublisher, FeedStatusPublisher statusPublisher, Clock clock,
-                       Duration staleThreshold, Duration recoveryPeriod) {
+                       Duration staleThreshold, Duration priceStaleThreshold, Duration recoveryPeriod) {
         this.tickPublisher = tickPublisher;
         this.statusPublisher = statusPublisher;
         this.clock = clock;
         this.staleThreshold = staleThreshold;
+        this.priceStaleThreshold = priceStaleThreshold;
         this.recoveryPeriod = recoveryPeriod;
         // The clients only call back after start(), so handing out "this" here is safe.
         this.primary = factory.create(primaryParser, this);
@@ -125,10 +128,19 @@ public class FeedManager implements SmartLifecycle, TickListener {
         lastStatus = status;
     }
 
+    /**
+     * Connected, heard from within {@code staleThreshold} (any message - heartbeats keep a quiet
+     * market "alive"), and a real trade within {@code priceStaleThreshold} (a live socket that
+     * never delivers prices is useless). Exactly at a threshold counts as stale.
+     */
     private boolean healthy(PriceFeedClient client, Instant now) {
-        return client.isConnected() && client.lastTickAt()
-                .map(t -> Duration.between(t, now).compareTo(staleThreshold) < 0)
-                .orElse(false);
+        return client.isConnected()
+                && younger(client.lastMessageAt(), now, staleThreshold)
+                && younger(client.lastTickAt(), now, priceStaleThreshold);
+    }
+
+    private static boolean younger(java.util.Optional<Instant> at, Instant now, Duration limit) {
+        return at.map(t -> Duration.between(t, now).compareTo(limit) < 0).orElse(false);
     }
 
     private void switchTo(PriceFeedClient target, String reason) {

@@ -70,7 +70,7 @@ class FeedsChaosEndpointTest {
                     FAKES.put(parser.sourceName(), fake);
                     return fake;
                 }, new CoinbaseMessageParser(), new KrakenMessageParser(), mock(TickPublisher.class),
-                        mock(FeedStatusPublisher.class), CLOCK, Duration.ofSeconds(10), Duration.ofSeconds(15));
+                        mock(FeedStatusPublisher.class), CLOCK, Duration.ofSeconds(10), Duration.ofSeconds(60), Duration.ofSeconds(15));
             }
         }
 

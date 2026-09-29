@@ -21,7 +21,7 @@ FeedManager 每 5 秒 → topic btc.feed.status → [SSE broadcaster]
 
 1. **價格來源**：主要 **Coinbase Exchange WebSocket**（`wss://ws-feed.exchange.coinbase.com`，`ticker` channel，`BTC-USD`），備援 **Kraken WebSocket v2**（`wss://ws.kraken.com/v2`，`trade` channel，`BTC/USD`，訂閱時明確帶 `snapshot: false`；一則訊息可能含多筆成交，parser 會拆成多個 tick）。兩家都免 key、訊息格式簡單、對台灣與美國 IP 都能用（排除 Binance：美國 IP 被擋，之後 CI/K8s 可能在美國）。用 JDK 內建的 `java.net.http.WebSocket`，不額外引入函式庫。
 2. **故障切換（hot standby）**：兩條連線同時保持，`FeedManager` 由 scheduler 每秒呼叫一次 `check()`（邏輯本身是純函式式的狀態機，測試直接用可變 `Clock` 呼叫 `check()`，不用 `Thread.sleep`）；只把「目前 active 來源」的 tick 送進 Kafka。判定規則（邊界明確）：
-   - 某來源「stale」＝ 未連線，或 `now - lastTickAt >= stale-threshold`（預設 10 秒，剛好 10 秒即算 stale）
+   - 某來源「健康」＝ 已連線，且 `now - lastMessageAt < stale-threshold`（預設 10 秒；任何訊息都算，含交易所每秒的 heartbeat），且 `now - lastTickAt < price-stale-threshold`（預設 60 秒，`APP_FEED_PRICE_STALE_THRESHOLD`；超過代表連線活著但交易所沒有成交／卡住）。任一條件不成立即為 stale；剛好等於門檻即算 stale。（2026-09-29 依 QA CONCERN 12 修訂：原本只看 lastTickAt，Kraken 冷清時段成交間隔會超過 10 秒而誤判。）
    - active=主 且主 stale、備援健康 → 切到備援
    - active=備援 且主來源已連續健康 `>= recovery-period`（預設 15 秒）→ 切回主；recovery 期間主來源又 stale → 計時歸零，維持備援
    - 兩個都 stale → 狀態 `DISCONNECTED`，之後哪個先健康就用哪個；若是備援先恢復，主來源健康滿 15 秒後再切回主
@@ -242,6 +242,7 @@ com.currency.demo
 |---|---|---|
 | M1 | AC12 用 Testcontainers stop/start 會換 port，驗不到恢復 | **採納**：改用 docker `pause`/`unpause` + Awaitility（Testing Strategy） |
 | M2 | compose 單一網路，`network disconnect` 會假陽性 | **採納**：拆成 `internal`（internal:true）/`egress`/`public` 三個網路，只斷 `egress` |
+| CONCERN 12 | 健康判斷只看成交時間，冷清時段（Kraken 成交間隔實測可達 9.28 秒以上）會 LIVE/STALE 誤報、主來源失效時可能不切換 | **team lead 核准方案 (a)，2026-09-29**：連線健康看 lastMessageAt（含 heartbeat，10 秒），另加價格過舊門檻 60 秒；切換／切回／recovery 規則不變 |
 | M3b | 真實斷網是 half-open，client 不會發現斷線，主來源恢復後切不回 | **採納**：idle watchdog（訂閱 heartbeat，10 秒無任何訊息 → abort 重連）；假 WS server 的 half-open 測試案例；chaos 端點加 `mode=silent` |
 | M3 | AC6 沒驗到「不重啟自動切回」；真實 WS client 重連無測試 | **採納目標、改用不同手段**：新增本機假 WS server 整合測試（斷線→退避重連→再收 tick）。手動驗收**不採用 toxiproxy**：Coinbase/Kraken 是 WSS，TCP proxy 會讓 TLS SNI/主機名稱驗證失敗，要繞過得關閉驗證或改 DNS，很脆弱。改為 `chaos` profile 才有的 Actuator `feeds` block/unblock 端點，讓真實 client 斷線並拒絕重連，解除後走真實重連流程。 |
 | M4 | 歷史 API 10k 上限會讓 AC4 與走勢圖拿到 400 | **採納**：`/history` 改 keyset 分頁；新增 `/trend` 用 `date_bin` 伺服器端降採樣給走勢圖 |

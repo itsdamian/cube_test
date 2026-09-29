@@ -57,7 +57,8 @@ public class WebSocketPriceFeedClient implements PriceFeedClient {
     private volatile ScheduledExecutorService executor;
     private volatile boolean running;
     private volatile WebSocket webSocket;
-    private volatile Instant lastMessageAt;
+    private volatile Instant lastMessageAt;   // idle-watchdog timer (also reset on connect)
+    private volatile Instant lastReceivedAt;  // last real message, for health checks
     private volatile Instant lastTickAt;
     private volatile boolean receivedSinceConnect;
     private volatile Duration nextBackoff;
@@ -122,6 +123,11 @@ public class WebSocketPriceFeedClient implements PriceFeedClient {
     @Override
     public Optional<Instant> lastTickAt() {
         return Optional.ofNullable(lastTickAt);
+    }
+
+    @Override
+    public Optional<Instant> lastMessageAt() {
+        return Optional.ofNullable(lastReceivedAt);
     }
 
     @Override
@@ -205,6 +211,11 @@ public class WebSocketPriceFeedClient implements PriceFeedClient {
         scheduleReconnect();
     }
 
+    /** The delay before the next reconnect attempt (for tests and diagnostics). */
+    Duration nextBackoff() {
+        return nextBackoff;
+    }
+
     private void scheduleReconnect() {
         if (!running) {
             return;
@@ -251,6 +262,7 @@ public class WebSocketPriceFeedClient implements PriceFeedClient {
 
     private void markAlive(Instant now) {
         lastMessageAt = now;
+        lastReceivedAt = now;
         if (!receivedSinceConnect) {
             receivedSinceConnect = true;
             nextBackoff = initialBackoff; // healthy again: next outage starts from the initial backoff

@@ -40,6 +40,7 @@ public record AppProperties(
             @Valid @NotNull Source primary,
             @Valid @NotNull Source backup,
             @NotNull Duration staleThreshold,
+            @NotNull Duration priceStaleThreshold,
             @NotNull Duration recoveryPeriod,
             @NotNull Duration idleTimeout,
             @NotNull Duration reconnectInitialBackoff,

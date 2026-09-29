@@ -16,6 +16,7 @@ final class FakeFeedClient implements PriceFeedClient {
     private final Clock clock;
     private volatile boolean connected = true;
     private volatile Instant lastTickAt;
+    private volatile Instant lastMessageAt;
     private volatile boolean running;
     private volatile BlockMode blockMode = BlockMode.NONE;
 
@@ -31,9 +32,17 @@ final class FakeFeedClient implements PriceFeedClient {
         PriceTick tick = new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("84000.00"), name, now, now);
         if (connected && blockMode == BlockMode.NONE) {
             lastTickAt = now;
+            lastMessageAt = now;
             listener.onTick(name, tick);
         }
         return tick;
+    }
+
+    /** A heartbeat "now": proves the connection is alive, carries no price. */
+    void heartbeat() {
+        if (connected && blockMode == BlockMode.NONE) {
+            lastMessageAt = clock.instant();
+        }
     }
 
     void connected(boolean value) {
@@ -68,6 +77,11 @@ final class FakeFeedClient implements PriceFeedClient {
     @Override
     public Optional<Instant> lastTickAt() {
         return Optional.ofNullable(lastTickAt);
+    }
+
+    @Override
+    public Optional<Instant> lastMessageAt() {
+        return Optional.ofNullable(lastMessageAt);
     }
 
     @Override

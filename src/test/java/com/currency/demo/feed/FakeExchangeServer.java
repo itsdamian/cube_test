@@ -27,6 +27,7 @@ final class FakeExchangeServer extends WebSocketServer {
     private final CountDownLatch started = new CountDownLatch(1);
     private final ScheduledExecutorService pump = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean pumping;
+    private volatile boolean closeOnOpen;
     private volatile String pumpMessage;
 
     FakeExchangeServer(String pumpMessage) {
@@ -61,6 +62,11 @@ final class FakeExchangeServer extends WebSocketServer {
         return URI.create("ws://127.0.0.1:" + getPort() + "/");
     }
 
+    /** Accept each connection and immediately close it, before sending anything. */
+    void closeOnOpen(boolean on) {
+        closeOnOpen = on;
+    }
+
     void pumping(boolean on) {
         pumping = on;
     }
@@ -86,6 +92,9 @@ final class FakeExchangeServer extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         connectionsOpened.incrementAndGet();
+        if (closeOnOpen) {
+            conn.close(1011, "go away");
+        }
     }
 
     @Override

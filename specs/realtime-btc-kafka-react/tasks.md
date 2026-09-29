@@ -31,7 +31,7 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 
 ## 資料落地、K 線、查詢
 
-- [ ] 9. **逐筆價格落地**：`V3__price_tick.sql`（`event_id` unique、`(pair, event_time)` index）、`TickPersister`（batch listener + `JdbcTemplate.batchUpdate` + `ON CONFLICT DO NOTHING`）、`app.persist.enabled` — done when: `./mvnw verify` 通過，整合測試：送 500 筆（含 20 筆重複 eventId）到 Kafka → DB 恰好 480 筆、欄位值一致
+- [x] 9. **逐筆價格落地**：`V3__price_tick.sql`（`event_id` unique、`(pair, event_time)` index）、`TickPersister`（batch listener + `JdbcTemplate.batchUpdate` + `ON CONFLICT DO NOTHING`）、`app.persist.enabled` — done when: `./mvnw verify` 通過，整合測試：送 500 筆（含 20 筆重複 eventId）到 Kafka → DB 恰好 480 筆、欄位值一致
 - [ ] 10. **價格查詢 API**：`/api/prices/latest`、`/api/prices/history`（keyset 分頁，`limit` 預設 1,000 上限 5,000、`nextCursor`）、`/api/prices/trend`（`date_bin` 降採樣，`points` 預設 300 上限 1,000，排序鍵 `(event_time, received_at, event_id)`） — done when: `./mvnw verify` 通過，整合測試：12,000 筆 10 分鐘資料以分頁取完恰好 12,000 筆、無重複無遺漏（QA M4）；`from > to`、`limit > 5000` 回 400；trend 回傳 ≤ points 筆且每筆為該 bucket 最後一筆價格；`contracts/api-samples/` 新增 latest / history / trend 樣本並由 `ContractSamplesTest` 比對
 - [ ] 11. **Kafka Streams K 線 topology**：`CandleTopology`（事件時間 extractor、1m/5m tumbling、grace 5s 可設定、`suppress(untilWindowCloses)`、排序鍵 tie-break、`LogAndContinue`、`state.dir` 可設定、`app.streams.enabled`） — done when: `./mvnw verify` 通過，`TopologyTestDriver` 測試：record timestamp 刻意與 `eventTime` 不同；12 分鐘合成 tick → 推進 stream time 後輸出 ≥ 10 根 1m、≥ 2 根 5m，OHLC 等於同批 tick 依排序鍵手算的值；亂序、同 `eventTime` tie-break、剛好 `12:01:00.000` 的 tick 歸 12:01 那根、超過 grace 的 tick 不計入、壞訊息被略過且後續仍正常輸出
 - [ ] 12. **K 線落地與查詢 API**：`V4__candle.sql`、`CandlePersister`（upsert）、`GET /api/candles?interval&from&to` — done when: `./mvnw verify` 通過，端到端整合測試（Kafka + Streams + Postgres）：送入 12 分鐘事件時間的 tick → DB 有 ≥ 10 根 1m、≥ 2 根 5m，且每根 OHLC 與 `price_tick` 同時段依排序鍵 SQL 查詢結果一致（AC4）；關閉並重建 Spring context（同一 Postgres container）後 tick 與 candle 仍查得到（AC5）；candles 契約樣本
@@ -53,7 +53,7 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 ## 前端
 
 - [ ] 20. **前端骨架**：`frontend/` Vite + React + TypeScript、Vitest + React Testing Library + MSW、型別化 API client、繁中版面骨架 — done when: `cd frontend && npm ci && npm test && npm run build` 全過；`git ls-files | grep -E '(^|/)(node_modules|dist)/'` 為空（AC15 前端部分，QA T5）；MSW handler 讀取 `contracts/api-samples/`
-- [ ] 21. **即時價格與連線狀態**：`useEventSource` hook（SSE、自動重連、15 秒無事件 → 延遲）、價格卡（價格、來源、狀態燈、最後更新時間） — done when: `npm test` 通過，含：假 EventSource 送 `price` → 畫面更新（AC1）；`status` = STALE/DISCONNECTED 或 15 秒（fake timers）無事件 → 顯示「資料延遲／已斷線」（AC2）；`status.activeSource` = kraken → 顯示目前來源 Kraken（AC6）
+- [ ] 21. **即時價格與連線狀態**：`useEventSource` hook（SSE、自動重連、15 秒無事件 → 延遲）、價格卡（價格、來源、狀態燈、最後更新時間） — done when: `npm test` 通過，含：假 EventSource 送 `price` → 畫面更新（AC1）；`status` = STALE/DISCONNECTED 或 15 秒（fake timers）無**任何** SSE 事件（price、status、heartbeat 都算，不能只看 price；冷清時段 price 會暫停但 status 每 5 秒仍會送）→ 顯示「資料延遲／已斷線」（AC2）；`status.activeSource` = kraken → 顯示目前來源 Kraken（AC6）
 - [ ] 22. **多幣別換算表**：中文名、價格、匯率、匯率更新時間、無匯率顯示「無匯率」、「Rates By Exchange Rate API」attribution 連結 — done when: `npm test` 通過（MSW 模擬 `/api/prices/converted`），斷言上述欄位與連結存在（AC3 前端）
 - [ ] 23. **K 線與走勢圖**：lightweight-charts；1m / 5m 切換呼叫 `/api/candles`；走勢線用 `/api/prices/trend` 並以 SSE 價格延伸 — done when: `npm test` 通過，斷言切換 interval 時以正確參數呼叫 API，資料轉換函式（API → chart series）有單元測試（需求 11）
 - [ ] 24. **幣別管理介面**：列表、新增、編輯、刪除、驗證與 409 錯誤訊息 — done when: `npm test` 通過（MSW），斷言新增/編輯/刪除後列表更新並呼叫正確 API、重複代碼顯示錯誤（AC11 前端）

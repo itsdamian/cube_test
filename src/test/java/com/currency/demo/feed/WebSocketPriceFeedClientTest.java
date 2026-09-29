@@ -125,6 +125,55 @@ class WebSocketPriceFeedClientTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> ticks.size() > tickCount);
     }
 
+    // ---- backoff sequence and reset rule (QA CONCERN 11); initial 100 ms, max 400 ms ----
+
+    @Test
+    void backoffDoublesUpToTheMaximumWhileTheServerIsDown() throws Exception {
+        server.shutdown();
+        client.start();
+
+        List<Long> observed = new CopyOnWriteArrayList<>();
+        long deadline = System.nanoTime() + Duration.ofMillis(1_500).toNanos();
+        while (System.nanoTime() < deadline) {
+            long ms = client.nextBackoff().toMillis();
+            if (observed.isEmpty() || observed.getLast() != ms) {
+                observed.add(ms);
+            }
+            Thread.sleep(5);
+        }
+
+        // 100 -> 200 -> 400, then capped at 400 (it may already be past 100 at the first sample).
+        assertThat(observed).isSubsetOf(100L, 200L, 400L).isSorted().contains(400L);
+        assertThat(observed.getLast()).isEqualTo(400L);
+    }
+
+    @Test
+    void backoffKeepsGrowingWhenServerAcceptsButDropsBeforeAnyMessage() throws Exception {
+        server.closeOnOpen(true);
+        client.start();
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> server.connectionsOpened() >= 3);
+        // Connections "succeed" but deliver nothing, so the backoff must NOT reset to 100 ms.
+        await().atMost(Duration.ofSeconds(5)).until(() -> client.nextBackoff().toMillis() == 400);
+        assertThat(ticks).isEmpty();
+    }
+
+    @Test
+    void backoffResetsOnceANewConnectionDeliversItsFirstMessage() throws Exception {
+        int port = server.getPort();
+        server.shutdown();
+        client.start();
+        await().atMost(Duration.ofSeconds(5)).until(() -> client.nextBackoff().toMillis() == 400);
+
+        server = new FakeExchangeServer(port, Fixtures.read("coinbase/ticker.json"));
+        server.startAndWait();
+        server.pumping(true);
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> !ticks.isEmpty());
+        assertThat(client.nextBackoff()).isEqualTo(Duration.ofMillis(100));
+        assertThat(client.lastMessageAt()).isPresent();
+    }
+
     @Test
     void keepsRetryingWhileServerIsDownAndConnectsWhenItComesBack() throws Exception {
         int port = server.getPort();

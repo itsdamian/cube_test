@@ -22,8 +22,15 @@ public interface PriceFeedClient {
     /** True while a WebSocket session is open. */
     boolean isConnected();
 
-    /** When the last tick (not heartbeat) was received, if any. */
+    /** When the last tick (a trade, not a heartbeat) was received, if any. */
     Optional<Instant> lastTickAt();
+
+    /**
+     * When the last valid message of any kind (trade, heartbeat, ack...) was received, if any.
+     * Both exchanges send a heartbeat every second, so this shows whether the connection is
+     * alive even when nobody trades.
+     */
+    Optional<Instant> lastMessageAt();
 
     /** Fault injection for manual acceptance tests (chaos profile only). */
     void block(BlockMode mode);

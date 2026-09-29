@@ -45,7 +45,7 @@ class FeedManagerTest {
             }
             return fake;
         }, new CoinbaseMessageParser(), new KrakenMessageParser(), tickPublisher, statusPublisher, clock,
-                Duration.ofSeconds(10), Duration.ofSeconds(15));
+                Duration.ofSeconds(10), Duration.ofSeconds(60), Duration.ofSeconds(15));
     }
 
     /** Advance one second at a time; the given sources tick each second; check() after each step. */
@@ -190,6 +190,90 @@ class FeedManagerTest {
         assertThat(manager.activeSource()).isEqualTo("kraken");
         run(1, coinbase, kraken);
         assertThat(manager.activeSource()).isEqualTo("coinbase");
+    }
+
+    // ---- health = any message within 10 s AND a trade within 60 s (QA CONCERN 12) ----
+
+    /** Advance one second at a time; `trading` sources trade, `quiet` sources only send a heartbeat. */
+    private void runMixed(int seconds, List<FakeFeedClient> trading, List<FakeFeedClient> quiet) {
+        for (int i = 0; i < seconds; i++) {
+            clock.advance(Duration.ofSeconds(1));
+            trading.forEach(FakeFeedClient::tick);
+            quiet.forEach(FakeFeedClient::heartbeat);
+            manager.check();
+        }
+    }
+
+    @Test
+    void heartbeatsKeepAQuietSourceHealthyForUpToSixtySecondsWithoutTrades() {
+        run(2, coinbase, kraken);
+        runMixed(30, List.of(kraken), List.of(coinbase));  // coinbase: no trades for 30 s, heartbeats only
+
+        assertThat(manager.activeSource()).as("no false failover in a quiet market").isEqualTo("coinbase");
+        assertThat(manager.currentStatus().state()).isEqualTo(State.LIVE);
+    }
+
+    @Test
+    void lastMessageBoundaryIsTenSecondsEvenWithRecentTrades() {
+        coinbase.tick();
+        kraken.tick();
+        manager.check();
+
+        clock.set(T0.plusMillis(9_999));
+        kraken.tick();
+        manager.check();
+        assertThat(manager.activeSource()).as("9.999 s since any coinbase message").isEqualTo("coinbase");
+
+        clock.set(T0.plusSeconds(10));
+        kraken.tick();
+        manager.check();
+        assertThat(manager.activeSource()).as("10 s without even a heartbeat").isEqualTo("kraken");
+    }
+
+    @Test
+    void priceStaleBoundaryIsSixtySecondsWhileHeartbeatsContinue() {
+        coinbase.tick();                                   // last coinbase trade at T0
+        kraken.tick();
+        manager.check();
+        for (int s = 1; s <= 59; s++) {                    // heartbeats keep the socket "alive"
+            clock.set(T0.plusSeconds(s));
+            coinbase.heartbeat();
+            kraken.tick();
+            manager.check();
+        }
+        clock.set(T0.plusMillis(59_999));
+        coinbase.heartbeat();
+        kraken.tick();
+        manager.check();
+        assertThat(manager.activeSource()).as("59.999 s without a trade").isEqualTo("coinbase");
+
+        clock.set(T0.plusSeconds(60));
+        coinbase.heartbeat();
+        kraken.tick();
+        manager.check();
+        assertThat(manager.activeSource()).as("60 s without a trade").isEqualTo("kraken");
+    }
+
+    @Test
+    void primaryWithOnlyHeartbeatsForOverSixtySecondsFailsOverToTradingBackup() {
+        run(2, coinbase, kraken);
+        runMixed(61, List.of(kraken), List.of(coinbase));
+
+        assertThat(manager.activeSource()).isEqualTo("kraken");
+        assertThat(manager.currentStatus().state()).isEqualTo(State.LIVE);
+    }
+
+    @Test
+    void bothWithOnlyHeartbeatsForOverSixtySecondsIsStaleNotLive() {
+        run(2, coinbase, kraken);
+        runMixed(30, List.of(), List.of(coinbase, kraken));
+        assertThat(manager.currentStatus().state()).as("quiet but within 60 s").isEqualTo(State.LIVE);
+
+        runMixed(31, List.of(), List.of(coinbase, kraken));
+
+        FeedStatus status = manager.currentStatus();
+        assertThat(status.state()).as("connections alive, prices too old -> 資料延遲").isEqualTo(State.STALE);
+        assertThat(status.lastTickAt()).isEqualTo(T0.plusSeconds(2));
     }
 
     @Test
