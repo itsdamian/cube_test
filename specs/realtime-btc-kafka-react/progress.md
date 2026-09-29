@@ -72,3 +72,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: `./mvnw verify` → 9 tests / 0 failures；test log 無任何外部 host；反向驗證：surefire 改成 default profile 時守門測試 3/3 失敗。
 - **概念**: `@ConfigurationProperties` 把整段設定綁成型別化物件，打錯字在啟動時就失敗；Spring 自動 env 綁定會把 `stale-threshold` 對到 `APP_FEED_STALETHRESHOLD`，所以 yml 明寫 `${APP_FEED_STALE_THRESHOLD:10s}` 保留文件上的變數名稱。
 - **注意**: 主程式啟動時暫時沒有預設幣別（seed runner 已移除，task 3 改由 Flyway 建立）。
+
+## 2026-09-29 15:31 — Stage: implement task 3（PostgreSQL + Flyway + 幣別模組）
+- **What changed**: 移除 H2、改 PostgreSQL + Flyway（`V1__currency.sql`、`V2__seed_currencies.sql`），`ddl-auto=validate`；幣別搬到 `currency` package（record DTO、Bean Validation、201/204/404/409）；`ApiExceptionHandler`（ProblemDetail）；測試基底 `IntegrationTest`（singleton Postgres container `postgres:17.11-alpine` + `@ServiceConnection`）。task 2 已依 QA PASS 勾 [x]。
+- **Commit**: `4e65235`
+- **Verified**: `./mvnw clean verify` → 13 tests / 0 failures，無 WARN、無外部 host。AC10：`CurrencySeedTest` 斷言乾淨 DB 恰好 5 筆預設幣別與中文名稱；AC11 後端：`CurrencyApiTest` 涵蓋 CRUD、400×5、404（GET/PUT/DELETE）、409（新增與修改）。
+- **踩到的坑**: 未 `clean` 時 `target/test-classes` 殘留 task 2 已刪的 `application-test.properties`（create-drop + H2Dialect），會把 Flyway 建的表 drop 掉。之後一律 `clean verify`。
+- **概念**: Flyway 每個 `V<n>__*.sql` 只執行一次並記錄在 `flyway_schema_history`，schema 跟著程式碼版本化；singleton container 讓整個測試 JVM 共用一個 Postgres，`@ServiceConnection` 自動把連線資訊交給 Spring Boot。
+- **QA CONCERN 追蹤**: (3) 本專案不使用 failsafe，所有測試走 surefire；(4) health `show-details` 於 task 17 處理。
