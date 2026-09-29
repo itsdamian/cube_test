@@ -103,3 +103,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: `./mvnw clean verify` → 59 tests / 0 failures，無外部 host；WebSocket 測試連跑 5 次全過。
 - **設計決定**: 退避歸零時機改為「新連線收到第一則有效訊息」而非「連上」，避免 server 接受後立刻斷線時以最短間隔狂連。
 - **概念**: TCP 沒有流量時分不出「安靜」和「已死」，所以協定有 heartbeat、client 有 idle timeout；指數退避讓重試逐漸拉開、並設上限讓恢復仍然快。
+
+## 2026-09-29 15:48 — Stage: implement task 7（FeedManager 故障切換與 FeedStatus）
+- **What changed**: `FeedManager`（hot standby、每秒 check、切換/切回規則、LIVE/STALE/DISCONNECTED）、`FeedStatus`、`FeedStatusPublisher`（獨立 thread、只留最新一筆）、`FeedConfig` 在 `app.ingest.enabled=true` 時接線；測試 `MutableClock`、`FakeFeedClient`、`FeedManagerTest`（9）、`FeedWiringTest`（真實接線 + 本機假交易所）；守門測試斷言 test profile 無 FeedManager bean。
+- **Commit**: `2052a70`
+- **Verified**: `./mvnw clean verify` → 69 tests / 0 failures，無外部 host。主來源最後一筆 tick 在非整秒時刻（+0.3s），≤ 11 秒內切換，且同一次 check 就發佈新狀態（QA T1）；切回恰好在恢復後 15 秒。
+- **狀態定義**: STALE = 無新鮮價格但仍有連線（前端「資料延遲」）；DISCONNECTED = 完全無連線（「已斷線」）。
+- **概念**: 備援保持「熱」連線，用多一條 socket 換取快速、可預測的切換；所有規則都透過注入的 Clock 取時間，讓時間相關的狀態機變成確定性的單元測試。
+- **仍待 QA**: task 6（b50aba1）。
