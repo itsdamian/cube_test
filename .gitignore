@@ -1,0 +1,18 @@
+# Build output
+target/
+frontend/dist/
+frontend/node_modules/
+node_modules/
+
+# Maven wrapper downloads (the wrapper scripts themselves are committed)
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Logs / local env
+*.log
+.env
