@@ -58,3 +58,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed**: personal-workplace-7a 依使用者授權核准 tasks.md → Status: CONFIRMED。工程師自行驗證前置：`java -version` = 21.0.12.1、`docker info` Server Version = 29.8.0 → P1/P2 勾選。
 - **Team lead 提醒**: (1) task 1 升級後若既有 Coindesk 測試失敗，不修，留給 task 2 刪除，並於 commit message 說明（先與 QA 對齊）；(2) 每個 task 的 commit message / progress 條目用 2–3 句說明關鍵概念。QA PASS 即繼續下一個 task。
 - **下一步**: /implement，從 task 1 開始。
+
+## 2026-09-29 15:21 — Stage: implement task 1（建置基準與 repo 清理）
+- **What changed**: pom → Java 21 + Spring Boot 3.5.16，加入 plan 的相依套件（H2 暫留到 task 3）；Maven Wrapper 3.3.4（Maven 3.9.16）；`.gitignore`；`git rm --cached target/`。
+- **Commit**: `ae5cb0f`
+- **Verified**: `./mvnw verify` → 11 tests / 0 failures（Coindesk 測試照樣通過，未使用例外）；`dependency:tree` → testcontainers 1.21.4、spring-kafka 3.3.16、kafka 3.9.2、flyway 11.7.2；`git ls-files | grep -cE '(^|/)target/'` → 0。
+- **概念**: Boot parent POM 是 BOM，統一管理相容版本，所以相依套件不用寫版本；mvnw 讓任何機器（含 CI）都用同一版 Maven。
+- **請 QA 檢查**: 在 ae5cb0f 執行 `./mvnw verify`、`./mvnw -q dependency:tree -Dincludes=org.testcontainers`、`git ls-files | grep -E '(^|/)target/'`（應為空）。
