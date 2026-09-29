@@ -4,6 +4,7 @@ import com.currency.demo.pricing.PriceTick;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.SendResult;
 
@@ -20,6 +21,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -84,9 +86,10 @@ class TickPublisherTest {
         publisher.publish(b);
         publisher.start();
 
-        verify(kafka, timeout(2_000)).send("btc.price.ticks", "BTC-USD", a);
-        verify(kafka, timeout(2_000)).send("btc.price.ticks", "BTC-USD", b);
         await().atMost(Duration.ofSeconds(2)).until(() -> publisher.pending().isEmpty());
+        InOrder inOrder = inOrder(kafka);
+        inOrder.verify(kafka, timeout(2_000)).send("btc.price.ticks", "BTC-USD", a);
+        inOrder.verify(kafka, timeout(2_000)).send("btc.price.ticks", "BTC-USD", b);
         assertThat(publisher.droppedCount()).isZero();
     }
 

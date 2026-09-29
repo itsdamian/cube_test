@@ -4,6 +4,17 @@
 # so every external URL points at 127.0.0.1:1 (nothing listens there) and the
 # background jobs that would call them are switched off.
 # NoExternalCallsGuardTest enforces this.
+#
+# Kafka and the database also point at 127.0.0.1:1: tests that extend IntegrationTest get
+# the Testcontainers addresses via @ServiceConnection (which takes precedence), and any test
+# that forgets to extend it fails fast instead of silently using a developer's local
+# localhost:9092 / localhost:5432.
+spring:
+  kafka:
+    bootstrap-servers: 127.0.0.1:1
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:1/none
+
 app:
   ingest:
     enabled: false

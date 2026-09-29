@@ -44,6 +44,14 @@ class NoExternalCallsGuardTest extends IntegrationTest {
     }
 
     @Test
+    void configuredKafkaAndDatabaseFallBackToLoopbackPortOne() {
+        // The effective connections come from Testcontainers via @ServiceConnection; these are
+        // the fall-back values a test would use if it forgot to extend IntegrationTest.
+        assertThat(environment.getProperty("spring.kafka.bootstrap-servers")).isEqualTo("127.0.0.1:1");
+        assertThat(environment.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://127.0.0.1:1/none");
+    }
+
+    @Test
     void backgroundJobsThatCallExternalSourcesAreDisabled() {
         assertThat(props.ingest().enabled()).isFalse();
         assertThat(props.fx().refreshEnabled()).isFalse();
