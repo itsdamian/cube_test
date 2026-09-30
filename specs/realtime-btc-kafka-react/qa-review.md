@@ -780,3 +780,10 @@ Verdict 定義：
   - `92c9e1b`：`design/` 目錄（設計稿）已納入版本控制。
   - QA 自己的操作錯誤紀錄：第一次跑寬度迴圈時，用 `set -- $spec` 傳參數，zsh 不會拆字 → 4 次都用預設寬度 756 探測，那組結果作廢；改用明確參數重跑之後才是上面的數字。
 - **目前狀態**：沒有開放中的 FAIL / CONCERN。**task 1–32 全部 PASS**（task 28 除了 AC13 實際斷網以外都已經驗證）。唯一待辦：**使用者關閉網路後執行 AC13**。
+
+### 2026-09-30 23:10 — commit 作者改寫（damian-jtx → itsdamian）與 hash 對照
+- **本檔在此之前引用的 commit hash 都是改寫前的舊 hash**；對應的新 hash 請查 `specs/realtime-btc-kafka-react/commit-map.txt`（96 筆，格式為 `old new subject`）。內容（tree）不變，只有作者 / committer 改變。
+- 授權：team lead `personal-workplace-7a` 轉述「使用者本人在主 session 明確同意改寫歷史並 force push 分支」（QA 無法直接看到主 session；如果使用者在 QA 分頁另有說明，以使用者為準）。改寫期間 QA 依要求凍結，沒有修改任何檔案，也沒有在 worktree 執行 git 操作。
+- **QA 獨立查證**：`HEAD = origin/feat/realtime-btc-kafka-react = 7b1b6b9`；`main = origin/main = 9665ca1`（沒有變）；分支上 97 個 commit（96 筆對照 + 1 個對照表 commit）作者 / committer 都是 `itsdamian`。抽查 QA 驗收過的 9 個關鍵 commit（ae5cb0f→ea7ee25、825804f→4384a39、fa7f3c3→197f00a、68a431f→2b21597、a134a40→cae6efe、71a5a79→69fa89d、652d4cc→ed7afbd、cbe54af→3ddc0dd、b36d48c→7d19e39）：**tree、commit message、author date 全部相同**，而且都在分支上。已 commit 的 qa-review.md 與 QA 的工作檔案一致（`git diff --quiet HEAD` 為 yes）。
+- QA worktree 已經 checkout 到新 hash `7d19e39`（對應舊的 b36d48c，tree 相同）。
+- QA 自己的操作錯誤紀錄：第一次解析對照表時取錯欄位（把主旨當成新 hash）→ 顯示 tree_equal=NO；修正為取第 2 欄之後全部相同。
