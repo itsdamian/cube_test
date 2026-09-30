@@ -11,5 +11,8 @@ describe('App layout', () => {
     for (const name of ['即時價格', '多幣別換算', '價格圖表', '幣別管理', '價格警示']) {
       expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
     }
+    expect(screen.getByTestId('header-feed-state')).toBeInTheDocument()
+    // Every area is a labelled region (landmark) for screen readers.
+    expect(screen.getAllByRole('region')).toHaveLength(5)
   })
 })

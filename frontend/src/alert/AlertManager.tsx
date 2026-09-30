@@ -83,6 +83,7 @@ export function AlertManager() {
       </form>
       {alerts && alerts.length === 0 && <p className="muted">尚未設定任何警示</p>}
       {alerts && alerts.length > 0 && (
+        <div className="table-scroll">
         <table className="table">
           <thead>
             <tr>
@@ -110,6 +111,7 @@ export function AlertManager() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   )

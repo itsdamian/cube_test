@@ -118,6 +118,20 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('active-source')).toHaveTextContent('Kraken')
   })
 
+  it('colours the price green / red when a trade is above / below the previous one', () => {
+    const stream = renderLivePrice()
+    act(() => stream.emit('price', price(84000)))
+    expect(screen.queryByTestId('price-trend')).not.toBeInTheDocument()   // nothing to compare yet
+
+    act(() => stream.emit('price', price(84010)))
+    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--up')
+    expect(screen.getByTestId('price-trend')).toHaveTextContent('較前一筆上漲')
+
+    act(() => stream.emit('price', price(83990.5)))
+    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--down')
+    expect(screen.getByTestId('price-trend')).toHaveTextContent('較前一筆下跌')
+  })
+
   it('closes the stream when the page unmounts', () => {
     const { unmount } = render(
       <LiveStreamProvider eventSourceFactory={FakeEventSource.factory}>

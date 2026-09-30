@@ -50,6 +50,7 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
   const usd = price?.price ?? data.usdPrice
   return (
     <div>
+      <div className="table-scroll">
       <table className="table">
         <caption className="table__caption">1 BTC 以各幣別計價（依目前 BTC-USD 價格 {formatMoney(usd, 'USD')} 換算）</caption>
         <thead>
@@ -81,6 +82,7 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
           ))}
         </tbody>
       </table>
+      </div>
       <p className="attribution">
         {/* Required by the exchange-rate provider's terms of use. */}
         <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>

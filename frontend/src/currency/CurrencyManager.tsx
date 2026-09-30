@@ -114,6 +114,7 @@ export function CurrencyManager() {
 
   return (
     <div>
+      <div className="table-scroll">
       <table className="table">
         <thead>
           <tr>
@@ -156,6 +157,7 @@ export function CurrencyManager() {
           )}
         </tbody>
       </table>
+      </div>
       {deleteError && <p className="field-error" role="alert">{deleteError}</p>}
       <h3>新增幣別</h3>
       <CurrencyForm initial={EMPTY} submitLabel="新增" onSubmit={async (input) => {

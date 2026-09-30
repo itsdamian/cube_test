@@ -65,6 +65,10 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 - [x] 27. **README 與驗收步驟**：啟動方式、環境變數表、離線測試準備（`dependency:go-offline`、`npm ci`、固定 tag 的 kafka/postgres/ryuk image 清單）、buildx 多平台 builder、每條手動 AC 的逐步指令（含 AC4 對照 SQL、AC2 egress disconnect、AC6 chaos block/unblock 與錯誤 URL、AC7 30 秒與預設 5 分鐘、AC9 縮短保留期） — done when: QA 能只照 README 完成 task 28 的所有手動步驟，不需問工程師
 - [ ] 28. **完整驗收**：照 README 在 compose 環境逐條執行 AC1–AC15，並在斷網狀態執行 `./mvnw -o verify` 與 `npm test`（AC13），把每條結果與證據（指令輸出、截圖）記入 progress.md — done when: 15 條 AC 全部有證據且通過；未通過的已修正並重新驗證
 
+## 範圍擴充（team lead 依使用者授權核准，2026-09-30）
+
+- [ ] 29. **前端視覺美化**：純 CSS + CSS 變數（design tokens），不引入 UI 框架；深色為主的金融儀表板風格並支援淺色（prefers-color-scheme），圖表配色跟隨主題；header（標題 + 狀態 pill + 目前來源）、桌機兩欄（左：價格卡 + 圖表，右：換算 + 警示）、幣別管理在下方、375px 單欄且無水平捲動；價格漲跌綠/紅並短暫閃爍（尊重 prefers-reduced-motion，只用現有資料）；延遲琥珀色/斷線紅色並淡化價格；toast 右上角；1m/5m/走勢為 segmented control；按鈕/輸入框/表格統一、危險操作紅色；WCAG AA 對比、清楚的 focus ring、保留所有 aria/role；不改行為或 API — done when: 上述完成、`npm test`/`build`/`lint` 全過（行為斷言不變）、localhost:3001 前端容器已重建，交 QA 並通知 team lead 目視審查
+
 ## Acceptance Criteria 對照
 
 | AC | 對應 task（自動測試 → 手動驗收） |
