@@ -138,3 +138,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: `./mvnw clean verify` → 100 tests / 0 failures；測試中沒有任何 context 意外啟動 StreamThread。
 - **發現**: Java `UUID.compareTo` 是有號比較，PostgreSQL uuid 是無號位元組比較，最高位為 1 時排序相反 → 會讓同時間 tick 的 open/close 和 DB 對不上（AC4）。已用 `TickOrder.compareUnsigned` 統一並測試。
 - **概念**: 事件時間 vs 處理時間——視窗依成交發生時間放置，grace 決定等遲到資料多久；suppress 用延遲換取「每根 K 線只輸出一次最終值」。
+
+## 2026-09-30 11:05 — Stage: implement task 12（K 線落地與查詢 API）
+- **What changed (`fa7f3c3`)**: `V4__candle.sql`、`CandleRepository`（upsert）、`CandlePersister`、`GET /api/candles`；QA CONCERN 13（寫 DB 的 listener 改不限次數指數退避 1s→30s）、14（history 帶 receivedAt/eventId）、15（PriceTick 時間截斷到微秒）、7（AC5 測試不加 @Transactional）；契約樣本 candles.json。task 10、11 已依 QA PASS 勾 [x]。
+- **Verified**: `./mvnw clean verify` → 107 tests / 0 failures；CandlePipelineTest：12 根 1m + 2 根 5m 的 OHLC 與 price_tick 的 SQL 聚合一致（AC4），全新 app instance 仍查得到（AC5）；PersistingErrorHandlerTest 對照我們的策略（最終寫入）與 Spring 預設（第 10 次後丟棄）。
+- **誠實紀錄**: 原本以 pause Postgres container 測 DB 中斷，反向驗證發現換成預設 handler 也通過（JDBC 呼叫是卡住而非失敗），不具保護力，已移除並改為直接測試 error policy。
+- **AC4 手動比對規則**: 以 README 的 SQL（`CandlePipelineTest.OHLC_FROM_TICKS` 同一段）比對 OHLC；tick_count 在交易所重送成交時可能不同（Streams 會重複計數、DB 會去重），不列入比對。
+- **概念**: consumer 的錯誤策略是在「可用性」與「資料遺失」之間取捨；寫 DB 這種 sink 應該「暫停並重試到恢復」，因為資料仍保存在 Kafka。
