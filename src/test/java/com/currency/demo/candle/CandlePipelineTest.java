@@ -62,6 +62,9 @@ class CandlePipelineTest extends IntegrationTest {
     @Autowired
     CandleRepository candles;
 
+    @Autowired
+    org.springframework.boot.actuate.health.HealthEndpoint health;
+
     @Test
     void storedCandlesMatchStoredTicksAndSurviveAnApplicationRestart() {
         Random random = new Random(7);
@@ -85,6 +88,11 @@ class CandlePipelineTest extends IntegrationTest {
             assertThat(candles.find(PriceTick.BTC_USD, "1m", T0, end)).hasSize(12);
             assertThat(candles.find(PriceTick.BTC_USD, "5m", T0, end)).hasSize(2);
         });
+
+        // With Streams enabled the readiness group includes kafkaStreams, which is RUNNING now.
+        assertThat(health.healthForPath("readiness").getStatus()).isEqualTo(org.springframework.boot.actuate.health.Status.UP);
+        assertThat(health.healthForPath("readiness", "kafkaStreams").getStatus())
+                .isEqualTo(org.springframework.boot.actuate.health.Status.UP);
 
         List<Candle> stored = new java.util.ArrayList<>(candles.find(PriceTick.BTC_USD, "1m", T0, end));
         stored.addAll(candles.find(PriceTick.BTC_USD, "5m", T0, end));

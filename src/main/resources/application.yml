@@ -50,7 +50,23 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      # /actuator/health/liveness and /actuator/health/readiness (Kubernetes probes).
+      probes:
+        enabled: true
+      # No component details for anonymous callers (no auth in this app)...
+      show-details: never
+      # kafkaStreams only exists when app.streams.enabled=true; don't fail startup without it.
+      validate-group-membership: false
+      group:
+        # Liveness = "is this JVM stuck?" - never depends on Kafka/DB, or an outage would make
+        # Kubernetes restart healthy pods in a loop.
+        liveness:
+          include: livenessState
+        # Readiness = "should traffic come here?" - needs the database, Kafka and the candle stream.
+        readiness:
+          include: readinessState,db,kafka,kafkaStreams
+          # ...but readiness shows which component is DOWN (UP/DOWN only, no details).
+          show-components: always
 
 logging:
   level:
