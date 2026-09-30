@@ -4,19 +4,17 @@
 
 ![桌機深色主畫面：即時價格、K 線、多幣別換算與價格警示](docs/images/dashboard-dark.png)
 
-<!-- 截圖待補：docs/images/dashboard-dark.png（桌機深色）、docs/images/dashboard-mobile.png（手機 375px）、docs/images/dashboard-light.png（淺色） -->
-
 | 手機（375px） | 淺色主題 |
 |---|---|
 | ![手機版單欄畫面](docs/images/dashboard-mobile.png) | ![淺色主題畫面](docs/images/dashboard-light.png) |
 
 ## 功能亮點
 
-- **即時價格**：逐筆成交經 SSE 推到瀏覽器，漲跌以綠／紅標示；資料延遲或斷線時畫面會明確提示，不會把舊價格當成即時價格。
+- **即時價格**：逐筆成交經 SSE 推到瀏覽器，較前一筆的漲跌以綠／紅標示，並顯示開啟頁面後的累計漲跌；資料延遲或斷線時畫面會明確提示，不會把舊價格當成即時價格。
 - **雙來源自動故障切換**：Coinbase 為主、Kraken 為 hot standby。主來源失效約 10 秒內切換，恢復並穩定 15 秒後自動切回，不需要重啟。
-- **K 線與走勢**：Kafka Streams 以**成交時間**聚合 1 分／5 分 OHLC，與資料庫逐筆價格完全一致；走勢圖由伺服器端降採樣。
+- **K 線與走勢**：Kafka Streams 以**成交時間**聚合 1 分／5 分 OHLC，與資料庫逐筆價格完全一致；走勢圖由伺服器端降採樣。滑鼠移到 K 線上可看該根的開高低收。
 - **多幣別換算**：以真實匯率（open.er-api.com）把 BTC-USD 換算成資料庫裡的每個幣別，並顯示匯率更新時間；幣別可在畫面上新增、修改、刪除。
-- **價格警示（含未讀）**：由後端判斷，5 分鐘冷卻；頁面沒開時觸發的警示會標為「未讀」，下次打開時列出。
+- **價格警示（含未讀）**：由後端判斷，5 分鐘冷卻；每筆警示顯示距離目前價格還差多少；頁面沒開時觸發的警示會列為「離開期間觸發」，下次打開時顯示。
 - **可上 K8s 的基礎**：多架構 image（amd64 / arm64）、所有設定走環境變數、liveness / readiness 分離。
 
 ## 架構
@@ -49,7 +47,7 @@ flowchart LR
 |---|---|
 | 後端 | Java 21、Spring Boot 3.5、Spring Kafka、Kafka Streams、JDK `java.net.http.WebSocket` |
 | 資料 | Apache Kafka 3.9（KRaft 單節點）、PostgreSQL 17 + Flyway |
-| 前端 | React 19 + TypeScript + Vite、TradingView lightweight-charts、純 CSS design tokens |
+| 前端 | React 19 + TypeScript + Vite、[TradingView Lightweight Charts™](https://www.tradingview.com/)、純 CSS design tokens |
 | 測試 | JUnit 5、Testcontainers（Kafka / PostgreSQL）、Kafka Streams `TopologyTestDriver`、Vitest + Testing Library + MSW |
 | 部署 | Docker multi-arch（amd64 / arm64）、docker compose、nginx（unprivileged） |
 

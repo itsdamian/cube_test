@@ -325,3 +325,42 @@ Branch: `feat/realtime-btc-kafka-react`
 - **QA**: a766828 + 35c257c PASS（FLASH_MIN_GAP_MS 反向驗證）。QA 以 headless Chrome 親自驗證 task 28 缺的畫面：AC7 toast 出現且未讀同步標記已讀、AC2 斷線時卡片淡化＋紅色警告並於接回後恢復、AC6 375px 下 pill 顯示「即時 · Kraken」並於 unblock 後回到 Coinbase。先前 team lead 已目視 AC1、AC3、AC11、圖表與 AC2 斷線畫面。
 - **task 28 剩餘**: 僅使用者實際斷網執行 AC13（`./mvnw -o clean verify`、`npm test`）。
 - **screenshot.mjs**: 依 QA 建議以 `SCREENSHOT_URL`、`CHROME_PATH` 環境變數覆寫（預設不變），docs/testing.md 已說明；以預設與覆寫各截一次驗證。
+
+## 2026-09-30 16:15 — Stage: implement task 31（依設計方向 B 重新設計前端）
+- **來源**: 設計師產出 `design/`（方向 B）。使用者決定：綠漲紅跌、所有幣別 2 位小數、USD 固定第一、做「開啟後漲跌」與「還差 ±X」、`attributionLogo:false` 但 footer 註明並連結 TradingView。team lead 確認範圍：做圖表區間高低、填入目前價格、skeleton；不做本次最高/最低。
+- **小幅行為新增（team lead 核准）— OHLC legend**: 位置在圖表工具列右側，與「圖表區間 高 X · 低 Y」共用；沒有 hover 時顯示區間；1m/5m hover 顯示該根的「開 · 高 · 低 · 收」，移開後恢復；走勢圖只顯示價格與時間；tabular-nums 並固定寬度，所以不會位移；觸控裝置（`hover: none`）只顯示區間。crosshair→文字是純函式 `chart/legend.ts`（有單元測試），`chartAdapter` 只轉發事件。
+- **What changed (`0270e05`)**:
+  - B 的 tokens 與元件（index.css 全面改寫）；`.app[data-feed]` 集中表達資料狀態。
+  - 版面：nav + 12 欄 grid；hero（價格＋圖表）、側欄警示（撐滿高度）、全寬換算 tiles、footer。
+  - 價格：大字不變色、小數淡色；方向 pill 帶 1 秒光暈，節流規則 `FLASH_EVERY_MS` / `FLASH_MIN_GAP_MS` 不變；meta 行為開啟後漲跌、來源（主要/備援）、更新時間；延遲/斷線 banner 文字逐字不變。
+  - 圖表：AreaSeries 走勢、只保留水平格線、價格軸千分位（整數刻度不帶小數，其餘固定 2 位）、crosshair 用 `--line-strong`；分頁支援方向鍵；載入中遮罩。
+  - 幣別管理改為原生 `<dialog>`（Esc、× 按鈕與點背景都能關閉，焦點回到「管理幣別」）；只在開啟時掛載，所以每次開啟都重讀清單。
+  - 警示：表單可收合，成功後保持開啟；方向改 radio；「建立」送出；每筆顯示「還差 ±X」（獨立元件，每筆價格只重繪這幾個 span）；「填入目前價格」會四捨五入到整數。
+  - 未讀：為空時不 render；標題為「離開期間觸發 n 則」。
+  - toast：B 版樣式，底部倒數條（`--toast-ms` = TOAST_MS）。
+  - 換算：tiles，USD 固定第一。
+  - `check_md_links.py` 改為略過 `*.src.md` 模板。設計師的 `design/src/redesign.src.md` 是 build.mjs 的模板，裡面的圖片路徑要產生到 `design/redesign.md` 後才成立；產生後的檔案有檢查，也通過。
+- **不變**: SSE、`computeDisplay`、閃爍規則、所有 API 呼叫。
+- **測試調整（57 → 69，沒有刪任何測試）**:
+  - 漲跌斷言從價格 class 改成讀方向 pill 的 `data-dir`，另外斷言大字沒有顏色 class。
+  - 閃爍的兩個測試改看 pill 的元素 identity 與 `flash-up/down`，時間點與期望次數一行未改。
+  - 「沒有未讀警示」文字改為斷言整塊不存在（§9 核准）；「未讀警示（1）」改為 heading「離開期間觸發 1 則」。
+  - 新增警示改成先展開表單（並斷言 `aria-expanded`），再點 radio「價格低於」和「建立」；成功後斷言表單仍開啟、輸入已清空。空值驗證另外補了 -5 的情況。
+  - toast 文字從「BTC-USD 高於」改為「BTC-USD 已高於 US$90,000.00」（B 的文案）。
+  - App：`幣別管理` 改為 dialog「管理幣別」，並新增 Esc／×關閉與焦點回歸的測試；region 從只數數量改為逐一以名稱斷言。
+  - 新增測試：legend 單元測試 5 個、價格軸格式、hover 往返、方向鍵、開啟後漲跌、還差／填入、USD 排序。
+  - jsdom 沒有 `showModal`，`test/setup.ts` 補了最小的替代實作：open 屬性、close/cancel 事件、Esc。
+- **Verified**:
+  - `npm test` 69/69、lint 0 warnings、build 通過；localhost:3001 已重建。
+  - screenshot.mjs 自我檢查 1440（深/淺）、768、375 DPR2：與 direction-b-*.png 對照一致，都沒有水平捲動。
+  - 已拍攝 README 三張最終截圖。截圖用的示範警示建在我自己的 :3001 本機資料庫：一筆立即觸發（產生「離開期間觸發」），截完已刪除。
+- **與設計稿的差異（請審查）**:
+  - 美元符號沿用 `US$`，設計稿是 `$`。原因是 zh-TW 的 TWD 也顯示成 `$`，同一頁會混淆。
+  - lightweight-charts 的時間軸在邊緣的標籤偶爾被裁切（例如手機的「16:0」），這是函式庫的行為。
+  - 狀態/dialog 的視覺（stale banner、modal）有測試涵蓋，但沒有截圖。screenshot.mjs 沒辦法點擊，建議 QA 或 team lead 用 Chrome 目視。
+- **發現的後端問題（不在 task 31 範圍，未修改，已回報 team lead）**:
+  - 現象：約 08:02:39 起，:3001 的 SSE 不再推 `price`，但 `status` 照常推送，tick 也照常寫入 DB（REST latest 是新的）。新連線只收到 08:02:39 的舊價格。
+  - backend log 沒有任何例外。重啟 backend 後恢復。
+  - 用 6 個 curl 強制中斷、以及經 nginx 同時跑 4 個 headless Chrome，都重現不了。
+  - 推測：`SseBroadcaster` 的 `scheduleAtFixedRate(pushLatestPrice)` 丟出 unchecked exception 後，週期任務被靜默取消。`status` 走的是 `execute`，所以不受影響。
+  - 建議另開 task：週期任務包 try/catch 並記 log，加上一個會丟例外的測試。
