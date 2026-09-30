@@ -29,3 +29,12 @@ const SOURCE_NAMES: Record<string, string> = { coinbase: 'Coinbase', kraken: 'Kr
 export function sourceName(source: string): string {
   return SOURCE_NAMES[source] ?? source
 }
+
+// application.yml fixes the primary / backup exchanges by name (app.feed.primary.name = coinbase,
+// app.feed.backup.name = kraken); they are not environment-configurable.
+const SOURCE_ROLES: Record<string, string> = { coinbase: '主要', kraken: '備援' }
+
+/** 主要 / 備援, or null for an unknown source. */
+export function sourceRole(source: string): string | null {
+  return SOURCE_ROLES[source] ?? null
+}

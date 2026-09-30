@@ -25,8 +25,9 @@ export function UnreadAlerts() {
     }
   }, [])
 
+  // Nothing unread: the block is not shown at all (design direction B).
   if (events.length === 0) {
-    return <p className="muted">沒有未讀警示</p>
+    return null
   }
 
   const markRead = async (id: number) => {
@@ -42,19 +43,23 @@ export function UnreadAlerts() {
   }
 
   return (
-    <div className="unread" aria-label="未讀警示">
-      <div className="unread__header">
-        <strong>未讀警示（{events.length}）</strong>
-        <button type="button" onClick={() => void markAll()}>全部標記已讀</button>
+    <section className="unread" aria-labelledby="unread-title">
+      <div className="unread__head">
+        <span className="ico" aria-hidden="true">●</span>
+        <h3 id="unread-title" className="unread__title">離開期間觸發 {events.length} 則</h3>
+        <button className="btn btn--link" type="button" onClick={() => void markAll()}>全部標記已讀</button>
       </div>
       <ul>
         {events.map((e) => (
           <li key={e.id} data-testid={`unread-${e.id}`}>
-            {describeAlert(e.direction, e.threshold)}：於 {formatDateTime(e.triggeredAt)} 觸發，當時價格 {formatUsd(e.price)}
-            <button type="button" onClick={() => void markRead(e.id)} aria-label={`標記已讀 ${e.id}`}>標記已讀</button>
+            <span className="what">
+              {describeAlert(e.direction, e.threshold)}
+              <small>{formatDateTime(e.triggeredAt)} 觸發 · 當時 {formatUsd(e.price)}</small>
+            </span>
+            <button className="btn btn--sm" type="button" onClick={() => void markRead(e.id)} aria-label={`標記已讀 ${e.id}`}>已讀</button>
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   )
 }

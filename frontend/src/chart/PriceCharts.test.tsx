@@ -85,6 +85,32 @@ describe('PriceCharts (requirement 11)', () => {
     expect(chart().candleUpdates[1]).toEqual({ time: 1790668920, open: 84090, high: 84090, low: 84090, close: 84090 })
   })
 
+  it('shows the chart range, the hovered candle, and the range again when the crosshair leaves (task 31)', async () => {
+    const { chart } = setup()
+    const legend = screen.getByTestId('chart-legend')
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    expect(legend).toHaveTextContent(/^圖表區間 高 [\d,]+\.\d{2} · 低 [\d,]+\.\d{2}$/)
+    const rangeText = legend.textContent
+
+    act(() => chart().hover({ kind: 'candle', time: 1790668860, open: 84052.3, high: 84060, low: 84049.9, close: 84055 }))
+    expect(legend).toHaveTextContent('開 84,052.30 · 高 84,060.00 · 低 84,049.90 · 收 84,055.00')
+
+    act(() => chart().hover(null))
+    expect(legend).toHaveTextContent(rangeText!)
+  })
+
+  it('switches tabs with the arrow keys', async () => {
+    const user = userEvent.setup()
+    const { chart } = setup()
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    screen.getByRole('tab', { name: '1 分 K 線' }).focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: '5 分 K 線' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '5 分 K 線' })).toHaveFocus()
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('tab', { name: '1 小時走勢' })).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('explains an empty chart and disposes the chart on unmount', async () => {
     server.use(http.get('/api/candles', () => HttpResponse.json([])))
     const { factory, charts } = fakeChartFactory()

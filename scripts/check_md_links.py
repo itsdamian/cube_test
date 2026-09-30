@@ -7,6 +7,9 @@ Usage:  python3 scripts/check_md_links.py [--allow-missing-images]
 - A `#fragment` must match a heading in the target file, using GitHub's anchor rules
   (lower-case, punctuation removed, spaces -> "-").
 - External links (http/https/mailto) are not checked.
+- `*.src.md` files are skipped: they are build templates (e.g. the designer's
+  design/src/redesign.src.md -> design/redesign.md) whose relative links only resolve in the
+  generated file, which is checked.
 - --allow-missing-images: report missing image files as pending instead of failing
   (used while README screenshots are still to be added).
 Exit code 0 = all links valid.
@@ -64,7 +67,8 @@ def links(path: Path):
 
 def main() -> int:
     allow_missing_images = "--allow-missing-images" in sys.argv
-    files = [p for p in ROOT.rglob("*.md") if not SKIP_DIRS & set(p.relative_to(ROOT).parts)]
+    files = [p for p in ROOT.rglob("*.md")
+             if not SKIP_DIRS & set(p.relative_to(ROOT).parts) and not p.name.endswith(".src.md")]
     errors, pending, checked = [], [], 0
     for md in sorted(files):
         for number, is_image, target in links(md):

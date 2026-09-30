@@ -19,3 +19,11 @@ export function useLiveStream(): LiveStreamContextValue {
   }
   return value
 }
+
+/**
+ * Same as useLiveStream, but null outside a provider: for small optional extras (e.g. an alert's
+ * distance to the current price) inside components that also work on their own.
+ */
+export function useOptionalLiveStream(): LiveStreamContextValue | null {
+  return useContext(LiveStreamContext)
+}

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { api } from '../api/client'
 import type { AlertTriggered } from '../api/types'
-import { formatUsd } from '../format/format'
+import { formatTime, formatUsd } from '../format/format'
 import { useLiveStream } from '../live/liveStreamContext'
 import { notifyAlertEventsChanged } from './events'
-import { describeAlert } from './format'
+import { DIRECTION_LABEL } from './format'
 
 export const TOAST_MS = 10_000
 
@@ -51,11 +51,17 @@ export function AlertToasts({ toastMs = TOAST_MS }: { toastMs?: number }) {
   return (
     <div className="toasts" aria-live="assertive">
       {toasts.map((t) => (
-        <div key={t.eventId} className="toast" role="alert" data-testid={`toast-${t.eventId}`}>
-          <strong>價格警示</strong>
-          <div>{describeAlert(t.direction, t.threshold)}，目前 {formatUsd(t.price)}</div>
-          <button type="button" aria-label="關閉通知"
+        <div key={t.eventId} className="toast" role="alert" data-testid={`toast-${t.eventId}`}
+             style={{ '--toast-ms': `${toastMs}ms` } as CSSProperties}>
+          <span className="toast__icon" aria-hidden="true">🔔</span>
+          <div className="toast__title">價格警示<time dateTime={t.triggeredAt}>{formatTime(t.triggeredAt)}</time></div>
+          <button className="btn btn--icon" type="button" aria-label="關閉通知"
                   onClick={() => setToasts((current) => current.filter((x) => x.eventId !== t.eventId))}>×</button>
+          <div className="toast__body">
+            BTC-USD 已<b>{DIRECTION_LABEL[t.direction]} {formatUsd(t.threshold)}</b>，目前 <b className="num">{formatUsd(t.price)}</b>
+          </div>
+          {/* Shrinks over the toast's lifetime (hidden with prefers-reduced-motion). */}
+          <span className="toast__timer" aria-hidden="true" />
         </div>
       ))}
     </div>

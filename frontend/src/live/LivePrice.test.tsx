@@ -122,18 +122,32 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('active-source')).toHaveTextContent('Kraken')
   })
 
-  it('colours the price green / red when a trade is above / below the previous one', () => {
+  // Design direction B: the big number never changes colour; the direction pill next to it does.
+  it('marks the direction pill up / down when a trade is above / below the previous one', () => {
     const stream = renderLivePrice()
     act(() => stream.emit('price', price(84000)))
     expect(screen.queryByTestId('price-trend')).not.toBeInTheDocument()   // nothing to compare yet
 
     act(() => stream.emit('price', price(84010)))
-    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--up')
+    expect(screen.getByTestId('price-trend')).toHaveAttribute('data-dir', 'up')
     expect(screen.getByTestId('price-trend')).toHaveTextContent('較前一筆上漲')
 
     act(() => stream.emit('price', price(83990.5)))
-    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--down')
+    expect(screen.getByTestId('price-trend')).toHaveAttribute('data-dir', 'down')
     expect(screen.getByTestId('price-trend')).toHaveTextContent('較前一筆下跌')
+    expect(screen.getByTestId('btc-price').className).toBe('price__value')   // no colour class on the number
+  })
+
+  it('shows the change since the page opened, relative to the first price received (task 31)', () => {
+    const stream = renderLivePrice()
+    act(() => stream.emit('price', price(84000)))
+    expect(screen.getByTestId('price-change')).toHaveTextContent('0.00（0.00%）')
+    act(() => stream.emit('price', price(84042)))
+    expect(screen.getByTestId('price-change')).toHaveTextContent('+42.00（+0.05%）')
+    expect(screen.getByTestId('price-change')).toHaveAttribute('data-sign', 'up')
+    act(() => stream.emit('price', price(83916)))
+    expect(screen.getByTestId('price-change')).toHaveTextContent('-84.00（-0.10%）')
+    expect(screen.getByTestId('price-change')).toHaveAttribute('data-sign', 'down')
   })
 
   it('flashes at most every 2 s (trade time) in the same direction, but at once when the direction changes', () => {
@@ -142,22 +156,22 @@ describe('LivePrice', () => {
       ({ ...price(value), eventTime: new Date(Date.UTC(2026, 8, 30, 8, 0, second)).toISOString() })
     act(() => stream.emit('price', at(84000, 0)))
     act(() => stream.emit('price', at(84010, 1)))                 // up: flash
-    const firstUp = screen.getByTestId('btc-price')
-    expect(firstUp).toHaveClass('live-price__value--flash-up')
+    const firstUp = screen.getByTestId('price-trend')
+    expect(firstUp).toHaveClass('flash-up')
 
     act(() => stream.emit('price', at(84020, 2)))                 // up again 1 s later: no new flash
-    expect(screen.getByTestId('btc-price')).toBe(firstUp)          // same element = animation not replayed
+    expect(screen.getByTestId('price-trend')).toBe(firstUp)          // same element = animation not replayed
     expect(screen.getByTestId('btc-price')).toHaveTextContent('84,020.00')
 
     act(() => stream.emit('price', at(84000, 2)))                 // down: flashes immediately
-    const firstDown = screen.getByTestId('btc-price')
+    const firstDown = screen.getByTestId('price-trend')
     expect(firstDown).not.toBe(firstUp)
-    expect(firstDown).toHaveClass('live-price__value--flash-down')
+    expect(firstDown).toHaveClass('flash-down')
 
     act(() => stream.emit('price', at(83995, 3)))                 // down 1 s later: no new flash
-    expect(screen.getByTestId('btc-price')).toBe(firstDown)
+    expect(screen.getByTestId('price-trend')).toBe(firstDown)
     act(() => stream.emit('price', at(83990, 4)))                 // down 2 s after the last flash: flashes
-    expect(screen.getByTestId('btc-price')).not.toBe(firstDown)
+    expect(screen.getByTestId('price-trend')).not.toBe(firstDown)
   })
 
   it('never flashes more than once per second, even when the price bounces up and down', () => {
@@ -166,15 +180,15 @@ describe('LivePrice', () => {
       ({ ...price(value), eventTime: new Date(Date.UTC(2026, 8, 30, 8, 0, 0, ms)).toISOString() })
     act(() => stream.emit('price', at(84000, 0)))
     act(() => stream.emit('price', at(84010, 100)))              // up: flash
-    const first = screen.getByTestId('btc-price')
+    const first = screen.getByTestId('price-trend')
     act(() => stream.emit('price', at(84000, 400)))              // down 0.3 s later: too soon
     act(() => stream.emit('price', at(84010, 800)))              // up again 0.7 s later: too soon
-    expect(screen.getByTestId('btc-price')).toBe(first)
+    expect(screen.getByTestId('price-trend')).toBe(first)
     expect(screen.getByTestId('btc-price')).toHaveTextContent('84,010.00')   // the price itself updates
 
     act(() => stream.emit('price', at(84000, 1_100)))            // down, 1.0 s after the flash: flashes
-    expect(screen.getByTestId('btc-price')).not.toBe(first)
-    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--flash-down')
+    expect(screen.getByTestId('price-trend')).not.toBe(first)
+    expect(screen.getByTestId('price-trend')).toHaveClass('flash-down')
   })
 
   it('dims the price card and explains why whenever the data is not live, and clears both when live again (QA CONCERN 23)', () => {

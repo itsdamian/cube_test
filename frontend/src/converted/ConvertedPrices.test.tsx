@@ -74,6 +74,16 @@ describe('ConvertedPrices (AC3 frontend)', () => {
     await waitFor(() => expect(requests).toBe(2))
   })
 
+  it('lists USD first and keeps the API order for the rest (task 31)', async () => {
+    const usd = { ...samples.pricesConverted.items[0], currencyId: 99, code: 'USD', name: '美元', rate: 1 }
+    server.use(http.get('/api/prices/converted', () =>
+      HttpResponse.json({ ...samples.pricesConverted, items: [...samples.pricesConverted.items, usd] })))
+    renderTable()
+    await screen.findByTestId('converted-USD')
+    const codes = screen.getAllByTestId(/^converted-/).map((el) => el.dataset.testid)
+    expect(codes).toEqual(['converted-USD', 'converted-EUR', 'converted-TWD', 'converted-XAU'])
+  })
+
   it('says so when there is no price yet', async () => {
     server.use(
       http.get('/api/prices/converted', () => HttpResponse.json({ status: 404, detail: 'No price' }, { status: 404 })),

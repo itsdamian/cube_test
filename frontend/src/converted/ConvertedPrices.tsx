@@ -8,12 +8,23 @@ import { useLiveStream } from '../live/liveStreamContext'
 /** Rates change at most daily; the table re-reads them (and the currency list) every minute. */
 export const REFRESH_MS = 60_000
 
+/** USD first (the base currency); everything else keeps the API's order (user decision, task 31). */
+function usdFirst<T extends { code: string }>(items: T[]): T[] {
+  return [...items.filter((i) => i.code === 'USD'), ...items.filter((i) => i.code !== 'USD')]
+}
+
+interface Props {
+  refreshMs?: number
+  /** Opens the currency management dialog (the button sits in this card's header). */
+  onManage?: (trigger: HTMLButtonElement) => void
+}
+
 /**
  * BTC price in every currency of the database, with the exchange rate used and when the
  * provider last updated it. The rates come from the backend; the price is multiplied locally
- * with the live BTC-USD price from the stream, so the table moves with the ticker.
+ * with the live BTC-USD price from the stream, so the tiles move with the ticker.
  */
-export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number }) {
+export function ConvertedPrices({ refreshMs = REFRESH_MS, onManage }: Props) {
   const { price } = useLiveStream()
   const [data, setData] = useState<Converted | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,56 +54,54 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
     }
   }, [refreshMs])
 
-  if (!data) {
-    return <p>{error ?? '載入中…'}</p>
-  }
-
-  const usd = price?.price ?? data.usdPrice
+  const usd = data ? price?.price ?? data.usdPrice : null
   // The provider updates all rates together; if they ever differ, show the oldest (most cautious).
-  const rateTimes = data.items.map((i) => i.rateUpdatedAt).filter((t): t is string => t !== null).sort()
+  const rateTimes = (data?.items ?? []).map((i) => i.rateUpdatedAt).filter((t): t is string => t !== null).sort()
   const oldestRate = rateTimes.length ? rateTimes[0] : null
   return (
-    <div>
-      <p className="table__note" id="converted-note">
-        1 BTC 以各幣別計價（依目前 BTC-USD 價格 {formatMoney(usd, 'USD')} 換算）
-      </p>
-      <div className="table-scroll">
-      <table className="table" aria-describedby="converted-note">
-        <thead>
-          <tr>
-            <th scope="col">代碼</th>
-            <th scope="col">名稱</th>
-            <th scope="col" className="num">BTC 價格</th>
-            <th scope="col" className="num">匯率（1 USD =）</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((item) => (
-            <tr key={item.currencyId} data-testid={`converted-${item.code}`}>
-              <td className="nowrap">{item.code}</td>
-              <td className="nowrap">{item.name}</td>
-              {item.rate === null ? (
-                <td className="num muted" colSpan={2}>無匯率</td>
-              ) : (
-                <>
-                  <td className="num">{formatMoney(usd * item.rate, item.code)}</td>
-                  <td className="num">{item.rate}</td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
-      {oldestRate && (
-        <p className="table__note" data-testid="rates-updated">
-          匯率更新於 <time dateTime={oldestRate}>{formatDateTime(oldestRate)}</time>
+    <>
+      <header className="card__head">
+        <div className="card__title">
+          <h2 id="converted-title">多幣別換算</h2>
+          <span className="card__sub" id="converted-note">
+            1 BTC 以各幣別計價{usd !== null && `（依 BTC-USD ${formatMoney(usd, 'USD')} 換算）`}
+          </span>
+        </div>
+        <div className="fx__meta">
+          {oldestRate && (
+            <span data-testid="rates-updated">匯率更新於 <time dateTime={oldestRate}>{formatDateTime(oldestRate)}</time></span>
+          )}
+          {onManage && (
+            <button className="btn btn--sm" type="button" aria-haspopup="dialog"
+                    onClick={(e) => onManage(e.currentTarget)}>管理幣別</button>
+          )}
+        </div>
+      </header>
+      <div className="card__body">
+        {data && usd !== null ? (
+          <ul className="tiles" aria-describedby="converted-note">
+            {usdFirst(data.items).map((item) => (
+              <li key={item.currencyId} className={`tile${item.rate === null ? ' tile--none' : ''}`} data-testid={`converted-${item.code}`}>
+                <div className="tile__top"><span className="tile__code">{item.code}</span><span className="tile__name">{item.name}</span></div>
+                {item.rate === null ? (
+                  <div className="tile__value">無匯率</div>
+                ) : (
+                  <>
+                    <div className="tile__value sk" data-conv={item.code}>{formatMoney(usd * item.rate, item.code)}</div>
+                    <div className="tile__rate">1 USD = <span>{item.rate}</span></div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{error ?? '載入中…'}</p>
+        )}
+        <p className="attribution">
+          {/* Required by the exchange-rate provider's terms of use. */}
+          <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>
         </p>
-      )}
-      <p className="attribution">
-        {/* Required by the exchange-rate provider's terms of use. */}
-        <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>
-      </p>
-    </div>
+      </div>
+    </>
   )
 }

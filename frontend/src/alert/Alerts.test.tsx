@@ -48,7 +48,7 @@ describe('UnreadAlerts (AC8)', () => {
     expect(item).toHaveTextContent('BTC-USD 高於')
     expect(item).toHaveTextContent('90,000.00')
     expect(item).toHaveTextContent('90,012.34')
-    expect(screen.getByText('未讀警示（1）')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '離開期間觸發 1 則' })).toBeInTheDocument()
   })
 
   it('asks the backend for unread events only', async () => {
@@ -75,7 +75,9 @@ describe('UnreadAlerts (AC8)', () => {
     render(<UnreadAlerts />)
     await user.click(await screen.findByRole('button', { name: '全部標記已讀' }))
     await waitFor(() => expect(reads).toContain('all'))
-    expect(await screen.findByText('沒有未讀警示')).toBeInTheDocument()
+    // Nothing unread: the whole block disappears (design direction B; was the text 沒有未讀警示).
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /離開期間觸發/ })).not.toBeInTheDocument())
+    expect(screen.queryByTestId('unread-17')).not.toBeInTheDocument()
   })
 })
 
@@ -105,7 +107,7 @@ describe('AlertToasts (AC7, QA S4)', () => {
 
     const toast = await screen.findByTestId('toast-17')
     expect(toast).toHaveTextContent('價格警示')
-    expect(toast).toHaveTextContent('BTC-USD 高於')
+    expect(toast).toHaveTextContent('BTC-USD 已高於 US$90,000.00')
     expect(toast).toHaveTextContent('90,012.34')
     await waitFor(() => expect(reads).toEqual(['17']))
   })
@@ -173,12 +175,20 @@ describe('AlertManager', () => {
     render(<AlertManager />)
     await screen.findByTestId('alert-3')
 
-    await user.selectOptions(screen.getByLabelText('條件'), 'BELOW')
-    await user.type(screen.getByLabelText('門檻（USD）'), '80000')
-    await user.click(screen.getByRole('button', { name: '新增警示' }))
+    // The form is collapsed behind the header button (aria-expanded) and stays open after adding.
+    const toggle = screen.getByRole('button', { name: '新增警示' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('form', { name: '新增警示' })).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await user.click(within(screen.getByRole('radiogroup', { name: '條件' })).getByRole('radio', { name: '價格低於' }))
+    await user.type(screen.getByRole('spinbutton', { name: '門檻價格' }), '80000')
+    await user.click(screen.getByRole('button', { name: '建立' }))
 
     expect(await screen.findByTestId('alert-50')).toHaveTextContent('BTC-USD 低於')
     expect(posted).toEqual([{ direction: 'BELOW', threshold: 80000 }])
+    expect(screen.getByRole('form', { name: '新增警示' })).toBeVisible()
+    expect(screen.getByRole('spinbutton', { name: '門檻價格' })).toHaveValue(null)
   })
 
   it('rejects an empty or non-positive threshold without calling the API', async () => {
@@ -187,6 +197,10 @@ describe('AlertManager', () => {
     render(<AlertManager />)
     await screen.findByTestId('alert-3')
     await user.click(screen.getByRole('button', { name: '新增警示' }))
+    await user.click(screen.getByRole('button', { name: '建立' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('請輸入大於 0 的價格')
+    await user.type(screen.getByRole('spinbutton', { name: '門檻價格' }), '-5')
+    await user.click(screen.getByRole('button', { name: '建立' }))
     expect(screen.getByRole('alert')).toHaveTextContent('請輸入大於 0 的價格')
     expect(posted).toEqual([])
   })
@@ -199,6 +213,33 @@ describe('AlertManager', () => {
     await user.click(screen.getByRole('button', { name: '確定刪除？' }))
     await waitFor(() => expect(screen.queryByTestId('alert-3')).not.toBeInTheDocument())
     expect(deleted).toEqual(['3'])
+  })
+})
+
+describe('AlertManager with the live price (task 31)', () => {
+  afterEach(() => {
+    FakeEventSource.instances = []
+  })
+
+  it('shows each alert\'s distance (threshold − price) and fills in the rounded current price', async () => {
+    server.use(http.get('/api/alerts', () => HttpResponse.json(samples.alerts)))
+    const user = userEvent.setup()
+    render(
+      <LiveStreamProvider eventSourceFactory={FakeEventSource.factory}>
+        <AlertManager />
+      </LiveStreamProvider>,
+    )
+    const stream = FakeEventSource.latest()
+    await screen.findByTestId('alert-3')
+    act(() => stream.emit('price', { ...samples.ssePrice, price: 84045.5 }))
+
+    // alert 3: above 90,000 -> 還差 +5,954.50; alert 4: below 80,000.50 -> 還差 −4,045.00
+    expect(within(screen.getByTestId('alert-3')).getByTestId('alert-distance')).toHaveTextContent('還差 +5,954.50')
+    expect(within(screen.getByTestId('alert-4')).getByTestId('alert-distance')).toHaveTextContent('還差 −4,045.00')
+
+    await user.click(screen.getByRole('button', { name: '新增警示' }))
+    await user.click(screen.getByRole('button', { name: '填入目前價格' }))
+    expect(screen.getByRole('spinbutton', { name: '門檻價格' })).toHaveValue(84046)
   })
 })
 
@@ -224,6 +265,6 @@ describe('AlertManager + UnreadAlerts together', () => {
     await user.click(screen.getByRole('button', { name: '確定刪除？' }))
 
     await waitFor(() => expect(screen.queryByTestId('unread-17')).not.toBeInTheDocument())
-    expect(screen.getByText('沒有未讀警示')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /離開期間觸發/ })).not.toBeInTheDocument()
   })
 })

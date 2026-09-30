@@ -45,27 +45,30 @@ function CurrencyForm({ initial, submitLabel, onSubmit, onCancel }: {
   }
 
   return (
-    <form className="currency-form" onSubmit={submit} aria-label={submitLabel}>
-      <label>
+    <form className={onCancel ? 'cform cform--inline' : 'cform'} onSubmit={submit} aria-label={submitLabel}>
+      <label className="field">
         代碼
-        <input value={input.code} maxLength={3} required placeholder="TWD" aria-invalid={!!errors.code}
+        <input value={input.code} maxLength={3} required placeholder="CHF" autoComplete="off" aria-invalid={!!errors.code}
                onChange={(e) => setInput({ ...input, code: e.target.value })} />
       </label>
-      {errors.code && <span className="field-error" role="alert">{errors.code}</span>}
-      <label>
+      <label className="field">
         中文名稱
-        <input value={input.name} maxLength={50} required placeholder="新台幣" aria-invalid={!!errors.name}
+        <input value={input.name} maxLength={50} required placeholder="瑞士法郎" autoComplete="off" aria-invalid={!!errors.name}
                onChange={(e) => setInput({ ...input, name: e.target.value })} />
       </label>
+      <button className={onCancel ? 'btn btn--primary btn--sm' : 'btn btn--primary'} type="submit" disabled={busy}>{submitLabel}</button>
+      {onCancel && <button className="btn btn--sm" type="button" onClick={onCancel}>取消</button>}
+      {errors.code && <span className="field-error" role="alert">{errors.code}</span>}
       {errors.name && <span className="field-error" role="alert">{errors.name}</span>}
-      <button type="submit" disabled={busy}>{submitLabel}</button>
-      {onCancel && <button type="button" onClick={onCancel}>取消</button>}
       {errors.form && <span className="field-error" role="alert">{errors.form}</span>}
     </form>
   )
 }
 
-/** List, add, rename and delete currencies (code + Chinese name). */
+/**
+ * List, add, rename and delete currencies (code + Chinese name). Rendered inside the currency
+ * dialog: the list scrolls in the body, the add form sits in the footer.
+ */
 export function CurrencyManager() {
   const [currencies, setCurrencies] = useState<Currency[] | null>(null)
   const [loadError, setLoadError] = useState(false)
@@ -109,61 +112,54 @@ export function CurrencyManager() {
     }
   }
 
-  if (loadError) return <p>無法載入幣別清單</p>
-  if (!currencies) return <p>載入中…</p>
-
   return (
-    <div>
-      <div className="table-scroll">
-      <table className="table table--compact">
-        <thead>
-          <tr>
-            <th scope="col">代碼</th>
-            <th scope="col">中文名稱</th>
-            <th scope="col" className="actions-col">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {currencies.map((c) =>
-            editing === c.id ? (
-              <tr key={c.id}>
-                <td colSpan={3}>
-                  <CurrencyForm initial={{ code: c.code, name: c.name }} submitLabel="儲存"
-                                onCancel={() => setEditing(null)}
-                                onSubmit={async (input) => {
-                                  await api.updateCurrency(c.id, input)
-                                  setEditing(null)
-                                  await changed()
-                                }} />
-                </td>
-              </tr>
-            ) : (
-              <tr key={c.id} data-testid={`currency-${c.code}`}>
-                <td className="nowrap">{c.code}</td>
-                <td className="nowrap">{c.name}</td>
-                <td className="actions-col"><div className="actions">
-                  <button type="button" onClick={() => setEditing(c.id)} aria-label={`編輯 ${c.code}`}>編輯</button>
-                  {confirmDelete === c.id ? (
-                    <>
-                      <button type="button" className="danger" onClick={() => void remove(c.id)}>確定刪除？</button>
-                      <button type="button" onClick={() => setConfirmDelete(null)}>取消</button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmDelete(c.id)} aria-label={`刪除 ${c.code}`}>刪除</button>
-                  )}
-                </div></td>
-              </tr>
-            ),
-          )}
-        </tbody>
-      </table>
+    <>
+      <div className="modal__body">
+        {loadError && <p className="muted">無法載入幣別清單</p>}
+        {!loadError && !currencies && <p className="muted">載入中…</p>}
+        {!loadError && currencies && (
+          <ul className="clist" aria-label="幣別清單">
+            {currencies.map((c) =>
+              editing === c.id ? (
+                <li key={c.id}>
+                  <div className="edit">
+                    <CurrencyForm initial={{ code: c.code, name: c.name }} submitLabel="儲存"
+                                  onCancel={() => setEditing(null)}
+                                  onSubmit={async (input) => {
+                                    await api.updateCurrency(c.id, input)
+                                    setEditing(null)
+                                    await changed()
+                                  }} />
+                  </div>
+                </li>
+              ) : (
+                <li key={c.id} data-testid={`currency-${c.code}`}>
+                  <span className="view"><span className="tile__code">{c.code}</span><span className="nowrap">{c.name}</span></span>
+                  <span className="acts">
+                    <button className="btn btn--sm" type="button" onClick={() => setEditing(c.id)} aria-label={`編輯 ${c.code}`}>編輯</button>
+                    {confirmDelete === c.id ? (
+                      <>
+                        <button type="button" className="btn btn--danger btn--sm" onClick={() => void remove(c.id)}>確定刪除？</button>
+                        <button type="button" className="btn btn--sm" onClick={() => setConfirmDelete(null)}>取消</button>
+                      </>
+                    ) : (
+                      <button type="button" className="btn btn--quiet btn--sm" onClick={() => setConfirmDelete(c.id)} aria-label={`刪除 ${c.code}`}>刪除</button>
+                    )}
+                  </span>
+                </li>
+              ),
+            )}
+          </ul>
+        )}
+        {deleteError && <p className="field-error" role="alert">{deleteError}</p>}
       </div>
-      {deleteError && <p className="field-error" role="alert">{deleteError}</p>}
-      <h3>新增幣別</h3>
-      <CurrencyForm initial={EMPTY} submitLabel="新增" onSubmit={async (input) => {
-        await api.createCurrency(input)
-        await changed()
-      }} />
-    </div>
+      <footer className="modal__foot">
+        <h3>新增幣別</h3>
+        <CurrencyForm initial={EMPTY} submitLabel="新增" onSubmit={async (input) => {
+          await api.createCurrency(input)
+          await changed()
+        }} />
+      </footer>
+    </>
   )
 }
