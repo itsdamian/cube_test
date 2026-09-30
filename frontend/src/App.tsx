@@ -1,3 +1,6 @@
+import { AlertManager } from './alert/AlertManager'
+import { AlertToasts } from './alert/AlertToasts'
+import { UnreadAlerts } from './alert/UnreadAlerts'
 import type { PriceChartFactory } from './chart/chartAdapter'
 import { PriceCharts } from './chart/PriceCharts'
 import { ConvertedPrices } from './converted/ConvertedPrices'
@@ -43,8 +46,11 @@ export default function App({ eventSourceFactory, chartFactory }: Props) {
         </section>
         <section aria-labelledby="alert-title">
           <h2 id="alert-title">價格警示</h2>
+          <UnreadAlerts />
+          <AlertManager />
         </section>
       </main>
+      <AlertToasts />
     </div>
     </LiveStreamProvider>
   )

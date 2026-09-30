@@ -176,3 +176,50 @@ button.danger {
   border: 1px solid #cf222e;
   border-radius: 4px;
 }
+
+.unread {
+  border: 1px solid #bf8700;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.unread__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unread li button {
+  margin-left: 0.5rem;
+}
+
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.toast {
+  position: relative;
+  background: #fff8c5;
+  color: #1f2328;
+  border: 1px solid #bf8700;
+  border-radius: 8px;
+  padding: 0.75rem 2rem 0.75rem 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 320px;
+}
+
+.toast button {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
