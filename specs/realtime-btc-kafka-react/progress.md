@@ -212,3 +212,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **修正**: task 14 的 prices-converted 契約樣本中，EUR/TWD 價格是手打且算錯（不等於 usdPrice × rate），已改為精確乘積並重新產生樣本。
 - **Verified**: `npm test`（18 tests）、build、lint 全過；後端 ContractSamplesTest 通過。
 - **概念**: 變化慢的資料（匯率）和變化快的資料（價格）分開取得、在前端組合——請求少，畫面又和最快的來源一樣新。
+
+## 2026-09-30 12:06 — Stage: implement task 23（K 線與走勢圖）
+- **What changed (`2bbd673`)**: `PriceCharts`（1m/5m K 線、走勢最近 1 小時，SSE 即時延伸）、`series.ts` 純轉換函式、`chartAdapter.ts`（lightweight-charts v5 的薄介面，可注入假 adapter）。
+- **Verified**: `npm test`（28 tests）、build、lint 全過；真實 canvas 繪圖留待 task 26 compose 後以瀏覽器確認。
+- **概念**: 把難以測試的邊界（canvas 函式庫）隔離在很小的介面後面，邏輯（資料轉換、何時延伸）放在純函式。
