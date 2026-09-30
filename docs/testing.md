@@ -50,5 +50,5 @@ node scripts/screenshot.mjs docs/images/dashboard-light.png  1440 1000 1 light
 node scripts/screenshot.mjs docs/images/dashboard-mobile.png 375  812  2 dark mobile
 ```
 
-參數依序為：輸出檔、寬、高、device pixel ratio、`dark` / `light`（`prefers-color-scheme`），最後的 `mobile` 代表模擬手機。截完後跑 `python3 scripts/check_md_links.py` 確認 README 的圖片路徑都有效。
+參數依序為：輸出檔、寬、高、device pixel ratio、`dark` / `light`（`prefers-color-scheme`），最後的 `mobile` 代表模擬手機。其他 port 或非 macOS 的 Chrome 用環境變數指定，例如 `SCREENSHOT_URL=http://localhost:3000/ CHROME_PATH=/usr/bin/google-chrome node scripts/screenshot.mjs ...`。截完後跑 `python3 scripts/check_md_links.py` 確認 README 的圖片路徑都有效。
 

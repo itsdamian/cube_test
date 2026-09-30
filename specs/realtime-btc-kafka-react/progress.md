@@ -320,3 +320,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **修正（`a766828`）**: 操作欄按鈕容器 inline-flex 不換行；移除操作欄 `width:1%`——它在自動寬度表格中會把整張表撐到全寬，**因此 ed6d612 所稱「幣別表格不撐滿」其實沒有生效，此處更正**；閃爍任兩次至少間隔 1 秒（新測試）。commit `scripts/screenshot.mjs` 並在 docs/testing.md 說明重新截圖方式。
 - **Verified**: npm test 57/57、build、lint 0；以 screenshot.mjs 在 1440px 與 375px（DPR 2）自行截圖目視確認。
 - **暫緩**: 依 team lead 指示，截圖先不 commit——使用者將請 UI/UX 設計師重新設計（task 31），完成後再拍最終版。
+
+## 2026-09-30 15:29 — Stage: QA 目視驗證 task 28 剩餘畫面；screenshot.mjs 參數化
+- **QA**: a766828 + 35c257c PASS（FLASH_MIN_GAP_MS 反向驗證）。QA 以 headless Chrome 親自驗證 task 28 缺的畫面：AC7 toast 出現且未讀同步標記已讀、AC2 斷線時卡片淡化＋紅色警告並於接回後恢復、AC6 375px 下 pill 顯示「即時 · Kraken」並於 unblock 後回到 Coinbase。先前 team lead 已目視 AC1、AC3、AC11、圖表與 AC2 斷線畫面。
+- **task 28 剩餘**: 僅使用者實際斷網執行 AC13（`./mvnw -o clean verify`、`npm test`）。
+- **screenshot.mjs**: 依 QA 建議以 `SCREENSHOT_URL`、`CHROME_PATH` 環境變數覆寫（預設不變），docs/testing.md 已說明；以預設與覆寫各截一次驗證。
