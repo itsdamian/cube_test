@@ -188,3 +188,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`6b9cbf2`)**: Hikari connection-timeout 預設 5s（`SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT`）；FeedStatus 只在 activeSource/state 改變時立即發佈、否則每 5 秒；Streams 執行緒意外死亡時 REPLACE_THREAD。task 16、17 已依 QA PASS 勾 [x]。
 - **Verified**: `./mvnw clean verify` → 152 tests / 0 failures。
 - **概念**: 健康檢查必須比 probe 的逾時更快回應；卡住的檢查和卡住的應用程式在外面看起來一模一樣。
+
+## 2026-09-30 11:58 — Stage: implement task 19（多架構後端 Dockerfile）
+- **What changed (`adfd8b2`)**: 單一 `Dockerfile`（build 階段在 $BUILDPLATFORM、~/.m2 cache mount、layered jar；runtime `eclipse-temurin:21.0.12.1_1-jre-noble`、uid 1001、Streams state 目錄）、`.dockerignore`；刪除 Dockerfile.amd64/silicon、start/stop-silicon.sh。
+- **Verified**: `docker buildx build --platform linux/amd64,linux/arm64` 成功（AC14），manifest 含兩個平台，兩者皆以 uid 1001 執行、Java 21.0.12.1。
+- **發現的問題**: mvnw 在沒有 `unzip` 時會改下載 .tar.gz，導致 task 2 釘的 .zip SHA-256 校驗失敗（CI/容器都可能踩到）；mvnw 只接受 .zip 網址，所以 build 階段安裝 unzip，並在 wrapper 設定註明。
+- **注意**: docker-compose.yml 目前仍引用已刪除的檔案，task 26 會整份重寫。
+- **概念**: 多平台 image 是一個 manifest list，指向每個架構各自的 image；$BUILDPLATFORM 讓昂貴的編譯在本機架構跑，只有很薄的 runtime 層是各架構各一份。
