@@ -257,3 +257,27 @@ Branch: `feat/realtime-btc-kafka-react`
 ## 2026-09-30 13:15 — Stage: implement task 27（README 與驗收步驟）
 - **What changed (`44b5539`)**: README 全面改寫（工具、快速開始、環境變數表、API、測試與離線準備、多架構建置、AC1–AC15 逐步驗收、常見問題、專案結構）；`docs/acceptance/ac4-ohlc-check.sql`；compose 把部分 APP_* 變數從 shell 傳給 backend（有設才傳）。
 - **Verified（在執行中的堆疊上實跑 README 指令）**: AC1、AC3（與匯率來源完全一致）、AC4（SQL 全部 ohlc_matches = t）、AC12（停 Kafka 3 秒 503、liveness 200、啟動後 2 秒 200）、AC6 方法 A（封鎖 7 秒切 Kraken、解封 17 秒切回、缺 Content-Type 415、還原後端點 404）、AC15。
+
+## 2026-09-30 13:50 — Stage: task 28（完整驗收）— 自動可驗部分完成，待瀏覽器目視與 QA
+環境：本機 docker compose（前端 FRONTEND_PORT=3001，因 3000 被使用者的 wms Vite 占用），真實 Coinbase / Kraken / open.er-api。時間為 UTC。
+
+| AC | 結果 | 證據 |
+|---|---|---|
+| AC1 | ✅（HTTP）/ 待目視 | 經 nginx 的 SSE：10 秒 16 筆 price；全新重建的堆疊 10 秒 15 筆 |
+| AC2 | ✅ | `docker network disconnect currency_egress`：10–12 秒內瀏覽器串流收到 STALE / DISCONNECTED；`connect` 後 14 秒恢復 LIVE、5 秒內 10 筆新價格，未重啟服務（第一次腳本量測恢復時有 bug，已以修正指令重跑） |
+| AC3 | ✅ | EUR/GBP/JPY/TWD/USD 換算匯率與 open.er-api 完全相同（誤差 0.00000%），rateUpdatedAt=2026-09-30T00:02:31Z |
+| AC4 | ✅ | 運行約 12 分鐘：11 根 1m、3 根 5m、2,328 筆逐筆；`docs/acceptance/ac4-ohlc-check.sql` 14 根全部 ohlc_matches = t；history 可取回全部 2,328 筆 |
+| AC5 | ✅ | `restart backend postgres` 前 14 candles / 2,328 ticks，後 15 / 2,338 |
+| AC6 | ✅ | chaos 封鎖 coinbase → 1 秒切 Kraken（API 顯示 kraken），解封 → 17 秒切回；主來源網址錯誤 → Kraken LIVE；還原後回到 coinbase |
+| AC7 | ✅（後端＋SSE）/ 待目視 | 預設 5 分鐘冷卻：05:25:05 與 05:30:06 各觸發一次（間隔 300.7 秒），兩筆都經 SSE 推播 |
+| AC8 | ✅（後端）/ 待目視 | 無瀏覽器開啟時兩筆皆為未讀（/api/alert-events?unread=true） |
+| AC9 | ✅ | PT5M 保留期、每 30 秒清除：10 分鐘後最舊 tick 5 分 03 秒；candle 27 → 39 未被刪；log 每 30 秒 "Retention: deleted N ticks" |
+| AC10 | ✅ | `down -v` 後全新 DB：EUR 歐元、GBP 英鎊、JPY 日圓、TWD 新台幣、USD 美元 |
+| AC11 | 自動測試 ✅ / 待目視 | 後端 CurrencyApiTest、前端 CurrencyManager 測試；瀏覽器 CRUD + F5 需目視 |
+| AC12 | ✅ | stop kafka → 6 秒 readiness 503（kafka DOWN），liveness 200；start → 2 秒回 200 |
+| AC13 | ✅（Maven 離線模式）/ 待真斷網 | `./mvnw -o clean verify` 152/152、0 次下載、log 無外部 host；`npm test` 46/46。實際關閉網路需使用者操作 |
+| AC14 | ✅ | task 19：buildx amd64+arm64，QA 以 --no-cache 重跑驗證 |
+| AC15 | ✅ | `git ls-files` 無 target/node_modules/dist |
+
+- **限制**: 本環境無瀏覽器自動化工具，畫面相關（價格跳動顯示、K 線/走勢圖、幣別 CRUD + F5、警示 toast、未讀清單）請使用者目視確認；AC13 的真斷網執行請使用者關閉網路後執行。
+- **task 28 暫不勾選**：待 QA 驗證與使用者目視確認。
