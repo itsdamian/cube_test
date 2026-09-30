@@ -240,3 +240,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`8ca5480`)**: `CurrencyManager`（列表、新增、行內編輯、兩段式刪除確認，不用 window.confirm）、錯誤就近顯示（400 欄位訊息、409 代碼已存在）、`currencies-changed` 事件讓換算表立即重新載入。
 - **Verified**: `npm test`（36 tests）、build、lint 全過。
 - **概念**: 驗證規則以伺服器為準，UI 的責任是把訊息放到正確的欄位旁，而不是再實作一次規則。
+
+## 2026-09-30 13:07 — Stage: implement task 25（警示管理與通知）
+- **What changed (`1c5a4aa`)**: `AlertManager`（新增高於/低於、列表含上次觸發、兩段式刪除）、`UnreadAlerts`（載入未讀、逐筆/全部已讀）、`AlertToasts`（SSE alert → toast；頁面可見時顯示即標記已讀，背景分頁等切回可見才顯示並標記，QA S4）、`alert-events-changed` 事件同步。
+- **Verified**: `npm test`（46 tests，連跑 5 次）、build、lint 全過；涵蓋 AC7、AC8 前端。
+- **概念**: Page Visibility API（document.visibilityState）告訴我們使用者是否真的看得到頁面——在沒有已讀回條的單一使用者 app 中，這是判斷「已看過」最誠實的訊號。
