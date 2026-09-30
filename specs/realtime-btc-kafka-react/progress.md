@@ -288,3 +288,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **剩餘**: task 28 待使用者瀏覽器目視確認與實際斷網跑 AC13。
 - 更正：task 18 在 QA PASS（a134a40）後漏勾，先前進度報告誤稱已勾選；已補勾 [x]。
 - 2026-09-30 13:49 QA：f3a6460 PASS、CONCERN 22 關閉，目前沒有未解決的 QA 意見。task 28 等使用者目視確認與實際斷網跑 AC13，之後通知 QA 做最後確認。
+
+## 2026-09-30 14:56 — Stage: team lead 目視驗收 + bug 修正
+- **Team lead 目視驗收（Chrome，localhost:3001）**: AC1、AC3、AC6（來源顯示）、1m/5m K 線與走勢圖、AC11（新增 HKD → 409 代碼已存在 → F5 仍在 → 編輯 → 刪除）、AC7/AC8（觸發後進未讀清單、F5 仍在）皆 OK；測試資料已清除。toast 未在自動化分頁顯示是因為 visibilityState=hidden，符合 S4 設計，將由使用者在自己的瀏覽器確認。
+- **Bug（`daa7ea1`）**: 刪除警示後「未讀警示」清單沒有更新（後端 cascade 正確，前端沒有發出 alert-events-changed）。先寫會失敗的測試重現、修正後通過；npm test 47/47（連跑 5 次）；已重建執行中的前端容器。
+- **剩餘**: 使用者在自己瀏覽器確認 toast；實際斷網跑 AC13；之後 QA 做 task 28 最後確認。
