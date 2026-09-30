@@ -1,6 +1,7 @@
 package com.currency.demo.config;
 
 import com.currency.demo.feed.FeedManager;
+import com.currency.demo.fx.FxRateRefresher;
 import com.currency.demo.feed.PriceFeedClient;
 import com.currency.demo.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -70,5 +71,7 @@ class NoExternalCallsGuardTest extends IntegrationTest {
     void backgroundJobsThatCallExternalSourcesAreDisabled() {
         assertThat(props.ingest().enabled()).isFalse();
         assertThat(props.fx().refreshEnabled()).isFalse();
+        // Task 14: the scheduled exchange-rate download must not exist in tests.
+        assertThat(context.getBeansOfType(FxRateRefresher.class)).isEmpty();
     }
 }

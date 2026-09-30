@@ -4,6 +4,9 @@ import com.currency.demo.candle.Candle;
 import com.currency.demo.candle.CandleController;
 import com.currency.demo.candle.CandleRepository;
 import com.currency.demo.feed.FeedStatus;
+import com.currency.demo.fx.ConversionController;
+import com.currency.demo.fx.ConversionService;
+import com.currency.demo.fx.ConvertedPrices;
 import com.currency.demo.pricing.PriceController;
 import com.currency.demo.pricing.PriceDtos.HistoryPage;
 import com.currency.demo.pricing.PriceDtos.LatestPrice;
@@ -43,7 +46,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>Regenerate after an intentional change: {@code ./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true}.
  * The services are mocked with fixed data, so the output is deterministic.
  */
-@WebMvcTest({PriceController.class, CandleController.class})
+@WebMvcTest({PriceController.class, CandleController.class, ConversionController.class})
 @Import(ContractSamplesTest.FixedClock.class)
 class ContractSamplesTest {
 
@@ -65,6 +68,20 @@ class ContractSamplesTest {
 
     @MockitoBean
     CandleRepository candles;
+
+    @MockitoBean
+    ConversionService conversion;
+
+    @Test
+    void pricesConverted() throws Exception {
+        Instant rates = Instant.parse("2026-09-30T00:02:31Z");
+        when(conversion.converted()).thenReturn(new ConvertedPrices("BTC-USD", new BigDecimal("84045.50"), "coinbase", T,
+                "Rates By Exchange Rate API (https://www.exchangerate-api.com)", List.of(
+                new ConvertedPrices.Item(1, "EUR", "歐元", new BigDecimal("74087.78716000"), new BigDecimal("0.88152"), rates),
+                new ConvertedPrices.Item(4, "TWD", "新台幣", new BigDecimal("2676068.51569500"), new BigDecimal("31.84071"), rates),
+                new ConvertedPrices.Item(9, "XAU", "黃金", null, null, null))));
+        assertMatchesSample("/api/prices/converted", "prices-converted.json");
+    }
 
     @Test
     void candles() throws Exception {

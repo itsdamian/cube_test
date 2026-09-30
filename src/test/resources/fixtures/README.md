@@ -10,3 +10,6 @@ Captured from the real public WebSocket feeds on 2026-09-29 (trimmed where noted
   `trade-snapshot.json` follow the documented v2 shapes.
 
 Tests only read these files; they never connect to an exchange (requirement 18).
+
+- open.er-api.com `GET /v6/latest/USD` (`fx/open-er-api-latest-usd.json`), captured 2026-09-30,
+  unmodified.
