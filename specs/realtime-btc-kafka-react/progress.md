@@ -314,3 +314,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **測試調整說明（交 QA）**: 狀態斷言改讀 header pill（期望文字逐字相同）；匯率時間改讀表格下方（同一 dateTime）；「即時價格不影響 K 線」與核准的第 6 項矛盾，保留原斷言並加入新行為斷言。55/55 連跑 5 次、build、lint 0；前端容器已重建。
 - **概念**: 在 render 中只用輸入資料（成交時間）而不讀時鐘，元件就是純函式、可預期也好測試。
 - 2026-09-30 15:16 QA：b027563 PASS（反向驗證：拿掉淡化邏輯後 3 個測試失敗），CONCERN 23 關閉，目前沒有未解決的 QA 意見。剩下：task 30 的截圖（team lead）、task 28 的使用者目視確認與實際斷網跑 AC13。
+
+## 2026-09-30 15:22 — Stage: task 29 第二次目視審查修正
+- **Team lead 複審**: 6 點 OK；AC2 斷線畫面（淡化、紅字、pill 變紅）也已目視 ✅。新提出：幣別表格按鈕上下堆疊（必修）、閃爍加全域 1 秒下限（小修）。
+- **修正（`a766828`）**: 操作欄按鈕容器 inline-flex 不換行；移除操作欄 `width:1%`——它在自動寬度表格中會把整張表撐到全寬，**因此 ed6d612 所稱「幣別表格不撐滿」其實沒有生效，此處更正**；閃爍任兩次至少間隔 1 秒（新測試）。commit `scripts/screenshot.mjs` 並在 docs/testing.md 說明重新截圖方式。
+- **Verified**: npm test 57/57、build、lint 0；以 screenshot.mjs 在 1440px 與 375px（DPR 2）自行截圖目視確認。
+- **暫緩**: 依 team lead 指示，截圖先不 commit——使用者將請 UI/UX 設計師重新設計（task 31），完成後再拍最終版。
