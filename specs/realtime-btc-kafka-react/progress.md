@@ -253,3 +253,7 @@ Branch: `feat/realtime-btc-kafka-react`
 - **限制**: 本環境沒有瀏覽器自動化工具，canvas 圖表的實際畫面留待 task 28 驗收時以瀏覽器確認。
 - **目前狀態**: compose 堆疊仍在執行中（project `currency`），停止用 `docker compose down`（保留資料）。
 - **概念**: `internal: true` 的 Docker 網路沒有對外路由；只讓 backend 多接一個一般網路，「哪個服務能連網際網路」就成為明確、可測試的決定。
+
+## 2026-09-30 13:15 — Stage: implement task 27（README 與驗收步驟）
+- **What changed (`44b5539`)**: README 全面改寫（工具、快速開始、環境變數表、API、測試與離線準備、多架構建置、AC1–AC15 逐步驗收、常見問題、專案結構）；`docs/acceptance/ac4-ohlc-check.sql`；compose 把部分 APP_* 變數從 shell 傳給 backend（有設才傳）。
+- **Verified（在執行中的堆疊上實跑 README 指令）**: AC1、AC3（與匯率來源完全一致）、AC4（SQL 全部 ohlc_matches = t）、AC12（停 Kafka 3 秒 503、liveness 200、啟動後 2 秒 200）、AC6 方法 A（封鎖 7 秒切 Kraken、解封 17 秒切回、缺 Content-Type 415、還原後端點 404）、AC15。
