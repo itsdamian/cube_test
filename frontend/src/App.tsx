@@ -1,3 +1,4 @@
+import { ConvertedPrices } from './converted/ConvertedPrices'
 import { LivePrice } from './live/LivePrice'
 import { LiveStreamProvider } from './live/LiveStreamProvider'
 import type { EventSourceFactory } from './live/liveStream'
@@ -25,6 +26,7 @@ export default function App({ eventSourceFactory }: Props) {
         </section>
         <section aria-labelledby="converted-title">
           <h2 id="converted-title">多幣別換算</h2>
+          <ConvertedPrices />
         </section>
         <section aria-labelledby="chart-title">
           <h2 id="chart-title">價格圖表</h2>

@@ -137,8 +137,8 @@ class ContractSamplesTest {
         Instant rates = Instant.parse("2026-09-30T00:02:31Z");
         when(conversion.converted()).thenReturn(new ConvertedPrices("BTC-USD", new BigDecimal("84045.50"), "coinbase", T,
                 "Rates By Exchange Rate API (https://www.exchangerate-api.com)", List.of(
-                new ConvertedPrices.Item(1, "EUR", "歐元", new BigDecimal("74087.78716000"), new BigDecimal("0.88152"), rates),
-                new ConvertedPrices.Item(4, "TWD", "新台幣", new BigDecimal("2676068.51569500"), new BigDecimal("31.84071"), rates),
+                new ConvertedPrices.Item(1, "EUR", "歐元", new BigDecimal("74087.78916000"), new BigDecimal("0.88152"), rates),
+                new ConvertedPrices.Item(4, "TWD", "新台幣", new BigDecimal("2676068.39230500"), new BigDecimal("31.84071"), rates),
                 new ConvertedPrices.Item(9, "XAU", "黃金", null, null, null))));
         assertMatchesSample("/api/prices/converted", "prices-converted.json");
     }
