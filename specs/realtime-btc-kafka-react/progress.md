@@ -172,3 +172,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`23eba43`)**: 16a 寫 DB 遇到永久性錯誤（DataIntegrityViolation）時逐筆隔離、只丟壞的那筆並記 ERROR，error handler 也把它列為不重試；16b 每次重試記 WARN；17 保留期清除啟動後 1 分鐘先跑（`APP_RETENTION_INITIAL_DELAY`）、刪除條件加 pair 以使用索引；18 匯率抓取失敗後 1 分鐘重試（429 則 20 分鐘）。task 15 已依 QA PASS 勾 [x]。
 - **Verified**: `./mvnw clean verify` → 141 tests / 0 failures。
 - **概念**: 重試策略要先分類錯誤——暫時性的（網路、DB 掛掉）值得等，永久性的（壞資料）要隔離並回報，否則一筆「毒」資料會卡住後面所有資料。
+
+## 2026-09-30 11:36 — Stage: implement task 17（健康檢查與 readiness）
+- **What changed (`1091f92`)**: probes 啟用；liveness 只含 livenessState；readiness = readinessState + db + kafka + kafkaStreams；`KafkaHealthIndicator`（AdminClient describeCluster 3s）、`KafkaStreamsHealthIndicator`（只有 RUNNING/REBALANCING 為 UP）；QA CONCERN 4：show-details never、readiness 只顯示各元件 UP/DOWN。
+- **Verified**: `./mvnw clean verify` → 150 tests / 0 failures；docker pause Kafka → 10 秒內 readiness 503、liveness 200；unpause → 60 秒內 200（AC12 自動部分、QA M1）。
+- **概念**: liveness 回答「要不要重啟這個容器」，readiness 回答「要不要把流量導過來」；外部依賴只該放在 readiness。
