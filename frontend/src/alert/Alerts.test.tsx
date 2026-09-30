@@ -201,3 +201,29 @@ describe('AlertManager', () => {
     expect(deleted).toEqual(['3'])
   })
 })
+
+describe('AlertManager + UnreadAlerts together', () => {
+  it('deleting an alert that has unread events removes them from the unread list (team lead bug)', async () => {
+    // Stateful backend: deleting alert 3 cascades to its events, like the database does.
+    let alerts = structuredClone(samples.alerts)
+    let events = structuredClone(samples.alertEvents)   // event 17 belongs to alert 3
+    server.use(
+      http.get('/api/alerts', () => HttpResponse.json(alerts)),
+      http.get('/api/alert-events', () => HttpResponse.json(events)),
+      http.delete('/api/alerts/:id', ({ params }) => {
+        alerts = alerts.filter((a) => a.id !== Number(params.id))
+        events = events.filter((e) => e.alertId !== Number(params.id))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<><UnreadAlerts /><AlertManager /></>)
+    expect(await screen.findByTestId('unread-17')).toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: '刪除警示 3' }))
+    await user.click(screen.getByRole('button', { name: '確定刪除？' }))
+
+    await waitFor(() => expect(screen.queryByTestId('unread-17')).not.toBeInTheDocument())
+    expect(screen.getByText('沒有未讀警示')).toBeInTheDocument()
+  })
+})

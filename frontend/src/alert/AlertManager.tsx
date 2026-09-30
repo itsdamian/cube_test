@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../api/client'
 import type { Alert, Direction } from '../api/types'
 import { formatDateTime } from '../format/format'
-import { ALERT_EVENTS_CHANGED } from './events'
+import { ALERT_EVENTS_CHANGED, notifyAlertEventsChanged } from './events'
 import { describeAlert } from './format'
 
 /** Create ("BTC-USD 高於 90,000") and delete price alerts. Alerts are evaluated by the backend. */
@@ -56,6 +56,8 @@ export function AlertManager() {
       await api.deleteAlert(id)
       setConfirmDelete(null)
       await reload()
+      // The backend deletes the alert's events too (ON DELETE CASCADE): refresh the unread list.
+      notifyAlertEventsChanged()
     } catch {
       setError('刪除失敗，請稍後再試')
     }
