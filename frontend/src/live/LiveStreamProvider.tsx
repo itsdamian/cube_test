@@ -23,6 +23,7 @@ export function LiveStreamProvider({ children, eventSourceFactory = browserEvent
   const [lastEventAt, setLastEventAt] = useState<number | null>(null)
   const [connectionLost, setConnectionLost] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [startedAt] = useState(() => Date.now())
   const alertListeners = useRef(new Set<AlertListener>())
   const priceListeners = useRef(new Set<(price: PriceEvent) => void>())
 
@@ -81,9 +82,9 @@ export function LiveStreamProvider({ children, eventSourceFactory = browserEvent
   }, [])
 
   const value = useMemo<LiveStreamContextValue>(() => {
-    const base = { price, status, lastEventAt, connectionLost }
+    const base = { startedAt, price, status, lastEventAt, connectionLost }
     return { ...base, display: computeDisplay(base, now), subscribeAlerts, subscribePrices }
-  }, [price, status, lastEventAt, connectionLost, now, subscribeAlerts, subscribePrices])
+  }, [startedAt, price, status, lastEventAt, connectionLost, now, subscribeAlerts, subscribePrices])
 
   return <LiveStreamContext.Provider value={value}>{children}</LiveStreamContext.Provider>
 }

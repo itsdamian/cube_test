@@ -20,6 +20,8 @@ export type EventSourceFactory = (url: string) => EventSourceLike
 export const browserEventSource: EventSourceFactory = (url) => new EventSource(url) as unknown as EventSourceLike
 
 export interface LiveState {
+  /** When the page opened the stream (ms). */
+  startedAt: number
   price: PriceEvent | null
   status: FeedStatus | null
   /** Time (ms) of the last SSE event of any kind; null until the first one. */
@@ -49,7 +51,8 @@ export function computeDisplay(state: Omit<LiveState, 'display'>, now: number): 
     return 'disconnected'
   }
   if (state.lastEventAt === null) {
-    return 'connecting'
+    // Nothing received yet: "connecting" for a while, then admit that no data is arriving.
+    return now - state.startedAt >= STALE_AFTER_MS ? 'delayed' : 'connecting'
   }
   let display: DisplayState = now - state.lastEventAt >= STALE_AFTER_MS ? 'delayed' : 'live'
   if (state.status) {

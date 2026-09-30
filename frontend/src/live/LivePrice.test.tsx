@@ -88,6 +88,14 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
   })
 
+  it('stops saying 連線中 and shows 資料延遲 if nothing arrives within 15 s of opening (QA CONCERN 21)', () => {
+    renderLivePrice()
+    act(() => vi.advanceTimersByTime(14_000))
+    expect(screen.getByTestId('feed-state')).toHaveTextContent('連線中')
+    act(() => vi.advanceTimersByTime(1_000))
+    expect(screen.getByTestId('feed-state')).toHaveTextContent('資料延遲')
+  })
+
   it('shows 已斷線 when the connection to the backend fails, and recovers when it reopens', () => {
     const stream = renderLivePrice()
     act(() => stream.emit('price', price(84045.5)))

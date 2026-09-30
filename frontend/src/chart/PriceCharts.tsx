@@ -47,8 +47,9 @@ export function PriceCharts({ chartFactory = lightweightChart, candleRefreshMs =
     let cancelled = false
     lastLineTime.current = null
     const load = () => {
+      const now = Date.now()   // read the clock once: from and to must be exactly TREND_MINUTES apart
       const request = view === 'trend'
-        ? api.trend(new Date(Date.now() - TREND_MINUTES * 60_000).toISOString(), new Date().toISOString(), TREND_POINTS)
+        ? api.trend(new Date(now - TREND_MINUTES * 60_000).toISOString(), new Date(now).toISOString(), TREND_POINTS)
           .then((trend) => {
             const points = toLinePoints(trend)
             if (!cancelled) {
