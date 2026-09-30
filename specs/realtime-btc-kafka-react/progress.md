@@ -217,3 +217,15 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`2bbd673`)**: `PriceCharts`（1m/5m K 線、走勢最近 1 小時，SSE 即時延伸）、`series.ts` 純轉換函式、`chartAdapter.ts`（lightweight-charts v5 的薄介面，可注入假 adapter）。
 - **Verified**: `npm test`（28 tests）、build、lint 全過；真實 canvas 繪圖留待 task 26 compose 後以瀏覽器確認。
 - **概念**: 把難以測試的邊界（canvas 函式庫）隔離在很小的介面後面，邏輯（資料轉換、何時延伸）放在純函式。
+
+## 2026-09-30 12:11 — Stage: task 18 QA FAIL → 修正中（其他 task 暫停）
+- **QA 判定**: task 18 @ 68a431f FAIL——`-Dsurefire.runOrder=random` 下 AlertEvaluationTest / EndToEndPipelineTest 失敗。根因：`alert-evaluator`、`tick-persister`、`candle-persister` group 寫死，被快取的測試 context 共用同一個 group；其中一個 context 設了 30 秒冷卻，分到 partition 時就用它判斷。Linux CI 的檔案順序可能一開始就紅（AC13 風險）。task 23（2bbd673）是在收到 FAIL 前已 commit。
+- **修正（未 commit，等驗證）**: 三個 group 加可設定前綴 `${app.kafka.group-prefix}`（`APP_KAFKA_GROUP_PREFIX`，正式環境空字串）；test profile 每個 context 隨機前綴；另外 test profile **預設關閉警示評估**，只有 AlertEvaluationTest、EndToEndPipelineTest 開啟（兩者皆預設 5 分鐘冷卻）——只加前綴不夠，因為每個開著評估器的 context 都會各自用自己的冷卻判斷同一筆 tick。
+- **過程中的發現**: `${random.uuid}` 每次解析都產生新值，註解裡的 group 前綴與 AppProperties 綁到的不同；測試改為直接檢查本 context 的 listener container 是否已分配 partition。
+- **驗證中**: QA 的重現指令已通過；正在跑 random 順序完整測試 3 次。
+
+## 2026-09-30 12:25 — Stage: task 18 / task 23 QA FAIL 修正完成
+- **Task 18 修正（`a134a40`）**: consumer group 加前綴、測試預設關閉警示評估、測試連線池上限 4 + Postgres max_connections 300（隨機順序驗證時發現連線耗盡）。QA 重現指令通過；random 順序以先前失敗的 seed 3082923979307916 及 3083380705951166、3083502545398208、3083617509808375 各跑一次，皆 152/152。
+- **Task 23 修正（`a673cd4`）**: 走勢區間只讀一次時鐘；QA CONCERN 21：15 秒內沒有任何事件時由「連線中」改為「資料延遲」。vitest 連跑 10 次皆 29/29。
+- task 19～22 已依 QA PASS 勾 [x]。
+- **概念**: 測試 context 會被快取並持續存活，它們共用的東西（consumer group、Streams application id、資料庫連線數）都必須隔離或預留，否則測試結果會取決於執行順序。

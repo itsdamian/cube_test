@@ -48,13 +48,13 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 
 ## 容器化（後端）
 
-- [ ] 19. **多架構後端 Dockerfile**：單一 `Dockerfile`（builder `--platform=$BUILDPLATFORM` + mvnw、runtime `eclipse-temurin:21-jre`、非 root），刪除 `Dockerfile.amd64`、`Dockerfile.silicon`、`start-silicon.sh`、`stop-silicon.sh` — done when: `docker buildx build --platform linux/amd64,linux/arm64 .` 成功（AC14）；`docker run` 該 image 以 `id -u` 非 0 執行
+- [x] 19. **多架構後端 Dockerfile**：單一 `Dockerfile`（builder `--platform=$BUILDPLATFORM` + mvnw、runtime `eclipse-temurin:21-jre`、非 root），刪除 `Dockerfile.amd64`、`Dockerfile.silicon`、`start-silicon.sh`、`stop-silicon.sh` — done when: `docker buildx build --platform linux/amd64,linux/arm64 .` 成功（AC14）；`docker run` 該 image 以 `id -u` 非 0 執行
 
 ## 前端
 
-- [ ] 20. **前端骨架**：`frontend/` Vite + React + TypeScript、Vitest + React Testing Library + MSW、型別化 API client、繁中版面骨架 — done when: `cd frontend && npm ci && npm test && npm run build` 全過；`git ls-files | grep -E '(^|/)(node_modules|dist)/'` 為空（AC15 前端部分，QA T5）；MSW handler 讀取 `contracts/api-samples/`
-- [ ] 21. **即時價格與連線狀態**：`useEventSource` hook（SSE、自動重連、15 秒無事件 → 延遲）、價格卡（價格、來源、狀態燈、最後更新時間） — done when: `npm test` 通過，含：假 EventSource 送 `price` → 畫面更新（AC1）；`status` = STALE/DISCONNECTED 或 15 秒（fake timers）無**任何** SSE 事件（price、status、heartbeat 都算，不能只看 price；冷清時段 price 會暫停但 status 每 5 秒仍會送）→ 顯示「資料延遲／已斷線」（AC2）；`status.activeSource` = kraken → 顯示目前來源 Kraken（AC6）
-- [ ] 22. **多幣別換算表**：中文名、價格、匯率、匯率更新時間、無匯率顯示「無匯率」、「Rates By Exchange Rate API」attribution 連結 — done when: `npm test` 通過（MSW 模擬 `/api/prices/converted`），斷言上述欄位與連結存在（AC3 前端）
+- [x] 20. **前端骨架**：`frontend/` Vite + React + TypeScript、Vitest + React Testing Library + MSW、型別化 API client、繁中版面骨架 — done when: `cd frontend && npm ci && npm test && npm run build` 全過；`git ls-files | grep -E '(^|/)(node_modules|dist)/'` 為空（AC15 前端部分，QA T5）；MSW handler 讀取 `contracts/api-samples/`
+- [x] 21. **即時價格與連線狀態**：`useEventSource` hook（SSE、自動重連、15 秒無事件 → 延遲）、價格卡（價格、來源、狀態燈、最後更新時間） — done when: `npm test` 通過，含：假 EventSource 送 `price` → 畫面更新（AC1）；`status` = STALE/DISCONNECTED 或 15 秒（fake timers）無**任何** SSE 事件（price、status、heartbeat 都算，不能只看 price；冷清時段 price 會暫停但 status 每 5 秒仍會送）→ 顯示「資料延遲／已斷線」（AC2）；`status.activeSource` = kraken → 顯示目前來源 Kraken（AC6）
+- [x] 22. **多幣別換算表**：中文名、價格、匯率、匯率更新時間、無匯率顯示「無匯率」、「Rates By Exchange Rate API」attribution 連結 — done when: `npm test` 通過（MSW 模擬 `/api/prices/converted`），斷言上述欄位與連結存在（AC3 前端）
 - [ ] 23. **K 線與走勢圖**：lightweight-charts；1m / 5m 切換呼叫 `/api/candles`；走勢線用 `/api/prices/trend` 並以 SSE 價格延伸 — done when: `npm test` 通過，斷言切換 interval 時以正確參數呼叫 API，資料轉換函式（API → chart series）有單元測試（需求 11）
 - [ ] 24. **幣別管理介面**：列表、新增、編輯、刪除、驗證與 409 錯誤訊息 — done when: `npm test` 通過（MSW），斷言新增/編輯/刪除後列表更新並呼叫正確 API、重複代碼顯示錯誤（AC11 前端）
 - [ ] 25. **警示管理與通知**：新增（高於/低於）、刪除、未讀警示清單（逐筆/全部標記已讀）、SSE `alert` → toast；頁面可見時顯示 toast 即呼叫 read，背景分頁不標記、切回可見後才標記（QA S4） — done when: `npm test` 通過，含：載入時顯示 `/api/alert-events?unread=true` 的未讀清單（AC8）；收到 `alert` 事件出現 toast（AC7）；visible → 呼叫 read、hidden → 不呼叫、切回 visible → 呼叫
