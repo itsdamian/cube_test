@@ -167,3 +167,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **修正**: FeedWiringTest 改為只認自己假交易所產生的資料（其他測試也寫同一個 topic，曾造成 race）；過程中發現自己寫錯的 fixture 時間字串（少一位數使斷言恆真）並已修正。
 - **概念**: SSE 是單向 HTTP 串流，瀏覽器內建重連，伺服器推播到瀏覽器不需要 WebSocket；「只保留最新值」的節流限制了瀏覽器的工作量，又不會漏掉最新價格。
 - **待辦（QA CONCERN 16/17/18）**: 下一個 follow-up commit 處理。
+
+## 2026-09-30 11:33 — Stage: follow-up（QA CONCERN 16 / 17 / 18）
+- **What changed (`23eba43`)**: 16a 寫 DB 遇到永久性錯誤（DataIntegrityViolation）時逐筆隔離、只丟壞的那筆並記 ERROR，error handler 也把它列為不重試；16b 每次重試記 WARN；17 保留期清除啟動後 1 分鐘先跑（`APP_RETENTION_INITIAL_DELAY`）、刪除條件加 pair 以使用索引；18 匯率抓取失敗後 1 分鐘重試（429 則 20 分鐘）。task 15 已依 QA PASS 勾 [x]。
+- **Verified**: `./mvnw clean verify` → 141 tests / 0 failures。
+- **概念**: 重試策略要先分類錯誤——暫時性的（網路、DB 掛掉）值得等，永久性的（壞資料）要隔離並回報，否則一筆「毒」資料會卡住後面所有資料。
