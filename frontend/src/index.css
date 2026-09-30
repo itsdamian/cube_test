@@ -146,3 +146,33 @@ section h2 {
 .chart {
   height: 320px;
 }
+
+.currency-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.currency-form label {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.field-error {
+  color: #cf222e;
+  font-size: 0.85rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+button.danger {
+  color: #fff;
+  background: #cf222e;
+  border: 1px solid #cf222e;
+  border-radius: 4px;
+}

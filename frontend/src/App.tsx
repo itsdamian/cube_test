@@ -1,6 +1,7 @@
 import type { PriceChartFactory } from './chart/chartAdapter'
 import { PriceCharts } from './chart/PriceCharts'
 import { ConvertedPrices } from './converted/ConvertedPrices'
+import { CurrencyManager } from './currency/CurrencyManager'
 import { LivePrice } from './live/LivePrice'
 import { LiveStreamProvider } from './live/LiveStreamProvider'
 import type { EventSourceFactory } from './live/liveStream'
@@ -38,6 +39,7 @@ export default function App({ eventSourceFactory, chartFactory }: Props) {
         </section>
         <section aria-labelledby="currency-title">
           <h2 id="currency-title">幣別管理</h2>
+          <CurrencyManager />
         </section>
         <section aria-labelledby="alert-title">
           <h2 id="alert-title">價格警示</h2>

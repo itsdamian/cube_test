@@ -1,6 +1,7 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it } from 'vitest'
+import { notifyCurrenciesChanged } from '../currency/events'
 import { LiveStreamProvider } from '../live/LiveStreamProvider'
 import { FakeEventSource } from '../test/fakeEventSource'
 import { samples } from '../test/msw/samples'
@@ -54,6 +55,21 @@ describe('ConvertedPrices (AC3 frontend)', () => {
     act(() => stream.emit('price', { ...samples.ssePrice, price: 100000 }))
 
     expect(screen.getByTestId('converted-TWD')).toHaveTextContent('3,184,071.00')
+  })
+
+  it('reloads at once when a currency was added, renamed or deleted', async () => {
+    let requests = 0
+    server.use(http.get('/api/prices/converted', () => {
+      requests++
+      return HttpResponse.json(samples.pricesConverted)
+    }))
+    renderTable()
+    await screen.findByTestId('converted-TWD')
+    expect(requests).toBe(1)
+
+    act(() => notifyCurrenciesChanged())
+
+    await waitFor(() => expect(requests).toBe(2))
   })
 
   it('says so when there is no price yet', async () => {

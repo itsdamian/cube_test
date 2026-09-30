@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api/client'
 import type { ConvertedPrices as Converted } from '../api/types'
+import { CURRENCIES_CHANGED } from '../currency/events'
 import { formatDateTime, formatMoney } from '../format/format'
 import { useLiveStream } from '../live/liveStreamContext'
 
@@ -34,9 +35,11 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
         })
     load()
     const timer = setInterval(load, refreshMs)
+    window.addEventListener(CURRENCIES_CHANGED, load)   // a currency was added/renamed/deleted
     return () => {
       cancelled = true
       clearInterval(timer)
+      window.removeEventListener(CURRENCIES_CHANGED, load)
     }
   }, [refreshMs])
 
