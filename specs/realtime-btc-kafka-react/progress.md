@@ -281,3 +281,8 @@ Branch: `feat/realtime-btc-kafka-react`
 
 - **限制**: 本環境無瀏覽器自動化工具，畫面相關（價格跳動顯示、K 線/走勢圖、幣別 CRUD + F5、警示 toast、未讀清單）請使用者目視確認；AC13 的真斷網執行請使用者關閉網路後執行。
 - **task 28 暫不勾選**：待 QA 驗證與使用者目視確認。
+
+## 2026-09-30 13:49 — Stage: QA 結果（task 16 修正、24–27 PASS）
+- QA：task 16 修正（71a5a79）、24、25、26、27 PASS，勾 [x]。QA 以隔離堆疊（-p currency-qa，前端 3002）只照 README 第 6 節獨立完成 AC1–AC15，結果與工程師證據一致（AC7 冷卻 300.363 秒、AC4 14/14、AC2 +13 秒 DISCONNECTED）。
+- QA CONCERN 22：README 第 6 節加上「改過 port／專案名稱時要換掉的部分」提醒。
+- **剩餘**: task 28 待使用者瀏覽器目視確認與實際斷網跑 AC13。

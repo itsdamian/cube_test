@@ -132,7 +132,12 @@ docker image ls --tree currency-backend:multiarch            # 應同時有 linu
 
 ## 6. 驗收步驟（Acceptance Criteria）
 
-以下假設已執行 `docker compose up -d --build --wait`，網頁在 http://localhost:3000，後端在 http://localhost:8080。`BACKEND=currency-backend-1` 是 backend 容器名稱（`docker compose ps` 可查）。
+以下假設已執行 `docker compose up -d --build --wait`，網頁在 http://localhost:3000，後端在 http://localhost:8080。
+
+> **如果你改過 port 或專案名稱**，請先換掉下面指令中的對應部分，否則指令會打到別的堆疊：
+> - 網頁／後端 port：`3000` → 你的 `FRONTEND_PORT`，`8080` → 你的 `BACKEND_PORT`。
+> - 網路與容器名稱以專案名稱開頭：預設是 `currency_egress`、`currency-backend-1`；用 `docker compose -p <名稱>` 時會變成 `<名稱>_egress`、`<名稱>-backend-1`（用 `docker compose ps` 與 `docker network ls` 確認）。
+> - 用 `APP_*=... docker compose up -d backend` 重建 backend 時，也要一起帶上 `FRONTEND_PORT` / `BACKEND_PORT`（例如 `BACKEND_PORT=8081 APP_ALERT_COOLDOWN=30s docker compose up -d backend`），否則會回到預設 port。
 
 **AC1　不需 API key，30 秒內看到跳動價格**
 1. 開 http://localhost:3000。30 秒內「即時價格」出現數字、狀態為「即時」、目前來源 Coinbase，價格會持續變化。
