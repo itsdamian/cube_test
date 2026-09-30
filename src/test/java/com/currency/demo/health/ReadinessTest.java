@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +52,13 @@ class ReadinessTest extends IntegrationTest {
         await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() ->
                 mvc.perform(get("/actuator/health/readiness"))
                         .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP")));
+    }
+
+    @Test
+    void readinessAnswersWithinSecondsWhenTheDatabaseIsUnreachable(
+            @Autowired com.zaxxer.hikari.HikariDataSource dataSource) {
+        // QA CONCERN 19: Hikari's default would make the "db" check hang for 30 s.
+        assertThat(dataSource.getConnectionTimeout()).isEqualTo(5_000);
     }
 
     @Test

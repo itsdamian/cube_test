@@ -22,11 +22,12 @@ public record FeedStatus(String activeSource, State state, Instant lastTickAt, I
         DISCONNECTED
     }
 
-    /** Same content ignoring {@code reportedAt}; used to detect real changes. */
+    /**
+     * Same active source and state. A new {@code lastTickAt} alone is not a "change": it moves with
+     * every trade, and the periodic 5-second status already carries it (prices reach the browser as
+     * their own events).
+     */
     boolean sameAs(FeedStatus other) {
-        return other != null
-                && activeSource.equals(other.activeSource)
-                && state == other.state
-                && java.util.Objects.equals(lastTickAt, other.lastTickAt);
+        return other != null && activeSource.equals(other.activeSource) && state == other.state;
     }
 }

@@ -300,8 +300,8 @@ class FeedManagerTest {
         run(1, coinbase, kraken);
         clearInvocations(statusPublisher);
 
-        run(10, coinbase, kraken);                     // lastTickAt changes each second -> published each time
-        verify(statusPublisher, times(10)).publish(org.mockito.ArgumentMatchers.any());
+        run(10, coinbase, kraken);                     // only lastTickAt changes -> just the 5 s heartbeat
+        verify(statusPublisher, times(2)).publish(org.mockito.ArgumentMatchers.any());
 
         // Frozen clock: nothing changes, so only the 5-second heartbeat publishes.
         clearInvocations(statusPublisher);

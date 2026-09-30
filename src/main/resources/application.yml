@@ -9,6 +9,10 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/currency}
     username: ${SPRING_DATASOURCE_USERNAME:currency}
     password: ${SPRING_DATASOURCE_PASSWORD:currency}
+    hikari:
+      # Fail fast when the database is unreachable: the readiness check (and requests) answer within
+      # ~5 s instead of Hikari's default 30 s. DB-writing listeners retry with backoff anyway.
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:5000}
   # Flyway (db/migration/V*.sql) owns the schema; Hibernate only checks that the
   # entities match it and never alters tables.
   flyway:

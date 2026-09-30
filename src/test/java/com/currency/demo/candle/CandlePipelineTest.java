@@ -65,6 +65,9 @@ class CandlePipelineTest extends IntegrationTest {
     @Autowired
     org.springframework.boot.actuate.health.HealthEndpoint health;
 
+    @Autowired
+    org.springframework.kafka.config.StreamsBuilderFactoryBean streamsFactory;
+
     @Test
     void storedCandlesMatchStoredTicksAndSurviveAnApplicationRestart() {
         // This context's Streams app starts at "latest": produce only once it is running.
@@ -96,6 +99,9 @@ class CandlePipelineTest extends IntegrationTest {
         assertThat(health.healthForPath("readiness").getStatus()).isEqualTo(org.springframework.boot.actuate.health.Status.UP);
         assertThat(health.healthForPath("readiness", "kafkaStreams").getStatus())
                 .isEqualTo(org.springframework.boot.actuate.health.Status.UP);
+        // A dying stream thread is replaced instead of leaving Streams in ERROR.
+        assertThat(streamsFactory.getStreamsUncaughtExceptionHandler().handle(new IllegalStateException("boom")))
+                .isEqualTo(org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
 
         List<Candle> stored = new java.util.ArrayList<>(candles.find(PriceTick.BTC_USD, "1m", T0, end));
         stored.addAll(candles.find(PriceTick.BTC_USD, "5m", T0, end));
