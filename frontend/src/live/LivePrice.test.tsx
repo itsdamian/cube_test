@@ -160,6 +160,35 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('btc-price')).not.toBe(firstDown)
   })
 
+  it('dims the price card and explains why whenever the data is not live, and clears both when live again (QA CONCERN 23)', () => {
+    const stream = renderLivePrice()
+    const card = () => screen.getByTestId('live-price-card')
+    act(() => stream.emit('status', status({ state: 'LIVE' })))
+    act(() => stream.emit('price', price(84045.5)))
+    expect(card()).toHaveClass('live-price--live')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    act(() => stream.emit('status', status({ state: 'STALE' })))
+    expect(card()).toHaveClass('live-price--delayed')
+    expect(screen.getByRole('alert')).toHaveTextContent('資料延遲：暫時沒有收到新的價格')
+
+    act(() => stream.emit('status', status({ state: 'DISCONNECTED' })))
+    expect(card()).toHaveClass('live-price--disconnected')
+    expect(screen.getByRole('alert')).toHaveTextContent('已斷線：目前顯示的是最後收到的價格')
+
+    act(() => stream.emit('status', status({ state: 'LIVE' })))
+    expect(card()).toHaveClass('live-price--live')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(15_000))                     // silence alone is enough
+    expect(card()).toHaveClass('live-price--delayed')
+    expect(screen.getByRole('alert')).toHaveTextContent('資料延遲')
+
+    act(() => stream.emit('price', price(84050)))
+    expect(card()).toHaveClass('live-price--live')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('closes the stream when the page unmounts', () => {
     const { unmount } = render(
       <LiveStreamProvider eventSourceFactory={FakeEventSource.factory}>

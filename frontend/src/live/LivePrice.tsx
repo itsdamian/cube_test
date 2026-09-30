@@ -38,7 +38,7 @@ export function LivePrice() {
   }
 
   return (
-    <div className={`live-price live-price--${display}`}>
+    <div className={`live-price live-price--${display}`} data-testid="live-price-card">
       {price ? (
         <>
           <div className="live-price__row">
