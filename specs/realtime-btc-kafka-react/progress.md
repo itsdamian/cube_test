@@ -307,3 +307,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Task 30（範圍擴充，team lead 依使用者授權核准）**: README 改為作品門面（介紹＋截圖、功能亮點、mermaid 架構圖、技術棧、技術重點、快速開始、開發與測試、spec-driven＋雙 agent、Roadmap、專案結構）；原第 1–7 節**原文**搬到 `docs/configuration.md`（工具、服務與網路、環境變數、常見問題）、`docs/api.md`、`docs/testing.md`、`docs/acceptance.md`。逐行比對：180 行中 174 行原封不動，6 行為刻意改寫的交叉引用（改成連結）。新增 `scripts/check_md_links.py`（檢查相對連結與 GitHub 錨點，反向驗證可抓出壞連結／壞錨點）。tasks.md（task 28）、plan.md、CandlePipelineTest 註解改為新路徑。
 - **引用更新說明**: 本檔（progress.md）較早段落提到「README 第 X 節」者為當時紀錄，不改寫；現位置：第 3 節→docs/configuration.md、第 4 節→docs/api.md、第 5 節→docs/testing.md、第 6 節→docs/acceptance.md、第 7 節→docs/configuration.md〈常見問題〉。qa-review.md 屬 QA，由 QA 自行更新。
 - **待補**: 截圖 `docs/images/dashboard-dark.png`、`dashboard-mobile.png`、`dashboard-light.png`（team lead 以 Chrome 擷取）；mermaid 於 GitHub 的實際 render 待 push 後確認。task 30 暫不勾選。
+
+## 2026-09-30 15:13 — Stage: task 29 team lead 目視審查修正
+- **Team lead 審查**: 375px 無水平捲動 ✅、深淺主題圖表配色一致 ✅、閃爍太頻繁 ❌，另列 5 項必修 + 1 項核准的小幅行為新增（形成中 K 線即時更新）。
+- **修正（`ed6d612`）**: 閃爍同方向每 2 秒（成交時間）最多一次、透明度 18%；換算表不換行、更新時間改為表格下方一行（取最舊）；版面 1360px、3fr/2fr；狀態只在 header pill（成為 live region），價格卡保留淡化與原因；手機分段按鈕不換行、說明文字可換行；形成中 1m/5m K 線跟隨即時價格、後端定稿覆蓋；幣別表格不撐滿、操作靠右。
+- **測試調整說明（交 QA）**: 狀態斷言改讀 header pill（期望文字逐字相同）；匯率時間改讀表格下方（同一 dateTime）；「即時價格不影響 K 線」與核准的第 6 項矛盾，保留原斷言並加入新行為斷言。55/55 連跑 5 次、build、lint 0；前端容器已重建。
+- **概念**: 在 render 中只用輸入資料（成交時間）而不讀時鐘，元件就是純函式、可預期也好測試。
