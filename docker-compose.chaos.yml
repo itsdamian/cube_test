@@ -1,0 +1,9 @@
+# Manual acceptance testing of the failover (AC6) only:
+#   docker compose -f docker-compose.yml -f docker-compose.chaos.yml up -d
+# Enables the "chaos" profile, which adds /actuator/feeds (block/unblock an exchange), e.g.
+#   curl -X POST -H 'Content-Type: application/json' localhost:8080/actuator/feeds/coinbase/block
+# Never use this file for normal runs.
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: chaos
