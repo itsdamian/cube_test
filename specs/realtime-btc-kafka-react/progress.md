@@ -286,3 +286,4 @@ Branch: `feat/realtime-btc-kafka-react`
 - QA：task 16 修正（71a5a79）、24、25、26、27 PASS，勾 [x]。QA 以隔離堆疊（-p currency-qa，前端 3002）只照 README 第 6 節獨立完成 AC1–AC15，結果與工程師證據一致（AC7 冷卻 300.363 秒、AC4 14/14、AC2 +13 秒 DISCONNECTED）。
 - QA CONCERN 22：README 第 6 節加上「改過 port／專案名稱時要換掉的部分」提醒。
 - **剩餘**: task 28 待使用者瀏覽器目視確認與實際斷網跑 AC13。
+- 更正：task 18 在 QA PASS（a134a40）後漏勾，先前進度報告誤稱已勾選；已補勾 [x]。

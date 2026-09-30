@@ -44,7 +44,7 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 - [x] 16. **SSE 即時推播**：`StreamController`（`/api/stream`）、`SseBroadcaster`（每實例唯一 group id + `auto.offset.reset=latest`、price 每連線 250ms 節流、15 秒 heartbeat、斷線清理） — done when: `./mvnw verify` 通過，整合測試：以 HTTP client 連 `/api/stream`，送 tick / FeedStatus / AlertTriggered 到 Kafka 後 5 秒內依序收到 `price`、`status`、`alert` 事件；1 秒內送 50 筆 tick 最多收到 5 筆 price，且**最後收到的 price 一定是第 50 筆**（節流不丟最後一筆，QA T4）；client 斷線後 emitter 被移除；SSE 三種事件 payload 契約樣本；幣別 API 契約樣本也在此補齊
 - [x] 17. **健康檢查與 readiness**：probes 啟用、`KafkaHealthIndicator`（`describeCluster`，3 秒 timeout）、`KafkaStreamsHealthIndicator`、readiness group = `readinessState,db,kafka,kafkaStreams`、liveness 只含 `livenessState` — done when: `./mvnw verify` 通過，整合測試：正常時 readiness 200；docker `pause` Kafka container → 10 秒內 readiness 503、liveness 仍 200；`unpause` → Awaitility 在 60 秒內等到 readiness 200（AC12，QA M1）；Streams 進入 ERROR 時 readiness 503
 
-- [ ] 18. **後端全鏈路整合測試**（QA T2）：啟用 ingest 但以**假 `PriceFeedClient`**（主/備各一，由測試控制）取代真實 client，Testcontainers Kafka + Postgres，Streams / persist / alerts / SSE 全開 — done when: `./mvnw verify` 通過，單一測試驗證：假主來源送出 12 分鐘事件時間的 tick → `price_tick` 有資料、`candle` 有 ≥ 10 根 1m 與 ≥ 2 根 5m、預先建立的警示被觸發並寫入 `alert_event`、SSE client 收到 `price` / `alert`；接著讓假主來源停送 → SSE 收到 `status`（activeSource=備援）→ 恢復 → 切回主來源
+- [x] 18. **後端全鏈路整合測試**（QA T2）：啟用 ingest 但以**假 `PriceFeedClient`**（主/備各一，由測試控制）取代真實 client，Testcontainers Kafka + Postgres，Streams / persist / alerts / SSE 全開 — done when: `./mvnw verify` 通過，單一測試驗證：假主來源送出 12 分鐘事件時間的 tick → `price_tick` 有資料、`candle` 有 ≥ 10 根 1m 與 ≥ 2 根 5m、預先建立的警示被觸發並寫入 `alert_event`、SSE client 收到 `price` / `alert`；接著讓假主來源停送 → SSE 收到 `status`（activeSource=備援）→ 恢復 → 切回主來源
 
 ## 容器化（後端）
 
