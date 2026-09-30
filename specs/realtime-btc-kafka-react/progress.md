@@ -392,3 +392,12 @@ Branch: `feat/realtime-btc-kafka-react`
   - 示範狀態：一則離開期間觸發（未讀）、一則「已高於」（已成立）、一則「還差」（未成立）；換算卡片顯示 NT$。
   - `check_md_links.py`（不加 allow）通過。
   - 示範警示 8（已成立）和 7 留在我的 :3001 DB；8 每 5 分鐘會再觸發一次。
+
+## 2026-09-30 16:45 — Stage: tasks 30–32 QA PASS
+- **QA 判定**:
+  - task 32（`652d4cc`）PASS，task 16 重新 PASS。QA 做完整反向驗證：Resilience 測試 3/3 失敗、還原後通過；前端門檻改成 600 秒時 2 個測試失敗。QA 在 :3002 做 60 次 kill -9 之後，價格仍持續推送。
+  - task 31（`cbe54af`）PASS：320/375/390/768 的 scrollWidth 都等於 clientWidth。
+  - task 30 PASS；`2aa29a0`、`5da0885`、`b36d48c`、`92c9e1b` 都 PASS。
+  - HEAD `b36d48c`：verify 155/155、vitest 74/74、check_md_links 不加 allow 43/43。
+- tasks.md 勾選 30、31、32。目前沒有開放中的 FAIL/CONCERN。
+- **剩下**：task 28 的 AC13（使用者實際斷網執行 `./mvnw -o clean verify` 與 `cd frontend && npm test`）。之後 team lead 會改寫 commit 作者並 force push。
