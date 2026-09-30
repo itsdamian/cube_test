@@ -16,12 +16,12 @@ Verdict 定義：
 | # | Acceptance Criterion（摘要） | 對應 task | 狀態（QA 獨立驗證，2026-09-30） | 證據 |
 |---|---|---|---|---|
 | AC1 | `docker compose up` 後免 API key，30 秒內前端看到跳動的 BTC-USD 價格 | 4,6,7,16,18,21,26 | ✅ HTTP/SSE 層；✅ 畫面（team lead 目視） | QA 堆疊：經 nginx 的 SSE 10 秒 15 筆 price；頁面 `<title>比特幣即時價格</title>` |
-| AC2 | 切斷價格來源網路 30 秒內顯示斷線/延遲；恢復後自動更新 | 6,7,21,26 | ✅ 後端/SSE；⏳ 畫面（變淡/警告）待目視 | egress disconnect → +10s kraken、+11s STALE、+13s DISCONNECTED；+46s 接回 → +73s coinbase/LIVE，未重啟 |
+| AC2 | 切斷價格來源網路 30 秒內顯示斷線/延遲；恢復後自動更新 | 6,7,21,26 | ✅ 後端/SSE；✅ 畫面（QA headless Chrome：淡化 + 紅色警告、恢復即時） | egress disconnect → +10s kraken、+11s STALE、+13s DISCONNECTED；+46s 接回 → +73s coinbase/LIVE，未重啟 |
 | AC3 | 幣別換算與匯率來源誤差 < 0.5%，顯示匯率更新時間 | 14,22 | ✅ | 5 幣別換算匯率與 open.er-api 完全一致（0.00000%），rateUpdatedAt=provider 時間；attribution 連結（前端測試） |
 | AC4 | 跑 10 分鐘後有歷史、≥10 根 1m、≥2 根 5m，OHLC 與逐筆一致 | 9–12,18 | ✅ | 12 根 1m + 2 根 5m，README SQL 14 列全部 `ohlc_matches = t`（期間經歷 46s 斷網與 backend 重建） |
 | AC5 | 重啟後端與 DB 後歷史價格與 K 線仍在 | 3,12,26 | ✅ | `restart backend postgres`：candles 14→14、ticks 2539→2557、幣別改名仍在 |
-| AC6 | 主要來源被封鎖 30 秒內切備援、前端顯示來源；主要恢復後切回 | 6–8,16,18,21 | ✅ 後端/SSE；⏳ 畫面待目視 | chaos block → 1s kraken；unblock → 18s coinbase；錯誤網址 → kraken；還原後 `/actuator/feeds` 404 |
-| AC7 | 警示越過門檻通知；5 分鐘冷卻；冷卻後條件成立再通知 | 15,16,25 | ✅ 後端/SSE（預設 5m）；⏳ toast 待使用者目視 | 預設冷卻：兩次觸發間隔 **300.363s**；30s 冷卻：30.003s / 30.759s |
+| AC6 | 主要來源被封鎖 30 秒內切備援、前端顯示來源；主要恢復後切回 | 6–8,16,18,21 | ✅ 後端/SSE；✅ 畫面（QA headless Chrome 375px：pill「即時 · Kraken」） | chaos block → 1s kraken；unblock → 18s coinbase；錯誤網址 → kraken；還原後 `/actuator/feeds` 404 |
+| AC7 | 警示越過門檻通知；5 分鐘冷卻；冷卻後條件成立再通知 | 15,16,25 | ✅ 後端/SSE（預設 5m）；✅ toast（QA headless Chrome，visibilityState=visible） | 預設冷卻：兩次觸發間隔 **300.363s**；30s 冷卻：30.003s / 30.759s |
 | AC8 | 前端關閉時觸發的警示，重開頁面顯示為未讀 | 15,25 | ✅ 後端；✅ 未讀清單 + F5（team lead 目視） | 無瀏覽器時觸發的 2 筆 `readAt=null`；read 後從未讀清單消失 |
 | AC9 | 逐筆價格超過 30 天自動清除（可縮短保留期驗證）；K 線不受影響 | 13 | ✅ | PT5M/PT30S：最舊 tick 年齡 5:17–5:18，candles 28→29 未被刪，log 每 30s 刪除 |
 | AC10 | 全新 DB 已有 USD/EUR/GBP/TWD/JPY 與中文名稱 | 3 | ✅ | `down -v` → EUR 歐元、GBP 英鎊、JPY 日圓、TWD 新台幣、USD 美元 |
@@ -642,3 +642,141 @@ Verdict 定義：
 ### 2026-09-30 16:35 — AC6 目視說法更正（已對齊）
 - 工程師確認：team lead 目視的是「畫面有顯示目前來源 Coinbase」，並沒有看過封鎖主來源時畫面切換成 Kraken；AC2 的變淡 + 警告也還沒目視。progress.md 已加上更正紀錄。雙方看法一致，不需要交給 team lead 裁決。
 - **task 28 最後確認前的待辦（由使用者執行）**：(1) AC7 toast（在前景分頁）；(2) AC2 變淡 / 警告、AC6 顯示 Kraken（在 localhost:3002 用 egress disconnect / chaos 操作）；(3) AC13 實際斷網。
+
+### 2026-09-30 16:50 — 流程紀錄：分支已 push；qa-review.md 被 commit；新增 task 29
+- **push**：`git branch -r` → `origin/feat/realtime-btc-kafka-react` 存在，最新是 `640c09d chore: add engineer/QA agent definitions and QA review log`（由 team lead 告知）。progress.md:40 記載「安裝系統軟體、push、開 PR、動 main 仍須問使用者本人」；**QA 在 progress.md / qa-review.md 中找不到使用者本人核准 push 的紀錄** → 已向使用者提出，請使用者確認這次 push 是否經過本人同意。（QA 沒有執行也不會執行任何 push。）
+- **qa-review.md 被 commit**：`640c09d` 把本檔納入版本控制，commit 中的內容和當時 QA 的檔案完全相同（`diff` 無差異）。之後 QA 每次追加紀錄，都會讓工程師的工作目錄出現 `M qa-review.md`；本檔仍然只由 QA 編輯，工程師只能在 commit 時一併帶上，不可以修改內容。
+- **task 29「前端視覺美化」**（使用者透過 team lead 提出）：純 CSS，深 / 淺色、兩欄 grid、響應式、可及性 AA，不改變行為和 API。和 spec 的 Non-Goals 沒有衝突（spec 本來就要求 React 前端，視覺風格沒有限制）。QA 驗收清單：
+  1. `npm ci && npm test`（連跑 3 次）/ `build` / `lint` 全過，測試數量不減少；
+  2. `git diff` 中**沒有**修改任何測試斷言（`*.test.tsx` 的 `expect` 不變，或只有新增）、`api/client.ts`、`api/types.ts`、hooks 的行為邏輯；
+  3. `package.json` 沒有新增 UI 框架依賴（例如 tailwind / MUI / styled-components 等）；
+  4. `aria-label`、`role`、`data-testid` 的數量不減少（前後 `grep -c` 比對）；
+  5. 顏色對比 AA：QA 會抽查主要文字 / 背景色組合的對比度（≥ 4.5:1）；目視部分由 team lead 用 Chrome 審查。
+
+### 2026-09-30 17:00 — push 授權紀錄（結案）
+- team lead `personal-workplace-7a` 轉述：使用者本人在主 session 寫下「**可以先commit push一次 但我想要整體畫面在美觀一點**」（2026-09-30），team lead 收到後才 push `feat/realtime-btc-kafka-react`，沒有動到 `main`。
+- QA 查證：`git branch -r` 只有 `origin/feat/realtime-btc-kafka-react` 是新的；`origin/main` 沒有變化。
+- 證據性質：授權原文由 team lead 轉述，QA 無法直接看到主 session；如果使用者在 QA 分頁另有說明，以使用者的說法為準。本項**結案**。
+
+### 2026-09-30 17:30 — Task 29（前端視覺美化，spec 以外的新增範圍，team lead 依使用者授權核准）@ `f5d82ad`
+- **Verdict**: **PASS**
+- **Evidence（依 QA 驗收清單）**:
+  1. `npm ci` → `vitest run` × 3 → `3 × Tests 49 passed (49)`（原本 47，只增不減）；`build` ✓；`oxlint` 0。
+  2. `git diff 640c09d f5d82ad` 中測試檔**沒有任何刪除行**（`grep '^-'` 為空，只有新增：StatusPill.test、LivePrice 漲跌、App regions）；`frontend/src/api/` 和 hooks **沒有變更**；tsx 的改動只有版面（App 分成兩欄）、新的 `StatusPill`、`LivePrice` 的漲跌 / 閃爍（在 render 時比較前一個價格，只使用現有資料）、`chartAdapter` 從 CSS token 讀取配色。沒有改到 API 呼叫或既有行為。
+  3. `frontend/package.json` / `package-lock.json` **沒有 diff** → 沒有新增任何 UI 框架依賴。
+  4. 非測試 tsx 中的數量：`aria-label 15→16`、`role= 10→10`、`data-testid 9→11`（沒有減少）。
+  5. **QA 自行計算 WCAG 對比度**（從 index.css 的 tokens）：深色主題 15 組組合都合格，文字組合最低 **4.61**（on-danger/danger），`border-strong/surface` 4.10（≥3）；淺色主題最低 **4.56**（up/up-soft），`border-strong/surface` 3.73。有 `prefers-reduced-motion: reduce` 區塊。
+- QA 的 3002 堆疊已經重建 frontend（新版的 CSS 中包含 `prefers-color-scheme`），方便 team lead 或使用者目視。目視審查（桌機 / 375px）由 team lead 負責。
+
+### 2026-09-30 17:30 — 收到 task 30「README 改版」（team lead）
+- 內容：README 改成作品門面；把操作細節搬到 `docs/configuration.md`、`api.md`、`testing.md`、`acceptance.md`。QA 驗收清單：(1) 將舊 README（`f3a6460` 版）第 3–7 節逐段和新文件比對，確認**沒有遺漏**（以指令 / 變數 / 端點為單位列出差異）；(2) 所有相對連結都能解析到存在的檔案 / 錨點；(3) 照 `docs/acceptance.md` 實際走一遍 AC12 和 AC6；(4) 在乾淨的 clone 上照快速開始操作（使用 QA 的隔離 project 名稱 / port）。
+
+### 2026-09-30 18:10 — Task 30（README 改版）@ `b207bb7`
+- **Verdict**: **CONCERN** —— 內容搬移、連結、驗收步驟、快速開始都通過；還差 3 張截圖（README 標記為 PENDING），以及 push 後 GitHub 上 mermaid 能不能正常顯示。截圖到位、確認 mermaid 後即可改為 PASS（工程師也表示截圖到位前不會勾選）。
+- **Evidence**:
+  1. **內容沒有遺漏（QA 自己寫腳本比對）**：舊 README（`b207bb7~1`）第 1–7 節共 180 行非空內容，逐行在新 README + `docs/{configuration,api,testing,acceptance}.md` 中找原文 → **174 行一字不差**；其餘 6 行都是交叉引用改成連結（「見 5.1」→ `testing.md#離線跑測試ac13`、「見第 2 節」→「見本頁〈快速開始與服務〉」、`application.yml` / `contracts/api-samples/` 加上連結），語意完全相同。和工程師回報的數字一致。
+  2. **連結**：`python3 scripts/check_md_links.py --allow-missing-images` → `checked 41 relative links in 11 Markdown files`，exit 0，只有 3 張截圖 PENDING。**QA 反向驗證**：在 README 加入 `docs/nope.md`、`testing.md#不存在的段落`、`testing.md#離線跑測試ac13` → 前兩個 `ERROR`、exit 1，中文錨點正確被判定有效；之後 `git checkout` 還原。
+  3. **照 `docs/acceptance.md` 實際操作**（在乾淨 clone 的隔離堆疊 `-p currency-qa2`、3003/8083 上）：AC12 → 200 / stop kafka → 503（kafka DOWN）/ liveness 200 / start → 2 秒回 200；AC6 方法 A → block 後 **2 秒**切到 kraken，unblock 後 **17 秒**切回 coinbase，回到一般設定後 `/actuator/feeds` 404。
+  4. **快速開始**：`git clone`（本機 repo）→ checkout `b207bb7` → `docker compose up -d --build --wait` → exit 0，29 秒內 4 個服務都 healthy（有用到本機 BuildKit / image 快取，所以「第一次約 5 分鐘」這個時間沒有被驗到）；10 秒收到 25 筆 price。驗完 `down -v`，並刪除 `:qa2` image。
+- **QA 紀錄中的舊章節引用**：本檔之前的條目引用「README 第 6 節」「README 5.1」「README SQL」，是**當時的版本**（`44b5539` / `f3a6460`）；本檔屬於歷史紀錄，不回頭修改。新位置對照：README 第 6 節 → `docs/acceptance.md`；README 5.1 → `docs/testing.md`〈離線跑測試（AC13）〉；README 5.2 → `docs/testing.md`〈建置多架構 image（AC14）〉；AC4 SQL 仍然是 `docs/acceptance/ac4-ohlc-check.sql`。
+
+### 2026-09-30 18:40 — Task 29 目視回饋修正 @ `ed6d612`（含 team lead 核准的行為新增：形成中的 K 線）
+- **Verdict**: **PASS**（附 CONCERN-23）
+- **Evidence**: `vitest run` × 5 → `5 × Tests 55 passed (55)`；build ✓；`oxlint` exit 0；`package.json` 和 `src/api` 的 diff 為 0 行；非測試 tsx 中 `aria-label 16 / role 10 / data-testid 11`，數量不變。QA 3002 的 frontend 已經重建。
+- **測試斷言修改逐條審查**（工程師要求 QA 指出哪一條的意思被改掉）：
+  - LivePrice：13 處 `getByTestId('feed-state')` → `'header-feed-state'`，`toHaveTextContent` 的期望文字**逐字相同**（連線中 / 即時 / 資料延遲 / 已斷線）；`active-source` 的 Coinbase / Kraken 斷言保留（LivePrice.test:119/122）→ **意思沒有改變**（狀態仍然來自同一個 `computeDisplay`，只是改從 header 顯示）。
+  - StatusPill：可及名稱 `資料狀態：即時` → `資料狀態：即時，目前來源 Kraken` → 資訊只增加。✔
+  - ConvertedPrices：`<time dateTime="2026-09-30T00:02:31Z">` 從 TWD 列移到表格下方的 `rates-updated`，並且多了「匯率更新於」的斷言 → AC3「顯示匯率更新時間」仍然成立。需求 10「知道每個價格用哪個時間點的匯率」：因為 `FxRateRepository.saveAll` 每次都用同一個 snapshot 更新全部幣別，所以所有匯率的 provider 時間相同，顯示一行（取最舊的時間）不會失真。✔
+  - PriceCharts：舊測試「live prices do not touch the candle view」的**原斷言 `expect(chart().appended).toHaveLength(0)` 保留**（PriceCharts.test:80），另外新增 `candleUpdates` 的斷言；測試名稱修改反映 team lead 核准的第 6 點行為變更 → 合理。✔
+  - 新增：閃爍節流（用 DOM 節點是否相同判斷動畫是否重播，涵蓋同方向 1 秒不閃、方向改變立即閃、同方向 2 秒後再閃）；`applyLivePrice` / `mergeForming`（同一 bucket、下一個 bucket、5m、較舊的價格忽略、後端定稿的 K 線優先）。
+  - **結論：QA 沒有發現任何一條斷言的意思被改掉。**
+- **Findings（不阻擋）**:
+  - **CONCERN-23**：修改前後都**沒有**斷言驗證「狀態不是即時的時候，價格卡會淡化並顯示原因」（LivePrice.tsx:20 `stale = display !== 'live'`、:61 `{stale && (…)}`）。原本價格卡上有顯示狀態文字，所以這個缺口影響不大；現在狀態只在 header 顯示一次，價格卡上防止「靜默顯示舊價格」（AC2）的唯一訊號就是淡化 + 原因說明，建議補一個測試：`STALE`/`DISCONNECTED`/15 秒沒有事件 → 價格卡有淡化的 class 和原因文字；恢復 `LIVE` → 兩者都消失。AC2 本身仍然有 header pill 的測試保護。
+
+### 2026-09-30 18:55 — CONCERN-23 修正 @ `b027563`
+- **Verdict**: **PASS**；**CONCERN-23 關閉**
+- **Evidence**: `vitest run` × 3 → `3 × Tests 56 passed (56)`；build-ok、lint-ok。tsx 的改動只有卡片外層加上 `data-testid="live-price-card"`（唯一被刪除的一行是加 testid 之前的 `<div className=…>`），畫面沒有變化。
+  - **反向驗證（QA）**：把 LivePrice.tsx:20 的 `const stale = display !== 'live'` 改成 `const stale = false` → `× dims the price card and explains why whenever the data is not live… (QA CONCERN 23)`，另外還有 2 個狀態相關的測試也失敗（`3 failed | 9 passed`）；`git checkout` 還原後 56/56。→ 新測試能抓到「價格卡不再淡化 / 不再說明原因」這種退化。
+- **目前狀態**：沒有開放中的 CONCERN。待辦：task 30 的截圖；task 28 需要使用者確認（AC7 toast、AC2 淡化 / AC6 Kraken 的畫面、AC13 實際斷網）。
+
+### 2026-09-30 19:30 — Task 29 第二次目視回饋修正 @ `a766828` + `35c257c`（文件補充）
+- **Verdict**: **PASS**
+- **Evidence**: `vitest run` × 3 → `3 × Tests 57 passed (57)`；build-ok、lint-ok；`check_md_links --allow-missing-images` → 41 個連結、沒有 ERROR；測試檔沒有刪除任何一行；`package.json` 沒有 diff。
+  - 閃爍全域下限 `FLASH_MIN_GAP_MS = 1_000`：**反向驗證（QA）**改成 0 → `× never flashes more than once per second, even when the price bounces up and down`（`1 failed | 12 passed`），還原後通過。
+  - `scripts/screenshot.mjs`：只用 Node 內建模組 + Chrome DevTools Protocol，沒有新增任何依賴。小問題：Chrome 路徑（macOS）和 `http://localhost:3001/` 是寫死的，只能在工程師的環境使用；建議改成可以用參數或環境變數指定（不阻擋）。
+  - QA 用 `screenshot.mjs` 的 **scratch 副本**（URL 改成 3002，加上時間軸和 DOM 探測，沒有修改 repo 內的檔案）拍攝 1440px：幣別表格的「編輯 / 刪除」按鈕並排、表格依內容寬度縮起；375px（DPR 2）：`documentElement.scrollWidth > clientWidth` 為 **false**（頁面沒有水平捲動），換算表在卡片內捲動。
+
+### 2026-09-30 19:30 — Task 28 畫面項目：QA 用 headless Chrome 親自驗證（第一手證據）
+- 方法：`node <scratch>/qa-shot.mjs http://localhost:3002/ …`（Chrome `--headless=new`，截圖 + `Runtime.evaluate` 讀取 DOM），同時從 shell 依時間表操作 QA 堆疊。截圖存在 QA scratch 目錄（`shots/s1-*.png`、`shots/s2-*.png`）。
+- **AC7 toast**（1440 深色）：t=12s 建立 `ABOVE 80292` → **t=16s** 探測結果 `vis:"visible"`，toast 文字 `價格警示 BTC-USD 高於 US$80,292.00，目前 US$83,292.06 ×`；截圖右上角可以看到琥珀色 toast；同時未讀清單顯示「沒有未讀警示」（前景顯示 toast 時立即標記已讀 = S4 ✔）。
+- **AC2 淡化 + 警告**：t=20s `docker network disconnect currency-qa_egress` → **t=40s** `pill:"資料狀態：已斷線…"`、`card:"live-price live-price--disconnected"`、`cardAlert:"已斷線：目前顯示的是最後收到的價格，連線恢復後會自動更新。"`；截圖中價格變成灰色，下方有紅色警告條，header pill 為紅色「已斷線」。t=45s 接回 → **t=85s** `card:"live-price--live"`、pill「即時」，價格繼續更新（沒有重啟）。
+- **AC6 前端顯示 Kraken**（375px 手機，chaos backend）：t=8s pill「即時，目前來源 Coinbase」→ t=10s block coinbase → **t=18s** `pill:"資料狀態：即時，目前來源 Kraken"`、`source:"· Kraken"`；截圖中 header 為「即時 · Kraken」，卡片寫「成交來源 Kraken」→ t=25s unblock → t=55s 回到 Coinbase。驗完 backend 還原成一般設定（`/actuator/feeds` 404），測試用的警示已刪除。
+- **task 28 剩下的唯一待辦**：AC13 實際斷網執行（需要使用者關閉網路）。總表已更新。
+- 備註：工程師提到的「task 31 UI 重新設計」QA 還沒有收到 team lead 的交辦；收到後再訂驗收清單。截圖（task 30）要等 task 31 之後才會拍最終版。
+
+### 2026-09-30 19:45 — screenshot.mjs 可設定化 @ `850fdfa`
+- **Verdict**: **PASS**（對應 QA 在 task 29 第二次修正條目中的小建議）
+- **Evidence**: diff：新增 `CHROME_PATH`、`SCREENSHOT_URL` 環境變數，預設值不變；`docs/testing.md:53` 有說明與範例。QA 在 worktree 以 **repo 內的腳本**（非 scratch 副本）執行 `SCREENSHOT_URL=http://localhost:3002/ node scripts/screenshot.mjs … 1280 800 1 light` → `saved …/env-3002.png`（114 KB）；截圖為 QA 堆疊的**淺色主題**（header pill「即時 · Coinbase」、K 線、換算表、attribution 連結）→ 覆寫生效，淺色主題也正常顯示。
+
+### 2026-09-30 20:00 — 收到 task 31「依設計方向 B 重新設計前端」（team lead 交辦）
+- 設計規格：`specs/realtime-btc-kafka-react/design/redesign.md`（方向 B）。第 9 節核准的行為變更：(1) CurrencyManager 放進 `<dialog>`（內部邏輯不變）；(2) 警示表單收合（`formOpen` + `aria-expanded`/`aria-controls`，新增後維持展開）；(3) UnreadAlerts 0 筆時 `return null`。使用者選擇的選用項目：「開啟後漲跌」（#4）、「還差 ±X」（#6，獨立 `<Distance>` 元件）。其他使用者決定：綠漲紅跌、2 位小數、USD 排第一、TradingView logo 移到頁尾，並且**必須附連結**（lightweight-charts 的授權要求）。
+- 第 9 節也明訂**不需要變更**：SSE、節流常數、`computeDisplay`、API 呼叫、錯誤處理、toast 已讀規則。
+- **QA 驗收清單**：
+  1. `npm test` ×3 / build / lint；測試數量 ≥ 57；每一行被刪除 / 修改的斷言都要能對應到新斷言，並說明意義相同（「沒有未讀警示」的文字斷言依第 9 節第 3 點可以改成「元素不存在」）。
+  2. `git diff` 中以下檔案應該為零，否則需逐一說明：`src/api/*`、`src/live/liveStream.ts`（computeDisplay / STALE_AFTER_MS）、`LiveStreamProvider.tsx`（SSE）、`FLASH_EVERY_MS` / `FLASH_MIN_GAP_MS` 常數、`AlertToasts.tsx` 的已讀邏輯、`alert/events.ts`。
+  3. `<dialog>`：開啟時使用 `showModal()`；`Esc` 可以關閉；關閉後**焦點回到觸發按鈕**；要有測試（jsdom 對 `showModal` 的支援有限，會看是否有 polyfill 或 mock，並用 headless Chrome 實際按鍵驗證）。
+  4. 頁尾有 TradingView attribution **連結**（`href` 指向 tradingview.com），圖表內的 logo 已關閉（`attributionLogo: false`），連結可以由鍵盤取得焦點。
+  5. 依新 tokens 計算 WCAG 對比度（文字 ≥4.5、邊框 / focus ≥3），深淺兩種主題都要算。
+  6. 單元測試：USD 排第一（其餘依代碼排序）；「開啟後漲跌」= 目前價 − 第一筆價（和百分比），「還差 ±X」= 門檻 − 目前價，含正負號與 2 位小數格式；價格尚未到達時的空狀態。
+  7. headless Chrome 實拍：1440 深 / 淺、375 手機；探測 `scrollWidth`；AC2 / AC6 / AC7 的狀態畫面在新設計下仍然成立。
+
+### 2026-09-30 20:40 — Task 16 再次重新開啟：SSE 價格推播會永久靜默停止（潛在缺陷）
+- **Verdict**: **FAIL**（影響 AC1「持續跳動」與 AC2「不能靜默顯示舊價格」；工程師回報「範圍外、未修正」→ QA 認定在範圍內）
+- **症狀（工程師在 :3001 觀察到）**：08:02:39Z 之後 SSE 不再推送 `price`，`status` 照常推送；log 沒有例外；重啟 backend 就恢復。
+- **QA 查證（唯讀讀取工程師 backend `currency-backend-1` 的 log，該容器 StartedAt 08:05:01，restart 之後舊 log 仍在）**：08:02:39 之後 `StreamThread … Processed 449 total records`（08:04:26）、`AlertEvaluator: Alert 3 fired … at 83245.56`（08:03:19）→ **tick 一直有進 Kafka，而且有被消費**；`sse-ticks-…` consumer 在 08:04:58 關機時仍然正常參與 rebalance/revoke → consumer 執行緒還活著。08:02:39 前後**沒有任何 log**；整份 log 中 `broken pipe|HttpMessageNotWritable|AsyncRequestNotUsable|ClientAbort` 的出現次數都是 0。
+- **根因分析（讀程式碼 `SseBroadcaster`，自 task 16 以來沒有修改）**：
+  - `sender.scheduleAtFixedRate(this::pushLatestPrice, 250ms…)`（:58）。依 `ScheduledExecutorService.scheduleAtFixedRate` 的 Javadoc：*"If any execution of the task encounters an exception, subsequent executions are suppressed"* —— 而且例外只會被存進 Future，**不會寫 log**。
+  - `send()`（:129-135）只攔截 `IOException | IllegalStateException`。client 斷線時如果剛好發生在 Jackson 序列化 `data` 的過程中，Spring 拋出的是 `HttpMessageNotWritableException`（RuntimeException，不屬於上面兩種）；另外 catch 區塊中的 `emitter.completeWithError(e)` 本身也可能拋出例外。任何 RuntimeException 從 `pushLatestPrice` 逸出，**價格推送就會永久停止**。
+  - `status` / `alert` 是用 `sender.execute(...)` 每次送出一個新任務 → 單次失敗不會影響之後的推送 → 完全符合「price 停止、status 照常、沒有 log」這個症狀。
+  - 前端的防線失效：`status` 事件每 5 秒一筆，會一直重設 15 秒計時，server 回報的狀態也是 LIVE → 畫面維持「即時」，但價格停住 = **AC2 明文禁止的「靜默顯示舊價格」**。
+- **QA 重現嘗試（未能重現）**：在 QA 堆疊（同一份 SseBroadcaster 程式碼）上 (a) 120 次連線後在 0.1–0.9 秒內 `kill -9`；(b) 8 輪、每輪 30 個 `--limit-rate 1` 的慢 client 同時被 `kill -9` → 每一輪新 client 都還收得到 price（6–15 筆 / 6 秒）。時序很難觸發，但結合 log 證據和程式碼路徑分析，缺陷的存在已經足夠明確。
+- **修正要求**：
+  1. `pushLatestPrice` 和 `heartbeat` 整段包在 `try { … } catch (RuntimeException e) { log.warn(…) }`（**排程任務絕不可以拋出例外**）；`send()` 改成攔截 `Exception`（或至少加上 `RuntimeException`），`completeWithError` 也要包起來。
+  2. 測試：注入一個 `send` 時丟出 RuntimeException 的 emitter（或 stub），斷言**之後的價格推送仍然會送到其他 client**。修正前這個測試應該失敗（請附反向驗證結果）。
+  3. 建議（縱深防禦，不強制）：前端比較「最後一筆 price 的 eventTime」與 `status.lastTickAt`，後者前進超過 15 秒而沒有收到 price 時，顯示「資料延遲」。
+
+### 2026-09-30 21:20 — Task 31（依設計方向 B 重新設計前端）@ `0270e05` + `72f2146`
+- **Verdict**: **FAIL**（手機寬度出現頁面水平捲動 → task 29 已通過的響應式要求在這次改版中退步）；其他驗收清單項目全部通過。
+- **Evidence（通過的部分）**:
+  1. `vitest run` × 3 → `3 × Tests 69 passed (69)`（原本 57）；build-ok、lint-ok；`check_md_links`（不加 allow）→ 41 個連結、exit 0（3 張最終截圖已經到位）。
+  2. **不應變更的檔案**：`src/api/*`、`live/liveStream.ts`、`LiveStreamProvider.tsx`、`alert/events.ts`、`package.json` / `package-lock.json` 的 diff 都是 **0**；`FLASH_EVERY_MS = 2_000`、`FLASH_MIN_GAP_MS = 1_000` 沒有變。`AlertToasts.tsx` 有 diff，但**只改了 markup**（圖示 / 標題時間 / 計時條），第 1–50 行的已讀邏輯沒有動；`liveStreamContext.ts` 只新增 `useOptionalLiveStream()`。
+  3. **斷言修改逐條審查**：App 區塊從「數量 5」改成按名稱逐一斷言 4 個 region（幣別管理移到 dialog，另外有測試）；「未讀警示（1）」→ heading「離開期間觸發 1 則」；「沒有未讀警示」→ 整個區塊不渲染（§9-3 已核准）；toast 文字更嚴格（包含門檻金額）；漲跌 / 閃爍從大數字的 class 改到方向 pill 的 `data-dir` / 元素識別，時間點和期望次數不變，並新增「大數字沒有顏色 class」。**沒有發現任何一條斷言的意思被改掉。**
+  4. **headless Chrome 實際操作**（`qa-interact.mjs`，CDP 真實按鍵 / 滑鼠）：點「管理幣別」→ `dialog[open]` 且 `:modal` 為 true、5 筆幣別、焦點在 dialog 內；**送出真實的 `Escape` 按鍵** → dialog 關閉，`document.activeElement === 管理幣別`；警示「新增警示」`aria-expanded` false→true、`aria-controls="alert-form"`，表單可見；頁尾連結 `TradingView Lightweight Charts™` → `https://www.tradingview.com/`，可以用 Tab 取得焦點；圖表內**沒有** TradingView logo（`attributionLogo: false`，chartAdapter.ts:74）；圖例無 hover 時顯示 `圖表區間 高 83,434.32 · 低 82,911.86`，滑鼠移到 K 線上顯示 `開 83,251.74 · 高 83,264.99 · 低 83,194.33 · 收 83,226.04`；換算卡片第一個是 USD。
+  5. **對比度（QA 依新 tokens 計算）**：深色主題文字最低 **4.96**（on-danger/danger）、`line-strong/panel` 3.69；淺色主題文字最低 **4.72**（up/up-soft）、`brand/panel` 4.58、`line-strong/panel` 3.42 → 全部合格。
+  6. 新功能的單元測試：USD 排第一（ConvertedPrices.test +10 行）、開啟後漲跌 `+42.00（+0.05%）` / `-84.00（-0.10%）`、還差 `+5,954.50` / `−4,045.00`、填入目前價格 = 四捨五入的 84046、legend.ts 的純函式測試。
+  7. **AC2 / AC6 / AC7 在新設計下重新拍攝**：t=16s toast `🔔價格警示 16:19:17 BTC-USD 已高於 US$80,249.00，目前 US$83,249.51`（visible）；t=40s `live-price--disconnected` + `已斷線：目前顯示的是最後收到的價格…`；t=85s 恢復即時；375px chaos：t=18s pill「即時，目前來源 Kraken」→ t=55s Coinbase。
+- **FAIL 的證據**：375px（dark）與 390px（light）的 `mobile` 模擬下，`documentElement.scrollWidth = 473 > clientWidth 375/390`（1440px 桌面為 false）。唯一超出的元素：`DIV.card__title`（寬度約 440px，內容「多幣別換算 1 BTC 以各幣別計價（依 BTC-USD US$… 換算）」，不會換行）。截圖 `shots/ov375.png` 中頁面右側超出視窗。修改前（task 29 `a766828`，QA 同樣在 375px 探測）為 **false**。
+- **修正建議**：讓 `.card__title` 可以換行（例如 `flex-wrap: wrap` / 副標題 `min-width: 0; overflow-wrap: anywhere`，或在窄螢幕把副標題移到下一行）。完成條件：375 / 390px 的 `scrollWidth <= clientWidth`（QA 會用同一支探測腳本驗證）。
+
+### 2026-09-30 21:20 — Task 16 ↔ Task 32 連結
+- task 16 的再次 FAIL（SSE 價格推播永久停止）由 **task 32**（team lead 排為最高優先）修正。驗收 task 32 時，同時判定 task 16 能否重新 PASS。
+
+### 2026-09-30 22:00 — Task 32（SSE 價格推播停止的修正 + 前端 60 秒防線）@ `652d4cc` → **Task 16 重新判定**
+- **Verdict**: **task 32 PASS**；**task 16 重新 PASS**（2026-09-30 21:20 的再次 FAIL 關閉）
+- **Evidence（後端）**:
+  - diff：`scheduleAtFixedRate(guarded("price push", …))` / `guarded("heartbeat", …)`，`guarded()` 攔截 RuntimeException 並記 `log.warn` 後繼續；`send()` / `heartbeat` 改為 `catch (IOException | RuntimeException e)`；`completeWithError` 另外包了 try/catch。
+  - `./mvnw -o -B clean verify` → exit 0（工程師回報 155/155）。
+  - **QA 完整反向驗證**：`guarded()` 改成 `return task`、catch 縮回 `IOException | IllegalStateException`、移除 `completeWithError` 的保護 → `SseBroadcasterResilienceTest` **3/3 ERROR**（等待逾時）；還原後 PASS。（QA 第一次只做了部分反向，結果是 1/3 失敗；原因是那次保留了 ISE 的 catch 和 completeWithError 的保護，並不是測試無效。已經用完整反向重做。）這 3 個測試分別涵蓋：寫入時丟出非受檢例外（IllegalArgumentException）、IOException 加上 close 也失敗、guarded 任務在第一次失敗後仍然繼續執行。
+  - **Live（QA 堆疊用 652d4cc 重建 backend + frontend）**：SSE 10 秒收到 23 筆 price；再做 60 次隨機 0.1–0.9 秒的 `kill -9` 斷線 → 新 client 10 秒內仍然收到 19 筆；log 中 `SSE … failed; retrying` 出現 0 次（這次沒有觸發到例外路徑，符合預期）；headless 探測 pill「即時」、`live-price--live`。
+- **Evidence（前端防線）**: `vitest` × 3 → `74 passed (74)`；build / lint ok。`PRICE_STALE_AFTER_MS = 60_000`；`pricesStalled()` 從最後一筆 price（或開頁時間）開始計算。**QA 反向驗證**：改成 600_000 → `× shows 資料延遲（價格更新中斷）… 60 s`、`× counts the 60 s from opening the page…`（2 failed），還原後通過。測試涵蓋 59 秒時為「即時」、60 秒時為「資料延遲」並顯示「價格更新中斷」。
+  - 註：`liveStream.ts` 和 `LiveStreamProvider.tsx` 是 task 31 清單中「應該為零」的檔案；這次的變更是 team lead 核准的 task 32 (b) 範圍，屬於有合理說明的變更。
+
+### 2026-09-30 22:30 — Task 31 修正覆審 @ `cbe54af`，以及 `2aa29a0`、`5da0885`、`b36d48c`、`92c9e1b`（在 HEAD `b36d48c` 上驗證）
+- **Verdict**: **task 31 PASS**（21:20 的 FAIL 關閉）；其餘 4 個 commit 都 PASS。**task 30 PASS**（最終截圖到位，連結檢查不再需要 allow 參數）。
+- **Evidence**:
+  - `./mvnw -o -B clean verify` → **`Tests run: 155, Failures: 0, Errors: 0`**；`vitest` × 3 → `74 passed (74)`；build / lint ok；`python3 scripts/check_md_links.py`（**不加** `--allow-missing-images`）→ `checked 43 relative links in 12 Markdown files`，沒有 ERROR / PENDING。
+  - **水平捲動（QA 同一支探測腳本，mobile 模擬）**：`320 dark {vw:320, sw:320}`、`375 dark {375/375}`、`390 light {390/390}`、`768 light {768/768}`，offenders 都是空的；1440 桌面 `hscroll:false`。根因是 `.card__title { min-width: max-content }`，已改為 flex-wrap + min-width:0。工程師已在 progress.md 更正先前「沒有水平捲動」的錯誤說法（當時是依據隱藏捲軸的截圖）。
+  - `2aa29a0`：`format.ts:13` `SYMBOLS = { TWD: 'NT$' }`；1440 截圖中 K 線最右側的時間標籤（16:30）完整顯示。`5da0885`：1440 截圖中 TWD 卡片 `NT$2,643,733.83` 完整顯示，沒有省略號。
+  - `92c9e1b`：`design/` 目錄（設計稿）已納入版本控制。
+  - QA 自己的操作錯誤紀錄：第一次跑寬度迴圈時，用 `set -- $spec` 傳參數，zsh 不會拆字 → 4 次都用預設寬度 756 探測，那組結果作廢；改用明確參數重跑之後才是上面的數字。
+- **目前狀態**：沒有開放中的 FAIL / CONCERN。**task 1–32 全部 PASS**（task 28 除了 AC13 實際斷網以外都已經驗證）。唯一待辦：**使用者關閉網路後執行 AC13**。
