@@ -119,8 +119,8 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-card); min-width: 0; }
 .card__head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); padding: var(--sp-5) var(--sp-5) 0; }
 .card__head h2 { font-size: var(--fs-lg); font-weight: 650; }
-.card__title { display: flex; align-items: baseline; gap: var(--sp-2); flex: 1; min-width: max-content; }
-.card__sub { font-size: var(--fs-sm); color: var(--muted); }
+.card__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--sp-2); flex: 1 1 auto; min-width: 0; }
+.card__sub { font-size: var(--fs-sm); color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 .card__body { padding: var(--sp-4) var(--sp-5) var(--sp-5); }
 
 .footer {
