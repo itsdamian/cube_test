@@ -1,243 +1,261 @@
-# Bitcoin Currency Converter
+# cube_test — 即時比特幣價格串流（Kafka + Kafka Streams + React）
 
-This project is a Spring Boot application that retrieves Bitcoin price data from the Coindesk API, transforms it, and provides RESTful API endpoints for managing currency data.
+從 Coinbase（主要）與 Kraken（備援）的公開 WebSocket 接收 BTC-USD 即時成交價，經 Kafka 串流到：
 
-## Features
+- **PostgreSQL**：逐筆價格（保留 30 天）、1 分／5 分 K 線、幣別、匯率、價格警示
+- **Kafka Streams**：以成交時間聚合 1 分／5 分 OHLC K 線
+- **警示判斷**：後端判斷，價格越過門檻就觸發（5 分鐘冷卻），頁面沒開也會記錄成「未讀」
+- **瀏覽器**：Server-Sent Events 即時推播價格、來源狀態與警示
 
-- Query Bitcoin price data from Coindesk API
-- Transform data to include Chinese names for currencies
-- Currency management (CRUD operations)
-- H2 in-memory database for data storage
-- Unit tests for all functionality
-- Docker deployment support (for both ARM and x86 architectures)
-- Multi-language support for currency names (Chinese names included)
+整個系統用 `docker compose` 一鍵啟動，不需要任何 API key。
 
-## Prerequisites
+```
+Coinbase WS (主) ─┐                              ┌─► tick-persister   → price_tick
+                  ├─► FeedManager ─► Kafka ──────┼─► Kafka Streams    → btc.candles → candle-persister → candle
+Kraken WS  (備) ─┘   (故障切換)   btc.price.ticks ├─► alert-evaluator  → alert_event + btc.alerts.triggered
+                                                  └─► SSE broadcaster  → 瀏覽器
+open.er-api.com（每 30 分鐘）→ fx_rate → /api/prices/converted
+```
 
-- Docker and Docker Compose
-- JDK 17+ (if running outside Docker)
-- Maven 3.6+ (if running outside Docker)
+規格與設計文件：`specs/realtime-btc-kafka-react/`（spec.md、plan.md、tasks.md）。
 
-## Getting Started with Docker
+---
 
-This project supports both Apple Silicon (M1/M2/M3) and Intel/AMD processors through separate Docker configurations.
+## 1. 需要的工具
 
-### 1. Clone the Repository
+| 工具 | 用途 | 備註 |
+|---|---|---|
+| Docker Desktop | 執行整個系統、跑後端測試（Testcontainers）、建 image | 多架構建置需 containerd image store（Docker Desktop 預設）或 `docker buildx create --use --driver docker-container` |
+| JDK 21 | 在本機跑後端測試／開發 | `brew install openjdk@21`。**不需要安裝 Maven**，用專案內的 `./mvnw` |
+| Node.js 24+ | 在本機跑前端測試／開發 | 只在不透過 Docker 開發前端時需要 |
+| `unzip` | `./mvnw` 第一次下載 Maven 時使用 | macOS 與 GitHub 的 Ubuntu runner 都有；沒有的話 mvnw 會改抓 .tar.gz，導致 SHA-256 校驗失敗 |
+
+## 2. 快速開始
 
 ```bash
-git clone <repository-url>
-cd <project-directory>
+docker compose up -d --build --wait     # 建置並啟動，等到全部 healthy（第一次約 5 分鐘）
+open http://localhost:3000              # 30 秒內可看到跳動的 BTC-USD 價格
 ```
 
-### 2. Build and Run with Docker Compose
+- 停止（保留資料）：`docker compose down`
+- 停止並**刪除所有資料**：`docker compose down -v`
+- port 被占用時：`FRONTEND_PORT=3001 BACKEND_PORT=8081 docker compose up -d --wait`，之後文件中的 3000／8080 請換成你設定的 port。
 
-For Apple Silicon (M1/M2/M3) Macs:
+| 服務 | 對外 port | 說明 |
+|---|---|---|
+| frontend | 3000 | nginx 提供網頁，並把 `/api` 轉給 backend |
+| backend | 8080 | Spring Boot API、SSE、`/actuator/health/{liveness,readiness}` |
+| kafka | （無） | 單節點 KRaft，只在內部網路 |
+| postgres | （無） | 只在內部網路；查資料用 `docker compose exec postgres psql -U currency -d currency` |
+
+**網路**：`currency_internal`（`internal: true`，無法連外）讓四個服務互連；只有 backend 另外接 `currency_egress`，可以連交易所與匯率網站；frontend 另接 `currency_public` 用來對外開放 port。
+
+## 3. 設定（環境變數）
+
+所有設定都有預設值（`src/main/resources/application.yml`），可用環境變數覆寫。下表中標 ★ 的變數，compose 會從你的 shell 傳給 backend，例如 `APP_ALERT_COOLDOWN=30s docker compose up -d backend`。
+
+| 變數 | 預設 | 說明 |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/currency` / `currency` / `currency` | 資料庫 |
+| `SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT` | `5000` | 取連線逾時（毫秒）；DB 掛掉時 readiness 約 5 秒內回 503 |
+| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka |
+| `APP_FEED_PRIMARY_URL` ★ / `APP_FEED_BACKUP_URL` ★ | Coinbase / Kraken 的 wss 網址 | 價格來源 |
+| `APP_FEED_STALE_THRESHOLD` ★ | `10s` | 多久沒收到**任何**訊息（含 heartbeat）視為失效 |
+| `APP_FEED_PRICE_STALE_THRESHOLD` ★ | `60s` | 多久沒有**成交**視為失效 |
+| `APP_FEED_RECOVERY_PERIOD` | `15s` | 主來源恢復健康多久後切回 |
+| `APP_FEED_IDLE_TIMEOUT` | `10s` | 連線多久沒訊息就中斷重連（處理 half-open） |
+| `APP_FX_URL` / `APP_FX_REFRESH_INTERVAL` ★ | open.er-api.com / `30m` | 匯率來源與更新頻率 |
+| `APP_RETENTION_TICKS` ★ | `P30D` | 逐筆價格保留期 |
+| `APP_RETENTION_INTERVAL` ★ / `APP_RETENTION_INITIAL_DELAY` ★ | `PT1H` / `PT1M` | 清除工作的間隔／啟動後第一次執行 |
+| `APP_ALERT_COOLDOWN` ★ | `5m` | 警示冷卻期（以成交時間計算） |
+| `APP_STREAMS_GRACE` | `5s` | K 線視窗關閉後仍接受遲到成交的時間 |
+| `APP_STREAMS_STATE_DIR` | `/var/lib/currency/streams`（容器內） | Kafka Streams 本地狀態 |
+| `APP_KAFKA_GROUP_PREFIX` | （空） | consumer group 前綴；多個環境共用一個 broker 時使用 |
+| `APP_INGEST_ENABLED` / `APP_STREAMS_ENABLED` / `APP_PERSIST_ENABLED` / `APP_ALERTS_ENABLED` | `true` | 功能開關（例如之後在 K8s 讓 ingest 只跑一份） |
+| `SPRING_PROFILES_ACTIVE=chaos` | （無） | 開啟故障注入端點 `/actuator/feeds`，**只用於手動驗收** |
+
+## 4. API
+
+| 方法 | 路徑 | 說明 |
+|---|---|---|
+| GET | `/api/prices/latest` | 最新價格 + 來源狀態 |
+| GET | `/api/prices/converted` | 各幣別換算價、匯率、匯率更新時間 |
+| GET | `/api/prices/history?from&to&limit&cursor` | 逐筆歷史（keyset 分頁，`limit` ≤ 5000） |
+| GET | `/api/prices/trend?from&to&points` | 走勢（伺服器端降採樣，`points` ≤ 1000） |
+| GET | `/api/candles?interval=1m\|5m&from&to` | K 線 |
+| GET | `/api/stream` | SSE：`price`、`status`、`alert` |
+| GET/POST/PUT/DELETE | `/api/currencies[/{id}]` | 幣別 |
+| GET/POST/DELETE | `/api/alerts[/{id}]` | 價格警示 |
+| GET | `/api/alert-events?unread=true` | 警示觸發紀錄 |
+| POST | `/api/alert-events/{id}/read`、`/api/alert-events/read-all` | 標記已讀 |
+
+時間一律為 ISO-8601（UTC），例如 `2026-09-30T08:00:00Z`；錯誤回應為 RFC 9457 ProblemDetail。回應範例見 `contracts/api-samples/`（由後端測試保證與實際輸出一致，前端測試直接使用）。
+
+## 5. 開發與測試
 
 ```bash
-docker-compose build app-silicon
-docker-compose up -d app-silicon
+./mvnw clean verify                   # 後端全部測試（需 Docker；Testcontainers 會啟動 Kafka 與 PostgreSQL）
+cd frontend && npm ci && npm test     # 前端測試（Vitest）
+cd frontend && npm run dev            # 前端開發伺服器 :5173，/api 代理到 localhost:8080
 ```
 
-For Intel/AMD processors:
+- 測試**不會**連到任何真實的價格或匯率來源：`test` profile 把所有外部網址指向 `127.0.0.1:1`，並有守門測試（`NoExternalCallsGuardTest`）檢查。
+- 修改 API 回應格式後，更新契約樣本：`./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true`。
+
+### 5.1 離線跑測試（AC13）
+
+有網路時先準備一次：
 
 ```bash
-docker-compose build app-amd64
-docker-compose up -d app-amd64
+./mvnw clean verify                                # 下載所有 Maven 依賴與外掛（dependency:go-offline 抓不全測試外掛）
+docker pull postgres:17.11-alpine
+docker pull apache/kafka:3.9.2
+docker pull testcontainers/ryuk:0.12.0
+(cd frontend && npm ci)
 ```
 
-### 3. Verify the Application is Running
+之後可以**完全斷網**執行：
 
 ```bash
-# Check if the container is running
-docker ps
-
-# Check application logs
-docker-compose logs app-silicon
-# or
-docker-compose logs app-amd64
+./mvnw -o clean verify
+(cd frontend && npm test)
 ```
 
-The application will be available at:
-- API Endpoints: http://localhost:8080
-- H2 Console: http://localhost:8082/h2-console (JDBC URL: `jdbc:h2:mem:testdb`, Username: `sa`, Password: empty)
-
-## API Documentation
-
-### Currency API Endpoints
-
-| Method | URL                          | Description                    |
-|--------|------------------------------|--------------------------------|
-| GET    | /api/currencies              | Get all currencies             |
-| GET    | /api/currencies/{id}         | Get currency by ID             |
-| GET    | /api/currencies/code/{code}  | Get currency by code           |
-| POST   | /api/currencies              | Create a new currency          |
-| PUT    | /api/currencies/{id}         | Update an existing currency    |
-| DELETE | /api/currencies/{id}         | Delete a currency              |
-
-### Coindesk API Endpoints
-
-| Method | URL                          | Description                       |
-|--------|------------------------------|-----------------------------------|
-| GET    | /api/bitcoin/price/original  | Get original Coindesk API data    |
-| GET    | /api/bitcoin/price           | Get transformed Bitcoin price data|
-
-## Sample API Requests
-
-### Create Currency
+### 5.2 建置多架構 image（AC14）
 
 ```bash
-curl -X POST http://localhost:8080/api/currencies \
-  -H "Content-Type: application/json" \
-  -d '{"code":"TWD","name":"台幣"}'
+docker buildx build --platform linux/amd64,linux/arm64 -t currency-backend:multiarch .
+docker image ls --tree currency-backend:multiarch            # 應同時有 linux/amd64 與 linux/arm64
 ```
 
-### Get Original Coindesk API Data
+若出現 `Multi-platform build is not supported for the docker driver`，先執行 `docker buildx create --use --driver docker-container`（或在 Docker Desktop 開啟「Use containerd for pulling and storing images」）。前端 image：`docker build -f frontend/Dockerfile .`（需在 repo 根目錄執行）。
 
+## 6. 驗收步驟（Acceptance Criteria）
+
+以下假設已執行 `docker compose up -d --build --wait`，網頁在 http://localhost:3000，後端在 http://localhost:8080。`BACKEND=currency-backend-1` 是 backend 容器名稱（`docker compose ps` 可查）。
+
+**AC1　不需 API key，30 秒內看到跳動價格**
+1. 開 http://localhost:3000。30 秒內「即時價格」出現數字、狀態為「即時」、目前來源 Coinbase，價格會持續變化。
+2. 命令列確認：`curl -sN --max-time 10 localhost:3000/api/stream | grep -c '^event:price'`（應 > 0）。
+
+**AC2　斷線 30 秒內顯示，恢復自動更新**
+1. 只切斷 backend 的對外網路（Kafka、DB、瀏覽器連線不受影響）：`docker network disconnect currency_egress currency-backend-1`
+2. 30 秒內網頁狀態變成「已斷線」或「資料延遲」，價格變淡並出現警告文字。
+3. 接回：`docker network connect currency_egress currency-backend-1`。不重啟任何服務，約 10–40 秒後恢復「即時」、價格繼續跳動。
+
+**AC3　換算誤差 < 0.5%，顯示匯率更新時間**
+1. 網頁「多幣別換算」每列都有「匯率更新時間」，下方有 “Rates By Exchange Rate API” 連結。
+2. 比對：
+   ```bash
+   curl -s localhost:3000/api/prices/converted | python3 -c "import json,sys;d=json.load(sys.stdin);[print(i['code'],i['price']/d['usdPrice'],i['rateUpdatedAt']) for i in d['items'] if i['rate']]"
+   curl -s https://open.er-api.com/v6/latest/USD | python3 -c "import json,sys;r=json.load(sys.stdin)['rates'];print({k:r[k] for k in ['EUR','GBP','JPY','TWD','USD']})"
+   ```
+   同一幣別的兩個數字差距應遠小於 0.5%（匯率來源每天更新一次；若剛好跨過更新時間，等下一次 30 分鐘刷新）。
+
+**AC4　10 分鐘後有歷史、≥10 根 1m、≥2 根 5m，OHLC 與逐筆一致**
+1. 系統啟動後等 10 分鐘以上（最早與最晚那根可能是不完整的時段，屬正常）。
+2. 數量：
+   ```bash
+   docker compose exec -T postgres psql -U currency -d currency -c \
+     "SELECT interval_code, count(*) FROM candle WHERE open_time >= now() - interval '15 minutes' GROUP BY 1;"
+   curl -s "localhost:3000/api/prices/history?limit=5" | python3 -m json.tool | head -20
+   ```
+3. OHLC 一致性（每一列的 `ohlc_matches` 應為 `t`）：
+   `docker compose exec -T postgres psql -U currency -d currency < docs/acceptance/ac4-ohlc-check.sql`
+   規則：open／close 依 `(event_time, received_at, event_id)` 排序，與 Kafka Streams 相同。`tick_count` 不比對：若交易所重送同一筆成交，Streams 會多算、資料庫會去重，但 OHLC 不受影響。
+
+**AC5　重啟後資料仍在**
+1. 記下 K 線數量（AC4 第 2 步的 SQL）。
+2. `docker compose restart backend postgres && docker compose up -d --wait`
+3. 再查一次：數量只增不減，網頁圖表仍顯示先前的 K 線。
+
+**AC6　主來源被封鎖 30 秒內切換到備援，恢復後切回**
+- 方法 A（執行中封鎖／解封，驗證「不重啟自動切回」）：
+  ```bash
+  docker compose -f docker-compose.yml -f docker-compose.chaos.yml up -d --wait backend
+  curl -s -X POST -H 'Content-Type: application/json' localhost:8080/actuator/feeds/coinbase/block
+  # 30 秒內網頁「目前來源」變成 Kraken（實測約 1–11 秒）
+  curl -s localhost:8080/actuator/feeds | python3 -m json.tool
+  curl -s -X POST -H 'Content-Type: application/json' localhost:8080/actuator/feeds/coinbase/unblock
+  # 主來源連續健康 15 秒後切回 Coinbase（約 15–45 秒）
+  ```
+  也可用 `.../coinbase/block?mode=silent` 模擬「連線還在但收不到訊息」。**注意**：這支端點一定要帶 `Content-Type: application/json`，否則回 415。驗收完用 `docker compose up -d --wait backend` 回到一般設定。
+- 方法 B（主來源網址錯誤）：`APP_FEED_PRIMARY_URL=wss://invalid.example docker compose up -d --wait backend`，網頁目前來源應為 Kraken；還原：`docker compose up -d --force-recreate --wait backend`。
+
+**AC7　警示通知與 5 分鐘冷卻**
+1. 在網頁「價格警示」新增一個門檻：例如目前價格 83,200 時，新增「價格高於 83,000」。
+2. 下一筆成交後，右下角跳出「價格警示」通知。
+3. 5 分鐘內不會再通知同一個警示；5 分鐘後若價格仍高於門檻，會再通知一次（「上次觸發」時間會更新）。
+4. 快速觀察可用 `APP_ALERT_COOLDOWN=30s docker compose up -d --wait backend`，但請至少用預設 5 分鐘實跑一次。驗收後刪除警示，以免持續觸發。
+
+**AC8　頁面關閉時觸發的警示，重新打開顯示為未讀**
+1. 新增一個會很快觸發的警示（同 AC7），然後**關閉網頁分頁**。
+2. 等待觸發：`curl -s "localhost:8080/api/alert-events?unread=true"` 出現新紀錄即可。
+3. 重新打開 http://localhost:3000，「未讀警示」列出這筆，可逐筆或全部標記已讀。
+
+**AC9　逐筆價格超過保留期自動清除，K 線不受影響**
+1. 縮短保留期重啟 backend：
+   `APP_RETENTION_TICKS=PT5M APP_RETENTION_INTERVAL=PT30S APP_RETENTION_INITIAL_DELAY=PT30S docker compose up -d --wait backend`
+2. 10 分鐘後：
+   ```bash
+   docker compose exec -T postgres psql -U currency -d currency -c \
+     "SELECT now() - min(event_time) AS oldest_tick_age, (SELECT count(*) FROM candle) AS candles FROM price_tick;"
+   ```
+   `oldest_tick_age` 約 5 分鐘多一點（不超過 5 分 30 秒左右），`candles` 持續增加、沒有被刪。
+3. 還原：`docker compose up -d --force-recreate --wait backend`
+
+**AC10　全新資料庫已有 5 個預設幣別**
 ```bash
-curl http://localhost:8080/api/bitcoin/price/original
+docker compose down -v && docker compose up -d --wait
+curl -s localhost:3000/api/currencies | python3 -c "import json,sys;print([(c['code'],c['name']) for c in json.load(sys.stdin)])"
 ```
+應為 EUR 歐元、GBP 英鎊、JPY 日圓、TWD 新台幣、USD 美元（`down -v` 會清掉所有資料）。
 
-### Get Transformed Bitcoin Price Data
+**AC11　網頁完成幣別新增、修改、刪除，重新整理後仍在**
+在「幣別管理」新增（例如 CHF／瑞士法郎）、編輯名稱、刪除（按「刪除」後再按「確定刪除？」），每一步後按 F5，結果都保留；換算表也會跟著更新。
 
+**AC12　停掉 Kafka 後 readiness 失敗，恢復後自動恢復**
 ```bash
-curl http://localhost:8080/api/bitcoin/price
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/actuator/health/readiness   # 200
+docker compose stop kafka
+curl -s localhost:8080/actuator/health/readiness                                     # 503，kafka DOWN
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/actuator/health/liveness     # 仍是 200
+docker compose start kafka
+# 約 5–30 秒後 readiness 回到 200
 ```
 
-Example response:
-```json
-{
-  "updateTime": "2025/03/29 12:15:59",
-  "currencies": {
-    "EUR": {
-      "code": "EUR",
-      "rate": 49876.1232,
-      "chineseName": "歐元"
-    },
-    "GBP": {
-      "code": "GBP",
-      "rate": 42345.8722,
-      "chineseName": "英鎊"
-    },
-    "USD": {
-      "code": "USD",
-      "rate": 57231.4983,
-      "chineseName": "美金"
-    }
-  }
-}
-```
+**AC13　離線、未預啟 Kafka 下測試全過** — 見 5.1。
 
-## Testing the Application
+**AC14　多架構 image** — 見 5.2。
 
-The application includes comprehensive unit tests for all functionality. Docker is configured to support running tests in the container environment.
-
-### Running Tests in Docker
-
+**AC15　repo 沒有建置產物**
 ```bash
-# For Apple Silicon
-docker-compose exec app-silicon bash -c 'cd /app && mvn test'
-
-# For Intel/AMD
-docker-compose exec app-amd64 bash -c 'cd /app && mvn test'
+git ls-files | grep -E '(^|/)(target|node_modules|dist)/' || echo "clean"
 ```
 
-### Running Specific Tests
+## 7. 常見問題
 
-```bash
-# Run only currency controller tests
-docker-compose exec app-silicon bash -c 'cd /app && mvn test -Dtest=CurrencyControllerTest'
+- **port 3000 或 8080 被占用**：用 `FRONTEND_PORT` / `BACKEND_PORT`（見第 2 節）。
+- **`./mvnw` 顯示 SHA-256 驗證失敗**：安裝 `unzip`（見第 1 節）。
+- **公司網路或 VPN 擋了交易所**：用 `APP_FEED_PRIMARY_URL` / `APP_FEED_BACKUP_URL` 指到可用的端點，或換一個網路。
+- **看 backend log**：`docker compose logs -f backend`。
+
+## 8. 專案結構
+
 ```
-
-## Project Structure
-
+src/main/java/com/currency/demo/
+  feed/      交易所 WebSocket client、訊息解析、FeedManager（主備切換）、故障注入端點
+  pricing/   逐筆價格寫入與查詢、保留期清除、來源狀態追蹤
+  candle/    Kafka Streams K 線 topology、K 線寫入與查詢
+  fx/        匯率抓取與多幣別換算
+  alert/     價格警示規則、判斷、API
+  stream/    SSE 推播
+  currency/  幣別 CRUD
+  health/    Kafka / Kafka Streams 健康檢查
+  config/    設定、Kafka topics、consumer 設定
+src/main/resources/db/migration/   Flyway schema（V1–V6）
+frontend/                          React + TypeScript（Vite）、nginx 設定
+contracts/api-samples/             API 回應契約樣本
+docs/acceptance/                   驗收用 SQL
+specs/realtime-btc-kafka-react/    規格、計畫、任務、進度與 QA 紀錄
 ```
-src
-├── main
-│   ├── java
-│   │   └── com
-│   │       └── currency
-│   │           └── demo
-│   │               ├── config
-│   │               ├── controller
-│   │               ├── model
-│   │               ├── repository
-│   │               ├── service
-│   │               └── DemoApplication.java
-│   └── resources
-│       └── application.properties
-├── test
-│   ├── java
-│   │   └── com
-│   │       └── currency
-│   │           └── demo
-│   │               ├── controller
-│   │               │   ├── CoindeskControllerTest.java
-│   │               │   └── CurrencyControllerTest.java
-│   │               └── service
-│   │                   └── CoindeskServiceTest.java
-│   └── resources
-│       └── application-test.properties
-├── Dockerfile.amd64
-├── Dockerfile.silicon
-└── docker-compose.yml
-```
-
-## Building from Source (without Docker)
-
-If you prefer to run the application without Docker:
-
-```bash
-# Build the project
-mvn clean package
-
-# Run the application
-java -jar target/demo-0.0.1-SNAPSHOT.jar
-```
-
-## Multi-language Support
-
-The application provides Chinese names for currencies in the transformed data response. The currency names are initialized with Chinese characters, and the API responses include these Chinese names when transforming Bitcoin price data.
-
-Default currencies with Chinese names:
-- USD: 美金
-- EUR: 歐元
-- JPY: 日圓
-- GBP: 英鎊
-- CNY: 人民幣
-- HKD: 港幣
-- etc.
-
-## Stopping the Application
-
-```bash
-# If using Docker Compose
-docker-compose down
-
-# To also remove volumes
-docker-compose down -v
-```
-
-## Troubleshooting
-
-### Common Issues:
-
-1. **Port Conflicts**: If ports 8080 or 8082 are already in use, modify the port mappings in `docker-compose.yml`.
-
-2. **API Connection Issues**: The application uses mock data if it cannot connect to the Coindesk API.
-
-3. **Container Not Starting**: Check Docker logs using `docker-compose logs app-silicon` or `docker-compose logs app-amd64`.
-
-4. **H2 Console Access**: Make sure to use the correct JDBC URL (`jdbc:h2:mem:testdb`) when accessing the H2 console.
-
-5. **Character Encoding**: If Chinese characters are not displaying correctly, ensure your system supports UTF-8 encoding.
-
-## License
-
-[Add your license information here]
-
-## Acknowledgments
-
-- [CoinDesk API](https://www.coindesk.com/coindesk-api) for providing Bitcoin price data
-- Spring Boot framework
-- H2 Database
-- Docker 

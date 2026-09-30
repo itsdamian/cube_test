@@ -62,7 +62,18 @@ services:
       SPRING_DATASOURCE_USERNAME: currency
       SPRING_DATASOURCE_PASSWORD: currency
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      # Everything else uses the defaults in application.yml; override any APP_* variable here.
+      # Everything else uses the defaults in application.yml. The variables below are passed through
+      # from your shell ONLY if set there (no value here = not set = app default), e.g.
+      #   APP_ALERT_COOLDOWN=30s docker compose up -d backend
+      APP_FEED_PRIMARY_URL:
+      APP_FEED_BACKUP_URL:
+      APP_FEED_STALE_THRESHOLD:
+      APP_FEED_PRICE_STALE_THRESHOLD:
+      APP_ALERT_COOLDOWN:
+      APP_RETENTION_TICKS:
+      APP_RETENTION_INTERVAL:
+      APP_RETENTION_INITIAL_DELAY:
+      APP_FX_REFRESH_INTERVAL:
     volumes:
       - streams-state:/var/lib/currency/streams
     ports:

@@ -10,3 +10,4 @@ specs/
 contracts/
 *.md
 docker-compose*.yml
+docs/
