@@ -229,3 +229,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Task 23 修正（`a673cd4`）**: 走勢區間只讀一次時鐘；QA CONCERN 21：15 秒內沒有任何事件時由「連線中」改為「資料延遲」。vitest 連跑 10 次皆 29/29。
 - task 19～22 已依 QA PASS 勾 [x]。
 - **概念**: 測試 context 會被快取並持續存活，它們共用的東西（consumer group、Streams application id、資料庫連線數）都必須隔離或預留，否則測試結果會取決於執行順序。
+
+## 2026-09-30 13:03 — Stage: task 16 QA FAIL 修正
+- **QA 判定**: task 18 修正（a134a40）、task 23 修正（a673cd4）PASS → task 23 勾 [x]。task 16 重新開啟 FAIL：SseStreamTest 以「連線數 +1」判斷新連線，會和前一個測試舊連線的延遲移除發生 race（完整測試 6 次失敗 1 次）。
+- **修正（`71a5a79`）**: 移除相對數量等待——controller 回傳前已註冊 emitter，收到 200 即代表已註冊；EndToEndPipelineTest 同樣的寫法一併移除。
+- **Verified**: SseStreamTest 單獨 10/10；random 順序完整測試（seed 3082923979307916、3085791733262166、3085907882768041）皆 152/152。
+- **概念**: 測試應該等「它真正需要的那件事」（自己的回應），而不是從會被其他活動同時改動的共享計數去推論。
