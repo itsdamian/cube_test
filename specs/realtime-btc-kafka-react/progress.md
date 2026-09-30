@@ -183,3 +183,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **發現並修正的隔離問題**: Kafka Streams 的 stream time 跟 committed offset 一起保存；共用 application-id 時，重播其他測試 2033/2034 年的 tick 會讓 CandlePipelineTest 的 2032 年視窗被視為已關閉——之前只是剛好測試順序有利。test profile 改為每個啟用 Streams 的 context 使用獨立 application-id 並從 latest 讀，測試先等 kafkaStreams UP 再送資料；正式環境不變。
 - **Verified**: `./mvnw clean verify` → 151 tests / 0 failures；反向字母順序跑整套也全過。
 - **概念**: Kafka Streams 的時間由資料驅動（stream time = 看過的最大事件時間）且會持久化，這讓 grace/suppress 可預期——也正是共用輸入 topic 的測試不能共用同一個 Streams 應用的原因。
+
+## 2026-09-30 11:52 — Stage: follow-up（QA CONCERN 19 / 20 + Streams REPLACE_THREAD）
+- **What changed (`6b9cbf2`)**: Hikari connection-timeout 預設 5s（`SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT`）；FeedStatus 只在 activeSource/state 改變時立即發佈、否則每 5 秒；Streams 執行緒意外死亡時 REPLACE_THREAD。task 16、17 已依 QA PASS 勾 [x]。
+- **Verified**: `./mvnw clean verify` → 152 tests / 0 failures。
+- **概念**: 健康檢查必須比 probe 的逾時更快回應；卡住的檢查和卡住的應用程式在外面看起來一模一樣。
