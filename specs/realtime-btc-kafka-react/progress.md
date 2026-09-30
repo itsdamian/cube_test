@@ -287,3 +287,4 @@ Branch: `feat/realtime-btc-kafka-react`
 - QA CONCERN 22：README 第 6 節加上「改過 port／專案名稱時要換掉的部分」提醒。
 - **剩餘**: task 28 待使用者瀏覽器目視確認與實際斷網跑 AC13。
 - 更正：task 18 在 QA PASS（a134a40）後漏勾，先前進度報告誤稱已勾選；已補勾 [x]。
+- 2026-09-30 13:49 QA：f3a6460 PASS、CONCERN 22 關閉，目前沒有未解決的 QA 意見。task 28 等使用者目視確認與實際斷網跑 AC13，之後通知 QA 做最後確認。
