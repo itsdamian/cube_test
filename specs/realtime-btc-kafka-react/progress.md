@@ -294,3 +294,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Bug（`daa7ea1`）**: 刪除警示後「未讀警示」清單沒有更新（後端 cascade 正確，前端沒有發出 alert-events-changed）。先寫會失敗的測試重現、修正後通過；npm test 47/47（連跑 5 次）；已重建執行中的前端容器。
 - **剩餘**: 使用者在自己瀏覽器確認 toast；實際斷網跑 AC13；之後 QA 做 task 28 最後確認。
 - **更正（2026-09-30 14:57，QA 指出）**: 上一段寫「AC6（來源顯示）OK」不精確——team lead 確認的是畫面顯示目前來源（Coinbase），**封鎖主來源時畫面切換顯示 Kraken 尚未目視**；AC2 斷線時價格變淡＋警告也尚未目視。兩者後端/串流已驗證，畫面部分維持「待確認」。QA：daa7ea1 PASS（含反向驗證）。
+
+## 2026-09-30 15:05 — Stage: implement task 29（前端視覺美化，範圍擴充）
+- **來源**: 使用者要求「整體畫面更美觀」，team lead 依授權核准為 spec 外新增範圍，tasks.md 新增 task 29。push 之後由 team lead 處理（640c09d 已 push）。
+- **What changed (`f5d82ad`)**: CSS design tokens（深色為主 + prefers-color-scheme 淺色，所有配色以 WCAG 公式驗證 AA）、header 狀態 pill、桌機兩欄／手機單欄版面（表格在卡片內捲動）、價格漲跌綠紅 + 閃爍（尊重 prefers-reduced-motion）、延遲琥珀／斷線紅並淡化、segmented control、圖表配色讀 token 並跟隨主題切換、toast 右上角、統一控制項與危險操作紅色、focus-visible。
+- **Verified**: `npm test` 49/49 連跑 5 次（既有斷言一行未改，新增漲跌與 status pill 測試）、build、lint 0；已重建 localhost:3001 前端容器。
+- **限制**: 本環境無瀏覽器，桌機與 375px 手機寬度的實際外觀請 team lead 以 Chrome 目視審查。
+- **概念**: design token 讓顏色、間距等決策集中在一處；canvas 圖表無法吃 CSS，就在執行時讀同一組 CSS 變數，讓兩者永遠一致。
