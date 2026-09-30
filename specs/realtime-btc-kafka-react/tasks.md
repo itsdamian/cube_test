@@ -62,12 +62,13 @@ Spec: `spec.md`（CONFIRMED）｜Plan: `plan.md`（CONFIRMED）｜Branch: `feat/
 ## 整合與驗收
 
 - [x] 26. **前端容器與完整 docker compose**：`frontend/Dockerfile`（node build → nginx）、`nginx.conf`（`/api` 反向代理、SSE `proxy_buffering off`）；`docker-compose.yml`：kafka / postgres / backend / frontend，固定 image tag、具名 volume（kafka、postgres、streams state）、healthcheck + `depends_on: service_healthy`、`internal`(internal:true) / `egress` / `public` 三個網路；`docker-compose.chaos.yml` — done when: 乾淨環境 `docker compose up -d` 後所有服務 healthy；`http://localhost:3000` 30 秒內看到持續跳動的 BTC-USD 價格（AC1 smoke）；網路切分正確（QA T6）：`docker run --rm --network <project>_internal busybox:1.37 nc -z -w 5 1.1.1.1 443` **失敗**，同指令改用 `<project>_egress` 網路**成功**；且 backend 容器 `docker compose exec backend` 可解析並連到 `kafka:9092`
-- [x] 27. **README 與驗收步驟**：啟動方式、環境變數表、離線測試準備（`dependency:go-offline`、`npm ci`、固定 tag 的 kafka/postgres/ryuk image 清單）、buildx 多平台 builder、每條手動 AC 的逐步指令（含 AC4 對照 SQL、AC2 egress disconnect、AC6 chaos block/unblock 與錯誤 URL、AC7 30 秒與預設 5 分鐘、AC9 縮短保留期） — done when: QA 能只照 README 完成 task 28 的所有手動步驟，不需問工程師
-- [ ] 28. **完整驗收**：照 README 在 compose 環境逐條執行 AC1–AC15，並在斷網狀態執行 `./mvnw -o verify` 與 `npm test`（AC13），把每條結果與證據（指令輸出、截圖）記入 progress.md — done when: 15 條 AC 全部有證據且通過；未通過的已修正並重新驗證
+- [x] 27. **README 與驗收步驟**（task 30 起：操作細節移至 `docs/`）：啟動方式、環境變數表、離線測試準備（`dependency:go-offline`、`npm ci`、固定 tag 的 kafka/postgres/ryuk image 清單）、buildx 多平台 builder、每條手動 AC 的逐步指令（含 AC4 對照 SQL、AC2 egress disconnect、AC6 chaos block/unblock 與錯誤 URL、AC7 30 秒與預設 5 分鐘、AC9 縮短保留期） — done when: QA 能只照 README 完成 task 28 的所有手動步驟，不需問工程師
+- [ ] 28. **完整驗收**：照 [docs/acceptance.md](../../docs/acceptance.md)（原 README 第 6 節，task 30 搬移）在 compose 環境逐條執行 AC1–AC15，並在斷網狀態執行 `./mvnw -o verify` 與 `npm test`（AC13），把每條結果與證據（指令輸出、截圖）記入 progress.md — done when: 15 條 AC 全部有證據且通過；未通過的已修正並重新驗證
 
 ## 範圍擴充（team lead 依使用者授權核准，2026-09-30）
 
-- [ ] 29. **前端視覺美化**：純 CSS + CSS 變數（design tokens），不引入 UI 框架；深色為主的金融儀表板風格並支援淺色（prefers-color-scheme），圖表配色跟隨主題；header（標題 + 狀態 pill + 目前來源）、桌機兩欄（左：價格卡 + 圖表，右：換算 + 警示）、幣別管理在下方、375px 單欄且無水平捲動；價格漲跌綠/紅並短暫閃爍（尊重 prefers-reduced-motion，只用現有資料）；延遲琥珀色/斷線紅色並淡化價格；toast 右上角；1m/5m/走勢為 segmented control；按鈕/輸入框/表格統一、危險操作紅色；WCAG AA 對比、清楚的 focus ring、保留所有 aria/role；不改行為或 API — done when: 上述完成、`npm test`/`build`/`lint` 全過（行為斷言不變）、localhost:3001 前端容器已重建，交 QA 並通知 team lead 目視審查
+- [x] 29. **前端視覺美化**：純 CSS + CSS 變數（design tokens），不引入 UI 框架；深色為主的金融儀表板風格並支援淺色（prefers-color-scheme），圖表配色跟隨主題；header（標題 + 狀態 pill + 目前來源）、桌機兩欄（左：價格卡 + 圖表，右：換算 + 警示）、幣別管理在下方、375px 單欄且無水平捲動；價格漲跌綠/紅並短暫閃爍（尊重 prefers-reduced-motion，只用現有資料）；延遲琥珀色/斷線紅色並淡化價格；toast 右上角；1m/5m/走勢為 segmented control；按鈕/輸入框/表格統一、危險操作紅色；WCAG AA 對比、清楚的 focus ring、保留所有 aria/role；不改行為或 API — done when: 上述完成、`npm test`/`build`/`lint` 全過（行為斷言不變）、localhost:3001 前端容器已重建，交 QA 並通知 team lead 目視審查
+- [ ] 30. **README 改版（作品門面）**：README 改為給 GitHub 讀者的作品介紹（一句話介紹＋截圖、功能亮點、mermaid 架構圖、技術棧、技術重點、10 行內快速開始、精簡開發與測試、spec-driven＋雙 agent 開發方式、Roadmap）；原第 3–7 節（環境變數、API、離線測試、buildx、AC 驗收步驟、常見問題）原文搬到 `docs/configuration.md`、`docs/api.md`、`docs/testing.md`、`docs/acceptance.md`，修正所有互相連結；截圖由 team lead 以 Chrome 擷取後放入 `docs/images/` — done when: README 在 GitHub 正常顯示（含 mermaid）、`python3 scripts/check_md_links.py` 通過（截圖到位前以 `--allow-missing-images` 標示待補）、QA 能照 docs/acceptance.md 重跑任一條 AC
 
 ## Acceptance Criteria 對照
 

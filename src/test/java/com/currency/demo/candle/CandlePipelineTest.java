@@ -33,7 +33,7 @@ import static org.awaitility.Awaitility.await;
  * ticks -> btc.price.ticks -> (TickPersister -> price_tick) and (CandleTopology -> btc.candles
  * -> CandlePersister -> candle). Every stored candle must equal the same aggregate computed in
  * SQL from the stored ticks, using the canonical order (event_time, received_at, event_id) -
- * the query README gives for the manual AC4 check. No @Transactional: data is really committed
+ * the query docs/acceptance/ac4-ohlc-check.sql uses for the manual AC4 check. No @Transactional: data is really committed
  * and then read by a second, freshly started application instance (AC5).
  * Event times are in 2032 so they never mix with other tests' ticks.
  */

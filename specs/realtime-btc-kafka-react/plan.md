@@ -29,7 +29,7 @@ FeedManager 每 5 秒 → topic btc.feed.status → [SSE broadcaster]
    - **idle watchdog（處理 half-open 連線）**：真實斷網常不會收到 FIN/RST，JDK WebSocket 會以為仍連著。因此兩個 client 都訂閱交易所的 heartbeat（Coinbase `heartbeats` channel、Kraken v2 內建 `heartbeat`，皆約每秒一則），若 `idle-timeout`（預設 10 秒，`APP_FEED_IDLE_TIMEOUT`）內收不到**任何**訊息，client 主動 `abort()` 舊連線並進入重連流程。這樣網路恢復後主來源一定會重新連上，FeedManager 才能切回。
 3. **匯率**：**open.er-api.com**（`/v6/latest/USD`，免 key，含 TWD/JPY/EUR/GBP）。每 30 分鐘抓一次（可設定），存進 `fx_rate` 表（重啟後仍有最後一次匯率），並記錄來源提供的 `time_last_update_utc` 作為「匯率更新時間」給前端顯示。遇到 429 / 5xx / timeout → 保留上次匯率並記 warn log，下個週期再試。依來源條款，前端換算表旁放「Rates By Exchange Rate API」attribution 連結。
 4. **Kafka Streams K 線**：讀 `btc.price.ticks`，以**事件時間**（自訂 `TimestampExtractor` 取 payload 的 `eventTime`，不是 Kafka record timestamp）做 1m、5m tumbling window，grace 5 秒（可設定），`suppress(untilWindowCloses)` 後輸出「定稿」K 線到 `btc.candles`，再由 consumer upsert 到 `candle` 表。
-   - open/close 依排序鍵 `(eventTime, receivedAt, eventId)` 最小/最大者決定（不依到達順序）；同一 `eventTime` 多筆時也有確定結果。README 的 AC4 對照 SQL 使用同一排序鍵。
+   - open/close 依排序鍵 `(eventTime, receivedAt, eventId)` 最小/最大者決定（不依到達順序）；同一 `eventTime` 多筆時也有確定結果。README 的 AC4 對照 SQL 使用同一排序鍵（task 30 起位於 `docs/acceptance/ac4-ohlc-check.sql`，步驟見 `docs/acceptance.md`）。
    - window 範圍為 `[start, end)`：剛好落在 `12:01:00.000` 的 tick 屬於 12:01 那根。
    - 超過 grace 的遲到 tick 會被 Streams 丟棄但仍寫入 DB → 以 Streams 內建 `dropped-records` metric 記錄並打 warn log；AC4 比對時若數值不一致，先檢查此 metric（正常情況下 Coinbase/Kraken 的遲到量為 0）。
    - `DeserializationExceptionHandler` 設為 `LogAndContinue`，壞訊息不會讓 Streams thread 死掉；`state.dir` 可用環境變數設定。
@@ -109,8 +109,8 @@ com.currency.demo
   - `egress`（一般 bridge）：只有 backend，用於連 Coinbase / Kraken / open.er-api，以及對 host 公開 8080
   - `public`（一般 bridge）：只有 frontend，用於對 host 公開 3000
   - AC2 手動驗收：`docker network disconnect <project>_egress <backend>` → 後端仍連得到 Kafka/DB、前端仍連得到後端，只有價格來源斷線；`docker network connect` 接回。
-- **離線測試準備**（AC13）：README 列出 `./mvnw dependency:go-offline`、`npm ci`，以及要事先 `docker pull` 的固定版本 image：`apache/kafka:<ver>`、`postgres:<ver>`、`testcontainers/ryuk:<ver>`（測試若用 Toxiproxy 則不需要，本 plan 不使用）。QA 以 `./mvnw -o verify` 在斷網下驗收。
-- **多架構建置**（AC14）：README 註明需先建立支援多平台的 builder（`docker buildx create --use --driver docker-container`，或啟用 Docker Desktop 的 containerd image store）。
+- **離線測試準備**（AC13）：README（task 30 起為 `docs/testing.md`）列出 `./mvnw dependency:go-offline`、`npm ci`，以及要事先 `docker pull` 的固定版本 image：`apache/kafka:<ver>`、`postgres:<ver>`、`testcontainers/ryuk:<ver>`（測試若用 Toxiproxy 則不需要，本 plan 不使用）。QA 以 `./mvnw -o verify` 在斷網下驗收。
+- **多架構建置**（AC14）：README（task 30 起為 `docs/testing.md`）註明需先建立支援多平台的 builder（`docker buildx create --use --driver docker-container`，或啟用 Docker Desktop 的 containerd image store）。
 
 ## Affected Files & Modules
 
@@ -193,11 +193,11 @@ com.currency.demo
 - 整合：`@SpringBootTest` + Testcontainers（`@ServiceConnection` 的 Kafka、Postgres），外部 HTTP 用 `MockRestServiceServer`（含 429 → 保留舊匯率），price feed 用假 `PriceFeedClient`。
   - **Readiness（AC12）**：用 docker `pause` / `unpause`（`container.getDockerClient().pauseContainerCmd(...)`）讓 Kafka 失聯再恢復——pause 不會換 port，`@ServiceConnection` 的 bootstrap servers 仍然有效；斷言 readiness `DOWN`（HTTP 503）→ unpause 後在期限內回到 `UP`（用 Awaitility 輪詢，不用固定 sleep）。不用 `stop()`/`start()`，因為重啟後 host port 會改變。
 - 前端：Vitest + RTL + MSW；SSE 用假 EventSource；涵蓋「頁面可見時 toast → 呼叫標記已讀」「背景分頁 → 不標記」、15 秒無事件 → 顯示延遲、attribution 連結存在。
-- 手動驗收（AC1/2/3/4/6/7 需要真實網路與時間）：README〈驗收步驟〉逐條寫出指令。
+- 手動驗收（AC1/2/3/4/6/7 需要真實網路與時間）：README〈驗收步驟〉逐條寫出指令（task 30 起為 `docs/acceptance.md`）。
 
 ## Acceptance Criteria 驗證方式
 
-「自動」＝ `./mvnw verify` 或 `npm test` 內的測試；「手動」＝ README〈驗收步驟〉中寫明的操作（需要真網路或真時間）。
+「自動」＝ `./mvnw verify` 或 `npm test` 內的測試；「手動」＝ README〈驗收步驟〉（task 30 起為 `docs/acceptance.md`）中寫明的操作（需要真網路或真時間）。
 
 | AC | 自動測試 | 手動驗收 |
 |---|---|---|

@@ -301,3 +301,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: `npm test` 49/49 連跑 5 次（既有斷言一行未改，新增漲跌與 status pill 測試）、build、lint 0；已重建 localhost:3001 前端容器。
 - **限制**: 本環境無瀏覽器，桌機與 375px 手機寬度的實際外觀請 team lead 以 Chrome 目視審查。
 - **概念**: design token 讓顏色、間距等決策集中在一處；canvas 圖表無法吃 CSS，就在執行時讀同一組 CSS 變數，讓兩者永遠一致。
+
+## 2026-09-30 15:08 — Stage: task 29 QA PASS；implement task 30（README 改版）
+- **Task 29**: QA PASS（自行由 CSS token 重算 WCAG 對比、測試檔無刪行）→ 勾 [x]。team lead 的 Chrome 目視審查仍可能提出調整。
+- **Task 30（範圍擴充，team lead 依使用者授權核准）**: README 改為作品門面（介紹＋截圖、功能亮點、mermaid 架構圖、技術棧、技術重點、快速開始、開發與測試、spec-driven＋雙 agent、Roadmap、專案結構）；原第 1–7 節**原文**搬到 `docs/configuration.md`（工具、服務與網路、環境變數、常見問題）、`docs/api.md`、`docs/testing.md`、`docs/acceptance.md`。逐行比對：180 行中 174 行原封不動，6 行為刻意改寫的交叉引用（改成連結）。新增 `scripts/check_md_links.py`（檢查相對連結與 GitHub 錨點，反向驗證可抓出壞連結／壞錨點）。tasks.md（task 28）、plan.md、CandlePipelineTest 註解改為新路徑。
+- **引用更新說明**: 本檔（progress.md）較早段落提到「README 第 X 節」者為當時紀錄，不改寫；現位置：第 3 節→docs/configuration.md、第 4 節→docs/api.md、第 5 節→docs/testing.md、第 6 節→docs/acceptance.md、第 7 節→docs/configuration.md〈常見問題〉。qa-review.md 屬 QA，由 QA 自行更新。
+- **待補**: 截圖 `docs/images/dashboard-dark.png`、`dashboard-mobile.png`、`dashboard-light.png`（team lead 以 Chrome 擷取）；mermaid 於 GitHub 的實際 render 待 push 後確認。task 30 暫不勾選。
