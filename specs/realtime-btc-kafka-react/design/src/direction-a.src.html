@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 A · 交易終端</title>
+<style>
+/*@TOKENS*/
+/* ======================================================================= Direction A - 交易終端 (data-dense terminal) */
+:root{
+  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  --font-num: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "PingFang TC", monospace;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px; --fs-price: clamp(32px, 4.2vw, 44px);
+  --sp-1: 2px; --sp-2: 4px; --sp-3: 8px; --sp-4: 12px; --sp-5: 16px; --sp-6: 24px;
+  --r-1: 2px; --r-2: 4px; --r-3: 6px;
+  --h-control: 28px; --h-panel-head: 40px; --h-topbar: 48px;
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.5), 0 0 0 1px var(--line);
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+:root[data-theme="light"]{--shadow-pop: 0 12px 32px rgba(13,20,28,.18), 0 0 0 1px var(--line);}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--shadow-pop: 0 12px 32px rgba(13,20,28,.18), 0 0 0 1px var(--line);}}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font:var(--fs-sm)/1.5 var(--font-sans);color:var(--text);background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;min-width:320px;background:var(--bg)}
+h1,h2,h3,p,dl,dd,ul{margin:0;padding:0}
+ul{list-style:none}
+a{color:var(--accent);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-1)}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- layout */
+.app{display:grid;grid-template-rows:auto auto 1fr auto;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:var(--sp-4);height:var(--h-topbar);padding:0 var(--sp-5);background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-size:var(--fs-md);font-weight:700;white-space:nowrap}
+.brand h1{font-size:inherit;font-weight:inherit}
+.brand__mark{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-2);background:var(--brand);color:#111;font-weight:800;font-size:15px}
+.brand__pair{font:600 var(--fs-xs)/1 var(--font-num);color:var(--muted);padding:3px 6px;border:1px solid var(--line);border-radius:var(--r-1)}
+.topbar__spacer{flex:1}
+.topbar__meta{color:var(--muted);font-size:var(--fs-xs);white-space:nowrap}
+
+.quote{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6);padding:var(--sp-4) var(--sp-5);border-bottom:1px solid var(--line)}
+.quote__label{font-size:var(--fs-xs);color:var(--muted);margin-bottom:var(--sp-1)}
+.quote__row{display:flex;align-items:center;gap:var(--sp-3)}
+.quote__value{font:700 var(--fs-price)/1.05 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--text)}
+.quote__unit{font:600 var(--fs-xs)/1 var(--font-num);color:var(--muted);align-self:flex-end;margin-bottom:6px}
+.stats{display:flex;flex-wrap:wrap;gap:0;margin-left:auto}
+.stats > div{padding:0 var(--sp-5);border-left:1px solid var(--line);min-width:0}
+.stats dt{font-size:var(--fs-xs);color:var(--muted);white-space:nowrap}
+.stats dd{font:600 var(--fs-md)/1.4 var(--font-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stats dd[data-sign=up]{color:var(--up)} .stats dd[data-sign=down]{color:var(--down)}
+.src-tag{font:500 var(--fs-2xs)/1 var(--font-sans);color:var(--muted);border:1px solid var(--line-strong);padding:2px 4px;border-radius:var(--r-1);margin-left:4px;vertical-align:2px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:1px;background:var(--line);min-height:0}
+.rail{display:grid;grid-template-rows:auto minmax(0,1fr);gap:1px;min-height:0}
+.panel{background:var(--panel);min-width:0;display:flex;flex-direction:column;min-height:0}
+.panel__head{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);min-height:var(--h-panel-head);padding:var(--sp-2) var(--sp-4);border-bottom:1px solid var(--line)}
+.panel__head h2{font-size:var(--fs-sm);font-weight:700;white-space:nowrap}
+.panel__head .hint{font-size:var(--fs-xs);color:var(--muted)}
+.panel__body{padding:var(--sp-3) var(--sp-4);min-height:0}
+.panel__foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-2) var(--sp-4);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);font-size:var(--fs-xs);color:var(--muted);margin-top:auto}
+
+.footer{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);padding:var(--sp-3) var(--sp-5);font-size:var(--fs-xs);color:var(--muted);border-top:1px solid var(--line)}
+
+/* Desktop: an app-like screen that fits the viewport; chart takes the remaining height. */
+@media (min-width:1100px){
+  .app{height:100vh;min-height:680px}
+  .panel--alerts .panel__scroll{overflow:auto}
+}
+
+/* ---------- status pill */
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--r-2);font-size:var(--fs-xs);font-weight:700;border:1px solid;white-space:nowrap}
+.pill__src{font-weight:500;color:var(--text)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+body[data-feed=live] .pill{color:var(--up);background:var(--up-soft);border-color:color-mix(in srgb,var(--up) 55%,transparent)}
+body[data-feed=live] .pill .dot{animation:pulse 2.4s var(--ease) infinite}
+body[data-feed=stale] .pill{color:var(--warn);background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 55%,transparent)}
+body[data-feed=disconnected] .pill{color:var(--down);background:var(--down-soft);border-color:color-mix(in srgb,var(--down) 55%,transparent)}
+body[data-feed=connecting] .pill{color:var(--muted);background:var(--panel-2);border-color:var(--line-strong)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%,100%{box-shadow:0 0 0 5px transparent}}
+
+/* ---------- direction chip (the price itself stays neutral; only this chip carries colour) */
+.tick{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:var(--r-2);font-size:13px;line-height:1}
+.tick[data-dir=up]{color:var(--up);background:var(--up-soft)}
+.tick[data-dir=down]{color:var(--down);background:var(--down-soft)}
+.tick.flash-up{animation:chip-up .8s var(--ease)} .tick.flash-down{animation:chip-down .8s var(--ease)}
+@keyframes chip-up{from{box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 45%,transparent)}to{box-shadow:0 0 0 3px transparent}}
+@keyframes chip-down{from{box-shadow:0 0 0 3px color-mix(in srgb,var(--down) 45%,transparent)}to{box-shadow:0 0 0 3px transparent}}
+.feed-chip{display:none;height:24px;padding:0 8px;border-radius:var(--r-2);font-size:var(--fs-xs);font-weight:700;align-items:center}
+body[data-feed=stale] .feed-chip{display:inline-flex;color:var(--warn);background:var(--warn-soft)}
+body[data-feed=disconnected] .feed-chip{display:inline-flex;color:var(--down);background:var(--down-soft)}
+body:not([data-feed=live]) .tick{display:none}
+/* Old data must never look live: price goes to muted colour (still 4.5:1) */
+body[data-feed=stale] .quote__value, body[data-feed=disconnected] .quote__value,
+body[data-feed=stale] .stats dd, body[data-feed=disconnected] .stats dd,
+body[data-feed=stale] [data-conv], body[data-feed=disconnected] [data-conv]{color:var(--muted)!important}
+
+.feed-banner{flex-basis:100%;display:flex;gap:var(--sp-3);align-items:center;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-2);font-size:var(--fs-sm);color:var(--text);border:1px solid}
+.feed-banner::before{font-weight:700;white-space:nowrap}
+body[data-feed=stale] .feed-banner{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+body[data-feed=stale] .feed-banner::before{content:"⚠";color:var(--warn)}
+body[data-feed=disconnected] .feed-banner{background:var(--down-soft);border-color:color-mix(in srgb,var(--down) 45%,transparent)}
+body[data-feed=disconnected] .feed-banner::before{content:"✕";color:var(--down)}
+
+/* ---------- controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--h-control);padding:0 10px;font:600 var(--fs-xs)/1 var(--font-sans);color:var(--text);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:var(--r-2);cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn--primary:hover{background:color-mix(in srgb,var(--accent) 85%,var(--text))}
+.btn--ghost{background:transparent}
+.btn--danger{background:var(--danger);border-color:var(--danger);color:var(--on-danger)}
+.btn--link{background:none;border:none;padding:0 2px;height:auto;color:var(--accent);font-weight:600}
+.btn--link:hover{text-decoration:underline}
+.btn--icon{width:var(--h-control);padding:0}
+input,select{font:var(--fs-sm) var(--font-sans);color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--r-2);height:var(--h-control);padding:0 8px;min-width:0}
+input:hover{border-color:var(--muted)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+input[aria-invalid=true]{border-color:var(--down)}
+input::placeholder{color:var(--muted)}
+.field-err{color:var(--down);font-size:var(--fs-xs);margin-top:var(--sp-2)}
+.input-affix{display:flex;align-items:center;flex:1;min-width:0;position:relative}
+.input-affix input{width:100%;padding-right:40px;font-family:var(--font-num)}
+.input-affix span{position:absolute;right:8px;font:600 var(--fs-2xs) var(--font-num);color:var(--muted);pointer-events:none}
+
+/* segmented control (chart view + alert direction) */
+.seg{display:inline-flex;padding:2px;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-2)}
+.seg button, .seg label{display:inline-flex;align-items:center;height:22px;padding:0 10px;font:600 var(--fs-xs)/1 var(--font-sans);color:var(--muted);background:transparent;border:0;border-radius:var(--r-1);cursor:pointer;white-space:nowrap}
+.seg button:hover, .seg label:hover{color:var(--text)}
+.seg [aria-selected=true], .seg input:checked + label{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:focus-visible + label{outline:2px solid var(--accent);outline-offset:1px}
+.seg--dir input[value=ABOVE]:checked + label{color:var(--up);box-shadow:inset 0 0 0 1px var(--up)}
+.seg--dir input[value=BELOW]:checked + label{color:var(--down);box-shadow:inset 0 0 0 1px var(--down)}
+
+/* ---------- chart */
+.panel--chart .panel__head{gap:var(--sp-3) var(--sp-5)}
+.ohlc{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);margin-left:auto;font:var(--fs-xs)/1.4 var(--font-num)}
+.ohlc b{font-weight:400;color:var(--muted);margin-right:4px;font-family:var(--font-sans)}
+.chart{position:relative;flex:1;min-height:360px;margin:var(--sp-3) 0 0 var(--sp-4)}
+.ch-grid{stroke:var(--chart-grid);stroke-width:1}
+.ch-border{stroke:var(--line);stroke-width:1}
+.ch-axis{fill:var(--chart-text);font:11px var(--font-num)}
+.ch-up{fill:var(--up);stroke:var(--up);stroke-width:1}
+.ch-down{fill:var(--down);stroke:var(--down);stroke-width:1}
+.ch-line{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round}
+.ch-last{stroke-dasharray:2 3;stroke-width:1}
+.ch-last--up{stroke:var(--up)} .ch-last--down{stroke:var(--down)} .ch-last--line{stroke:var(--accent)}
+.ch-tag--up{fill:var(--up)} .ch-tag--down{fill:var(--down)} .ch-tag--line{fill:var(--accent)}
+.ch-tag-text{fill:var(--bg);font:700 11px var(--font-num)}
+.chart-note{position:absolute;left:8px;bottom:30px;font-size:var(--fs-2xs);color:var(--muted)}
+
+/* ---------- tables */
+.table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.table th{font-size:var(--fs-xs);font-weight:500;color:var(--muted);text-align:left;padding:6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.table td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+.table tr:last-child td{border-bottom:0}
+.table .r{text-align:right}
+.table th + th, .table td + td{padding-left:var(--sp-4)}
+.table tbody tr:hover td{background:color-mix(in srgb,var(--panel-2) 70%,transparent)}
+.th-unit{font-weight:400}
+.code{font:700 var(--fs-sm) var(--font-num)}
+.cname{color:var(--muted);font-size:var(--fs-xs);margin-left:6px}
+
+/* ---------- alerts */
+.badge{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 6px;border-radius:9px;font:700 var(--fs-2xs)/1 var(--font-num);color:var(--bg);background:var(--warn)}
+body[data-unread="0"] .badge{display:none}
+.unread{margin:var(--sp-3) var(--sp-4) 0;border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warn-soft);border-radius:var(--r-2)}
+body[data-unread="0"] .unread{display:none}
+.unread__head{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:var(--fs-xs);font-weight:700;color:var(--warn)}
+.unread li{display:flex;align-items:center;gap:var(--sp-3);padding:6px 10px;border-top:1px solid color-mix(in srgb,var(--warn) 25%,transparent);font-size:var(--fs-xs)}
+.unread li .what{flex:1;min-width:0}
+.unread li .what{display:grid;gap:1px}
+.unread .u-cond{font-size:var(--fs-sm);font-weight:600}.unread .u-cond .num{font-weight:700}
+.unread .u-sub{color:var(--text)}
+.alert-form{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center;padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line)}
+.alert-form .field-err{flex-basis:100%;margin:0}
+.alist li{display:grid;grid-template-columns:auto 1fr auto;gap:2px var(--sp-3);align-items:center;padding:8px var(--sp-4);border-bottom:1px solid var(--line)}
+.alist .dir{grid-row:span 2;display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-2);font-size:11px}
+.alist .dir--up{color:var(--up);background:var(--up-soft)} .alist .dir--down{color:var(--down);background:var(--down-soft)}
+.alist .cond{font-size:var(--fs-sm)} .alist .cond .num{font-weight:700}
+.alist .sub{font-size:var(--fs-xs);color:var(--muted);display:flex;gap:var(--sp-3);flex-wrap:wrap}
+.alist .acts{grid-row:span 2;display:flex;gap:var(--sp-2)}
+.acts .idle{display:flex;gap:var(--sp-2)}
+.acts .confirm{display:none;gap:var(--sp-2)}
+.is-confirming .acts .confirm{display:flex} .is-confirming .acts .idle{display:none}
+.empty{padding:var(--sp-5) var(--sp-4);color:var(--muted);font-size:var(--fs-xs);text-align:center}
+.empty strong{display:block;color:var(--text);font-size:var(--fs-sm);margin-bottom:2px}
+
+/* ---------- toast */
+.toasts{position:fixed;top:calc(var(--h-topbar) + 8px);right:var(--sp-5);z-index:100;display:grid;gap:var(--sp-3);width:min(360px,calc(100vw - 32px))}
+.toast{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;gap:var(--sp-1) var(--sp-3);padding:10px 10px 12px 12px;background:var(--panel-2);border:1px solid var(--line-strong);border-left:3px solid var(--warn);border-radius:var(--r-2);box-shadow:var(--shadow-pop);animation:toast-in .2s var(--ease)}
+.toast__icon{grid-row:span 2;color:var(--warn);font-size:14px;line-height:20px}
+.toast__title{font-weight:700;font-size:var(--fs-sm)}
+.toast__title time{font:400 var(--fs-2xs) var(--font-num);color:var(--muted);margin-left:6px}
+.toast__body{font-size:var(--fs-xs);grid-column:2}
+.toast .btn--icon{grid-row:span 2;height:24px;width:24px;border:0;background:transparent;color:var(--muted);font-size:16px}
+.toast__timer{position:absolute;left:0;bottom:0;height:2px;background:var(--warn);width:100%;transform-origin:left;animation:timer 10s linear forwards}
+@keyframes toast-in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@keyframes timer{to{transform:scaleX(0)}}
+
+/* ---------- drawer (currency management) */
+.drawer{margin:0 0 0 auto;height:100vh;max-height:100vh;width:min(440px,100vw);max-width:100vw;padding:0;border:0;border-left:1px solid var(--line);background:var(--panel);color:var(--text);box-shadow:var(--shadow-pop)}
+.drawer[open]{display:flex;flex-direction:column;animation:drawer-in .22s var(--ease)}
+.drawer::backdrop{background:rgba(0,0,0,.55)}
+@keyframes drawer-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.drawer__head{display:flex;align-items:center;gap:var(--sp-3);height:var(--h-topbar);padding:0 var(--sp-4) 0 var(--sp-5);border-bottom:1px solid var(--line)}
+.drawer__head h2{font-size:var(--fs-md);flex:1}
+.drawer__body{flex:1;overflow:auto;padding:var(--sp-4) var(--sp-5)}
+.drawer__body > p{color:var(--muted);font-size:var(--fs-xs);margin-bottom:var(--sp-4)}
+.clist li{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;border-bottom:1px solid var(--line)}
+.clist .view{display:flex;align-items:center;gap:var(--sp-3);flex:1;min-width:0}
+.clist .view .code{width:44px}
+.clist .edit{display:none;flex:1;gap:var(--sp-2);min-width:0}
+.clist .edit input:first-child{width:64px;font-family:var(--font-num);text-transform:uppercase}
+.clist .edit input:nth-child(2){flex:1}
+.clist .is-editing .view,.clist .is-editing .acts{display:none} .clist .is-editing .edit{display:flex}
+.clist .acts{display:flex;gap:var(--sp-2)}
+.drawer__foot{padding:var(--sp-4) var(--sp-5);border-top:1px solid var(--line);background:var(--panel-2)}
+.drawer__foot h3{font-size:var(--fs-sm);margin-bottom:var(--sp-3)}
+.cform{display:grid;grid-template-columns:80px 1fr auto;gap:var(--sp-2) var(--sp-3);align-items:start}
+.cform label{display:grid;gap:4px;font-size:var(--fs-xs);color:var(--muted)}
+.cform label input{color:var(--text)}
+.cform #c-code{font-family:var(--font-num);text-transform:uppercase}
+.cform .btn{margin-top:22px}
+.cform .field-err{margin:0}
+
+/* ---------- loading skeleton (feed "connecting") */
+body[data-feed=connecting] .sk{color:transparent!important;background:linear-gradient(90deg,var(--panel-2) 0 40%,color-mix(in srgb,var(--panel-2) 60%,var(--line-strong)) 50%,var(--panel-2) 60% 100%) 0 0/300% 100%;border-radius:var(--r-2);animation:shimmer 1.4s linear infinite}
+body[data-feed=connecting] .sk *{visibility:hidden}
+body[data-feed=connecting] .chart{background:var(--panel-2);border-radius:var(--r-2)} body[data-feed=connecting] .chart svg{display:none}
+body[data-feed=connecting] .chart::after{content:"載入圖表中…";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:var(--fs-xs)}
+body[data-feed=connecting] .tick{display:none}
+@keyframes shimmer{to{background-position:-150% 0}}
+
+/* ---------- tablet */
+@media (max-width:1099px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .rail{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  .stats{margin-left:0;width:100%}
+  .stats > div:first-child{border-left:0;padding-left:0}
+  .chart{min-height:380px}
+}
+/* ---------- phone */
+@media (max-width:720px){
+  .rail{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:560px){
+  :root{--h-control:36px}
+  .topbar{padding:0 var(--sp-4);gap:var(--sp-3)}
+  .brand__pair,.topbar__meta{display:none}
+  .brand__label{display:none}
+  .topbar .btn .label{display:none}
+  .topbar .btn{width:36px;padding:0;font-size:16px}
+  .quote{padding:var(--sp-4)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3) 0;border-top:1px solid var(--line);padding-top:var(--sp-3)}
+  .stats > div{padding:0 var(--sp-3) 0 0;border:0}
+  .stats > div:nth-child(2n){padding-left:var(--sp-3);border-left:1px solid var(--line)}
+  .stats > div:last-child{grid-column:1/-1;border-left:0;padding-left:0}
+  .panel__head{padding:var(--sp-3) var(--sp-4)}
+  .ohlc{margin-left:0;width:100%}
+  .ohlc .range{display:none}
+  .chart{min-height:280px;margin-left:var(--sp-3)}
+  .seg button,.seg label{height:30px}
+  .alist li{padding:10px var(--sp-4)}
+  .toasts{right:var(--sp-4);left:var(--sp-4);width:auto}
+  .drawer{width:100vw;border-left:0}
+  .cform{grid-template-columns:72px 1fr}
+  .cform .btn{grid-column:1/-1;margin-top:0}
+  .footer{padding:var(--sp-4)}
+  .th-unit{display:none}
+  .cname{display:block;margin:0}
+  .table td{padding:6px 0}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .toast__timer{display:none}
+}
+/*@MOCKCSS*/
+</style>
+</head>
+<body data-feed="live" data-unread="1">
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand__mark" aria-hidden="true">₿</span><h1>比特幣即時價格</h1><span class="brand__pair">BTC-USD</span></div>
+    <span class="pill" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span data-status-label>即時</span><span class="pill__src">· <span data-status-source>Coinbase</span></span></span>
+    <span class="topbar__spacer"></span>
+    <button class="btn btn--ghost" type="button" data-act="open-currency" aria-haspopup="dialog" aria-label="幣別管理"><span aria-hidden="true">⚙</span><span class="label">幣別管理</span></button>
+  </header>
+
+  <section class="quote" aria-labelledby="quote-label">
+    <div>
+      <div class="quote__label" id="quote-label">BTC-USD 最新成交價</div>
+      <div class="quote__row">
+        <span class="quote__value js-dir-host sk" data-usd aria-label="BTC-USD 價格">83,211.21</span>
+        <span class="quote__unit">USD</span>
+        <span class="tick js-dir js-flash" data-dir="up"><span class="glyph" aria-hidden="true">▲</span><span class="sr">較前一筆上漲</span></span>
+        <span class="feed-chip" data-status-label>資料延遲</span>
+      </div>
+    </div>
+    <dl class="stats">
+      <div><dt>開啟後漲跌</dt><dd class="sk" data-change>+42.37（+0.05%）</dd></div>
+      <div><dt>本次開啟最高</dt><dd class="sk" data-sess-hi>—</dd></div>
+      <div><dt>本次開啟最低</dt><dd class="sk" data-sess-lo>—</dd></div>
+      <div><dt>成交來源</dt><dd class="sk"><span data-status-source>Coinbase</span><span class="src-tag" data-source-role>主要</span></dd></div>
+      <div><dt>最後更新</dt><dd class="sk"><time data-time>--:--:--</time></dd></div>
+    </dl>
+    <p class="feed-banner" role="alert" data-status-msg hidden></p>
+  </section>
+
+  <main class="grid">
+    <section class="panel panel--chart" aria-labelledby="chart-title">
+      <header class="panel__head">
+        <h2 id="chart-title">價格圖表</h2>
+        <div class="seg" role="tablist" aria-label="圖表類型">
+          <button role="tab" aria-selected="true" data-view="1m">1 分 K 線</button>
+          <button role="tab" aria-selected="false" data-view="5m" tabindex="-1">5 分 K 線</button>
+          <button role="tab" aria-selected="false" data-view="trend" tabindex="-1">1 小時走勢</button>
+        </div>
+        <div class="ohlc" aria-label="最新一根 K 線">
+          <span><b>開</b><span data-ohlc="o"></span></span><span><b>高</b><span data-ohlc="h"></span></span>
+          <span><b>低</b><span data-ohlc="l"></span></span><span><b>收</b><span data-ohlc="c"></span></span>
+          <span class="range"><b>區間高/低</b><span data-range-hi></span> / <span data-range-lo></span></span>
+        </div>
+      </header>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <aside class="rail">
+      <section class="panel" aria-labelledby="conv-title">
+        <header class="panel__head"><h2 id="conv-title">多幣別換算</h2><span class="hint" id="conv-note">1 BTC 以各幣別計價</span></header>
+        <div class="panel__body">
+          <table class="table" aria-describedby="conv-note">
+            <thead><tr><th scope="col">幣別</th><th scope="col" class="r">1 BTC</th><th scope="col" class="r">匯率<span class="th-unit">（1 USD =）</span></th></tr></thead>
+            <tbody>
+              <tr><td><span class="code">EUR</span><span class="cname">歐元</span></td><td class="r num sk" data-conv="EUR"></td><td class="r num">0.88152</td></tr>
+              <tr><td><span class="code">GBP</span><span class="cname">英鎊</span></td><td class="r num sk" data-conv="GBP"></td><td class="r num">0.755961</td></tr>
+              <tr><td><span class="code">JPY</span><span class="cname">日圓</span></td><td class="r num sk" data-conv="JPY"></td><td class="r num">157.389062</td></tr>
+              <tr><td><span class="code">TWD</span><span class="cname">新台幣</span></td><td class="r num sk" data-conv="TWD"></td><td class="r num">31.84071</td></tr>
+              <tr><td><span class="code">USD</span><span class="cname">美元</span></td><td class="r num sk" data-conv="USD"></td><td class="r num">1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="panel__foot">
+          <span>匯率更新於 <time class="num" datetime="2026-09-30T00:02:31Z">2026/9/30 08:02:31</time></span>
+          <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>
+        </footer>
+      </section>
+
+      <section class="panel panel--alerts" aria-labelledby="alert-title">
+        <header class="panel__head"><h2 id="alert-title">價格警示</h2><span class="badge" aria-label="未讀警示數"><span data-unread-count>1</span></span></header>
+        <div class="panel__scroll">
+          <form class="alert-form" id="alert-form" aria-label="新增警示" novalidate>
+            <div class="seg seg--dir" role="radiogroup" aria-label="條件">
+              <input type="radio" name="direction" id="d-above" value="ABOVE" checked><label for="d-above">▲ 高於</label>
+              <input type="radio" name="direction" id="d-below" value="BELOW"><label for="d-below">▼ 低於</label>
+            </div>
+            <label class="sr" for="alert-threshold">門檻價格（USD）</label>
+            <div class="input-affix"><input id="alert-threshold" name="threshold" type="number" inputmode="decimal" min="0" step="any" placeholder="門檻價格"><span>USD</span></div>
+            <button class="btn btn--primary" type="submit">新增</button>
+            <p class="field-err" role="alert" data-err hidden></p>
+          </form>
+          <div class="unread" aria-labelledby="unread-title">
+            <div class="unread__head"><span id="unread-title">未讀觸發（<span data-unread-count>1</span>）</span><button class="btn btn--link" type="button" data-act="read-all">全部標記已讀</button></div>
+            <ul data-unread-list id="unread-list">
+              <li data-row><span class="what"><span class="u-cond">▲ 高於 <span class="num">83,500.00</span></span><span class="u-sub"><time class="num">9/30 14:10:05</time> 觸發 · 當時 <span class="num">83,512.40</span></span></span><button class="btn" type="button" data-act="read" aria-label="標記已讀：高於 83,500">已讀</button></li>
+            </ul>
+          </div>
+          <ul class="alist" id="alert-list" aria-label="已設定的警示">
+            <li data-row>
+              <span class="dir dir--up" aria-hidden="true">▲</span>
+              <span class="cond">高於 <span class="num">83,500.00</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除警示：高於 83,500">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+              <span class="sub"><span>上次觸發 <time class="num">9/30 14:10:05</time></span><span class="num" data-dist="83500"></span></span>
+            </li>
+            <li data-row>
+              <span class="dir dir--down" aria-hidden="true">▼</span>
+              <span class="cond">低於 <span class="num">82,800.00</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除警示：低於 82,800">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+              <span class="sub"><span>尚未觸發</span><span class="num" data-dist="82800"></span></span>
+            </li>
+          </ul>
+          <p class="empty" data-empty-for="alert-list" hidden><strong>尚未設定警示</strong>在上方輸入門檻價格，價格越過時會通知你。</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>價格來源：Coinbase（主要）／ Kraken（備援）</span>
+    <span>圖表：TradingView Lightweight Charts™</span>
+    <span>警示由後端判斷，同一警示觸發後冷卻 5 分鐘</span>
+  </footer>
+</div>
+
+<div class="toasts" aria-live="assertive"></div>
+<template id="toast-tpl">
+  <div class="toast" role="alert">
+    <span class="toast__icon" aria-hidden="true">🔔</span>
+    <div class="toast__title">價格警示觸發<time data-toast-now></time></div>
+    <button class="btn btn--icon" type="button" data-toast-close aria-label="關閉通知">×</button>
+    <div class="toast__body">BTC-USD 高於 <span class="num">US$83,500.00</span>，目前 <span class="num">US$83,512.40</span></div>
+    <span class="toast__timer" aria-hidden="true"></span>
+  </div>
+</template>
+
+<dialog class="drawer" id="currency-dialog" aria-labelledby="cur-title">
+  <header class="drawer__head"><h2 id="cur-title">幣別管理</h2><button class="btn btn--icon btn--ghost" type="button" data-act="close-dialog" aria-label="關閉">×</button></header>
+  <div class="drawer__body">
+    <p>換算表會列出這裡的所有幣別。代碼為 3 個英文字母（ISO 4217）。</p>
+    <ul class="clist" id="currency-list"></ul>
+  </div>
+  <footer class="drawer__foot">
+    <h3>新增幣別</h3>
+    <form class="cform" id="currency-form" novalidate>
+      <label>代碼<input id="c-code" name="code" maxlength="3" placeholder="例 CHF" autocomplete="off"><span class="field-err" data-err="code" role="alert" hidden></span></label>
+      <label>中文名稱<input id="c-name" name="cname" maxlength="50" placeholder="例 瑞士法郎" autocomplete="off"><span class="field-err" data-err="cname" role="alert" hidden></span></label>
+      <button class="btn btn--primary" type="submit">新增</button>
+    </form>
+  </footer>
+</dialog>
+
+<script>
+window.MOCK_CFG = { axisW: 72, slot1m: 9, candleRadius: 0, tagRadius: 2 }
+window.renderCurrencyRow = (code, name) => `<li data-row data-code="${code}">
+  <span class="view"><span class="code">${code}</span><span>${name}</span></span>
+  <span class="edit"><input value="${code}" maxlength="3" aria-label="代碼"><input value="${name}" aria-label="中文名稱"><button class="btn btn--primary" type="button" data-act="save-edit">儲存</button><button class="btn" type="button" data-act="cancel-edit">取消</button></span>
+  <span class="acts"><span class="idle"><button class="btn" type="button" data-act="edit" aria-label="編輯 ${code}">編輯</button><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除 ${code}">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span></li>`
+window.renderAlertRow = (dir, v) => { const up = dir === 'ABOVE', n = MOCK.fmt(v); return `<li data-row>
+  <span class="dir dir--${up ? 'up' : 'down'}" aria-hidden="true">${up ? '▲' : '▼'}</span><span class="cond">${up ? '高於' : '低於'} <span class="num">${n}</span></span>
+  <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+  <span class="sub"><span>尚未觸發</span><span class="num" data-dist="${v}"></span></span></li>` }
+document.getElementById('currency-list').innerHTML = [['EUR','歐元'],['GBP','英鎊'],['JPY','日圓'],['TWD','新台幣'],['USD','美元']].map(([c,n]) => renderCurrencyRow(c,n)).join('')
+</script>
+<script>/*@DATA*/</script>
+<script>/*@MOCKJS*/</script>
+</body>
+</html>

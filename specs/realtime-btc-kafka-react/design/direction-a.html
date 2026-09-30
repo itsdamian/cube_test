@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 A · 交易終端</title>
+<style>
+:root{color-scheme:dark;--bg:#07090c;--panel:#0e1218;--panel-2:#151b23;--line:#222a35;--line-strong:#5d6b7b;--text:#e6ebf0;--muted:#8d99a7;--accent:#4cc2ff;--on-accent:#07090c;--brand:#f7931a;--up:#2fd27a;--up-soft:#0c2618;--down:#ff6166;--down-soft:#35131a;--warn:#f5b83d;--warn-soft:#2e230a;--danger:#d13438;--on-danger:#ffffff;--chart-grid:#161c25;--chart-text:#8d99a7;}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){color-scheme:light;--bg:#e9edf2;--panel:#ffffff;--panel-2:#f4f6f9;--line:#d9dfe6;--line-strong:#768392;--text:#0d141c;--muted:#4f5b68;--accent:#0060b8;--on-accent:#ffffff;--brand:#b85f00;--up:#08773a;--up-soft:#e1f4e8;--down:#c4232b;--down-soft:#fde7e8;--warn:#865600;--warn-soft:#fbefd6;--danger:#c4232b;--on-danger:#ffffff;--chart-grid:#eef1f4;--chart-text:#4f5b68;}}
+:root[data-theme="light"]{color-scheme:light;--bg:#e9edf2;--panel:#ffffff;--panel-2:#f4f6f9;--line:#d9dfe6;--line-strong:#768392;--text:#0d141c;--muted:#4f5b68;--accent:#0060b8;--on-accent:#ffffff;--brand:#b85f00;--up:#08773a;--up-soft:#e1f4e8;--down:#c4232b;--down-soft:#fde7e8;--warn:#865600;--warn-soft:#fbefd6;--danger:#c4232b;--on-danger:#ffffff;--chart-grid:#eef1f4;--chart-text:#4f5b68;}
+/* ======================================================================= Direction A - 交易終端 (data-dense terminal) */
+:root{
+  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  --font-num: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "PingFang TC", monospace;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px; --fs-price: clamp(32px, 4.2vw, 44px);
+  --sp-1: 2px; --sp-2: 4px; --sp-3: 8px; --sp-4: 12px; --sp-5: 16px; --sp-6: 24px;
+  --r-1: 2px; --r-2: 4px; --r-3: 6px;
+  --h-control: 28px; --h-panel-head: 40px; --h-topbar: 48px;
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.5), 0 0 0 1px var(--line);
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+:root[data-theme="light"]{--shadow-pop: 0 12px 32px rgba(13,20,28,.18), 0 0 0 1px var(--line);}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--shadow-pop: 0 12px 32px rgba(13,20,28,.18), 0 0 0 1px var(--line);}}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font:var(--fs-sm)/1.5 var(--font-sans);color:var(--text);background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;min-width:320px;background:var(--bg)}
+h1,h2,h3,p,dl,dd,ul{margin:0;padding:0}
+ul{list-style:none}
+a{color:var(--accent);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-1)}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- layout */
+.app{display:grid;grid-template-rows:auto auto 1fr auto;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:var(--sp-4);height:var(--h-topbar);padding:0 var(--sp-5);background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-size:var(--fs-md);font-weight:700;white-space:nowrap}
+.brand h1{font-size:inherit;font-weight:inherit}
+.brand__mark{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-2);background:var(--brand);color:#111;font-weight:800;font-size:15px}
+.brand__pair{font:600 var(--fs-xs)/1 var(--font-num);color:var(--muted);padding:3px 6px;border:1px solid var(--line);border-radius:var(--r-1)}
+.topbar__spacer{flex:1}
+.topbar__meta{color:var(--muted);font-size:var(--fs-xs);white-space:nowrap}
+
+.quote{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6);padding:var(--sp-4) var(--sp-5);border-bottom:1px solid var(--line)}
+.quote__label{font-size:var(--fs-xs);color:var(--muted);margin-bottom:var(--sp-1)}
+.quote__row{display:flex;align-items:center;gap:var(--sp-3)}
+.quote__value{font:700 var(--fs-price)/1.05 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--text)}
+.quote__unit{font:600 var(--fs-xs)/1 var(--font-num);color:var(--muted);align-self:flex-end;margin-bottom:6px}
+.stats{display:flex;flex-wrap:wrap;gap:0;margin-left:auto}
+.stats > div{padding:0 var(--sp-5);border-left:1px solid var(--line);min-width:0}
+.stats dt{font-size:var(--fs-xs);color:var(--muted);white-space:nowrap}
+.stats dd{font:600 var(--fs-md)/1.4 var(--font-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stats dd[data-sign=up]{color:var(--up)} .stats dd[data-sign=down]{color:var(--down)}
+.src-tag{font:500 var(--fs-2xs)/1 var(--font-sans);color:var(--muted);border:1px solid var(--line-strong);padding:2px 4px;border-radius:var(--r-1);margin-left:4px;vertical-align:2px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:1px;background:var(--line);min-height:0}
+.rail{display:grid;grid-template-rows:auto minmax(0,1fr);gap:1px;min-height:0}
+.panel{background:var(--panel);min-width:0;display:flex;flex-direction:column;min-height:0}
+.panel__head{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);min-height:var(--h-panel-head);padding:var(--sp-2) var(--sp-4);border-bottom:1px solid var(--line)}
+.panel__head h2{font-size:var(--fs-sm);font-weight:700;white-space:nowrap}
+.panel__head .hint{font-size:var(--fs-xs);color:var(--muted)}
+.panel__body{padding:var(--sp-3) var(--sp-4);min-height:0}
+.panel__foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-2) var(--sp-4);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);font-size:var(--fs-xs);color:var(--muted);margin-top:auto}
+
+.footer{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);padding:var(--sp-3) var(--sp-5);font-size:var(--fs-xs);color:var(--muted);border-top:1px solid var(--line)}
+
+/* Desktop: an app-like screen that fits the viewport; chart takes the remaining height. */
+@media (min-width:1100px){
+  .app{height:100vh;min-height:680px}
+  .panel--alerts .panel__scroll{overflow:auto}
+}
+
+/* ---------- status pill */
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--r-2);font-size:var(--fs-xs);font-weight:700;border:1px solid;white-space:nowrap}
+.pill__src{font-weight:500;color:var(--text)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+body[data-feed=live] .pill{color:var(--up);background:var(--up-soft);border-color:color-mix(in srgb,var(--up) 55%,transparent)}
+body[data-feed=live] .pill .dot{animation:pulse 2.4s var(--ease) infinite}
+body[data-feed=stale] .pill{color:var(--warn);background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 55%,transparent)}
+body[data-feed=disconnected] .pill{color:var(--down);background:var(--down-soft);border-color:color-mix(in srgb,var(--down) 55%,transparent)}
+body[data-feed=connecting] .pill{color:var(--muted);background:var(--panel-2);border-color:var(--line-strong)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%,100%{box-shadow:0 0 0 5px transparent}}
+
+/* ---------- direction chip (the price itself stays neutral; only this chip carries colour) */
+.tick{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:var(--r-2);font-size:13px;line-height:1}
+.tick[data-dir=up]{color:var(--up);background:var(--up-soft)}
+.tick[data-dir=down]{color:var(--down);background:var(--down-soft)}
+.tick.flash-up{animation:chip-up .8s var(--ease)} .tick.flash-down{animation:chip-down .8s var(--ease)}
+@keyframes chip-up{from{box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 45%,transparent)}to{box-shadow:0 0 0 3px transparent}}
+@keyframes chip-down{from{box-shadow:0 0 0 3px color-mix(in srgb,var(--down) 45%,transparent)}to{box-shadow:0 0 0 3px transparent}}
+.feed-chip{display:none;height:24px;padding:0 8px;border-radius:var(--r-2);font-size:var(--fs-xs);font-weight:700;align-items:center}
+body[data-feed=stale] .feed-chip{display:inline-flex;color:var(--warn);background:var(--warn-soft)}
+body[data-feed=disconnected] .feed-chip{display:inline-flex;color:var(--down);background:var(--down-soft)}
+body:not([data-feed=live]) .tick{display:none}
+/* Old data must never look live: price goes to muted colour (still 4.5:1) */
+body[data-feed=stale] .quote__value, body[data-feed=disconnected] .quote__value,
+body[data-feed=stale] .stats dd, body[data-feed=disconnected] .stats dd,
+body[data-feed=stale] [data-conv], body[data-feed=disconnected] [data-conv]{color:var(--muted)!important}
+
+.feed-banner{flex-basis:100%;display:flex;gap:var(--sp-3);align-items:center;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-2);font-size:var(--fs-sm);color:var(--text);border:1px solid}
+.feed-banner::before{font-weight:700;white-space:nowrap}
+body[data-feed=stale] .feed-banner{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+body[data-feed=stale] .feed-banner::before{content:"⚠";color:var(--warn)}
+body[data-feed=disconnected] .feed-banner{background:var(--down-soft);border-color:color-mix(in srgb,var(--down) 45%,transparent)}
+body[data-feed=disconnected] .feed-banner::before{content:"✕";color:var(--down)}
+
+/* ---------- controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--h-control);padding:0 10px;font:600 var(--fs-xs)/1 var(--font-sans);color:var(--text);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:var(--r-2);cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn--primary:hover{background:color-mix(in srgb,var(--accent) 85%,var(--text))}
+.btn--ghost{background:transparent}
+.btn--danger{background:var(--danger);border-color:var(--danger);color:var(--on-danger)}
+.btn--link{background:none;border:none;padding:0 2px;height:auto;color:var(--accent);font-weight:600}
+.btn--link:hover{text-decoration:underline}
+.btn--icon{width:var(--h-control);padding:0}
+input,select{font:var(--fs-sm) var(--font-sans);color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--r-2);height:var(--h-control);padding:0 8px;min-width:0}
+input:hover{border-color:var(--muted)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+input[aria-invalid=true]{border-color:var(--down)}
+input::placeholder{color:var(--muted)}
+.field-err{color:var(--down);font-size:var(--fs-xs);margin-top:var(--sp-2)}
+.input-affix{display:flex;align-items:center;flex:1;min-width:0;position:relative}
+.input-affix input{width:100%;padding-right:40px;font-family:var(--font-num)}
+.input-affix span{position:absolute;right:8px;font:600 var(--fs-2xs) var(--font-num);color:var(--muted);pointer-events:none}
+
+/* segmented control (chart view + alert direction) */
+.seg{display:inline-flex;padding:2px;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-2)}
+.seg button, .seg label{display:inline-flex;align-items:center;height:22px;padding:0 10px;font:600 var(--fs-xs)/1 var(--font-sans);color:var(--muted);background:transparent;border:0;border-radius:var(--r-1);cursor:pointer;white-space:nowrap}
+.seg button:hover, .seg label:hover{color:var(--text)}
+.seg [aria-selected=true], .seg input:checked + label{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:focus-visible + label{outline:2px solid var(--accent);outline-offset:1px}
+.seg--dir input[value=ABOVE]:checked + label{color:var(--up);box-shadow:inset 0 0 0 1px var(--up)}
+.seg--dir input[value=BELOW]:checked + label{color:var(--down);box-shadow:inset 0 0 0 1px var(--down)}
+
+/* ---------- chart */
+.panel--chart .panel__head{gap:var(--sp-3) var(--sp-5)}
+.ohlc{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);margin-left:auto;font:var(--fs-xs)/1.4 var(--font-num)}
+.ohlc b{font-weight:400;color:var(--muted);margin-right:4px;font-family:var(--font-sans)}
+.chart{position:relative;flex:1;min-height:360px;margin:var(--sp-3) 0 0 var(--sp-4)}
+.ch-grid{stroke:var(--chart-grid);stroke-width:1}
+.ch-border{stroke:var(--line);stroke-width:1}
+.ch-axis{fill:var(--chart-text);font:11px var(--font-num)}
+.ch-up{fill:var(--up);stroke:var(--up);stroke-width:1}
+.ch-down{fill:var(--down);stroke:var(--down);stroke-width:1}
+.ch-line{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round}
+.ch-last{stroke-dasharray:2 3;stroke-width:1}
+.ch-last--up{stroke:var(--up)} .ch-last--down{stroke:var(--down)} .ch-last--line{stroke:var(--accent)}
+.ch-tag--up{fill:var(--up)} .ch-tag--down{fill:var(--down)} .ch-tag--line{fill:var(--accent)}
+.ch-tag-text{fill:var(--bg);font:700 11px var(--font-num)}
+.chart-note{position:absolute;left:8px;bottom:30px;font-size:var(--fs-2xs);color:var(--muted)}
+
+/* ---------- tables */
+.table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.table th{font-size:var(--fs-xs);font-weight:500;color:var(--muted);text-align:left;padding:6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.table td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+.table tr:last-child td{border-bottom:0}
+.table .r{text-align:right}
+.table th + th, .table td + td{padding-left:var(--sp-4)}
+.table tbody tr:hover td{background:color-mix(in srgb,var(--panel-2) 70%,transparent)}
+.th-unit{font-weight:400}
+.code{font:700 var(--fs-sm) var(--font-num)}
+.cname{color:var(--muted);font-size:var(--fs-xs);margin-left:6px}
+
+/* ---------- alerts */
+.badge{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 6px;border-radius:9px;font:700 var(--fs-2xs)/1 var(--font-num);color:var(--bg);background:var(--warn)}
+body[data-unread="0"] .badge{display:none}
+.unread{margin:var(--sp-3) var(--sp-4) 0;border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warn-soft);border-radius:var(--r-2)}
+body[data-unread="0"] .unread{display:none}
+.unread__head{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:var(--fs-xs);font-weight:700;color:var(--warn)}
+.unread li{display:flex;align-items:center;gap:var(--sp-3);padding:6px 10px;border-top:1px solid color-mix(in srgb,var(--warn) 25%,transparent);font-size:var(--fs-xs)}
+.unread li .what{flex:1;min-width:0}
+.unread li .what{display:grid;gap:1px}
+.unread .u-cond{font-size:var(--fs-sm);font-weight:600}.unread .u-cond .num{font-weight:700}
+.unread .u-sub{color:var(--text)}
+.alert-form{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center;padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line)}
+.alert-form .field-err{flex-basis:100%;margin:0}
+.alist li{display:grid;grid-template-columns:auto 1fr auto;gap:2px var(--sp-3);align-items:center;padding:8px var(--sp-4);border-bottom:1px solid var(--line)}
+.alist .dir{grid-row:span 2;display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-2);font-size:11px}
+.alist .dir--up{color:var(--up);background:var(--up-soft)} .alist .dir--down{color:var(--down);background:var(--down-soft)}
+.alist .cond{font-size:var(--fs-sm)} .alist .cond .num{font-weight:700}
+.alist .sub{font-size:var(--fs-xs);color:var(--muted);display:flex;gap:var(--sp-3);flex-wrap:wrap}
+.alist .acts{grid-row:span 2;display:flex;gap:var(--sp-2)}
+.acts .idle{display:flex;gap:var(--sp-2)}
+.acts .confirm{display:none;gap:var(--sp-2)}
+.is-confirming .acts .confirm{display:flex} .is-confirming .acts .idle{display:none}
+.empty{padding:var(--sp-5) var(--sp-4);color:var(--muted);font-size:var(--fs-xs);text-align:center}
+.empty strong{display:block;color:var(--text);font-size:var(--fs-sm);margin-bottom:2px}
+
+/* ---------- toast */
+.toasts{position:fixed;top:calc(var(--h-topbar) + 8px);right:var(--sp-5);z-index:100;display:grid;gap:var(--sp-3);width:min(360px,calc(100vw - 32px))}
+.toast{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;gap:var(--sp-1) var(--sp-3);padding:10px 10px 12px 12px;background:var(--panel-2);border:1px solid var(--line-strong);border-left:3px solid var(--warn);border-radius:var(--r-2);box-shadow:var(--shadow-pop);animation:toast-in .2s var(--ease)}
+.toast__icon{grid-row:span 2;color:var(--warn);font-size:14px;line-height:20px}
+.toast__title{font-weight:700;font-size:var(--fs-sm)}
+.toast__title time{font:400 var(--fs-2xs) var(--font-num);color:var(--muted);margin-left:6px}
+.toast__body{font-size:var(--fs-xs);grid-column:2}
+.toast .btn--icon{grid-row:span 2;height:24px;width:24px;border:0;background:transparent;color:var(--muted);font-size:16px}
+.toast__timer{position:absolute;left:0;bottom:0;height:2px;background:var(--warn);width:100%;transform-origin:left;animation:timer 10s linear forwards}
+@keyframes toast-in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@keyframes timer{to{transform:scaleX(0)}}
+
+/* ---------- drawer (currency management) */
+.drawer{margin:0 0 0 auto;height:100vh;max-height:100vh;width:min(440px,100vw);max-width:100vw;padding:0;border:0;border-left:1px solid var(--line);background:var(--panel);color:var(--text);box-shadow:var(--shadow-pop)}
+.drawer[open]{display:flex;flex-direction:column;animation:drawer-in .22s var(--ease)}
+.drawer::backdrop{background:rgba(0,0,0,.55)}
+@keyframes drawer-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.drawer__head{display:flex;align-items:center;gap:var(--sp-3);height:var(--h-topbar);padding:0 var(--sp-4) 0 var(--sp-5);border-bottom:1px solid var(--line)}
+.drawer__head h2{font-size:var(--fs-md);flex:1}
+.drawer__body{flex:1;overflow:auto;padding:var(--sp-4) var(--sp-5)}
+.drawer__body > p{color:var(--muted);font-size:var(--fs-xs);margin-bottom:var(--sp-4)}
+.clist li{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;border-bottom:1px solid var(--line)}
+.clist .view{display:flex;align-items:center;gap:var(--sp-3);flex:1;min-width:0}
+.clist .view .code{width:44px}
+.clist .edit{display:none;flex:1;gap:var(--sp-2);min-width:0}
+.clist .edit input:first-child{width:64px;font-family:var(--font-num);text-transform:uppercase}
+.clist .edit input:nth-child(2){flex:1}
+.clist .is-editing .view,.clist .is-editing .acts{display:none} .clist .is-editing .edit{display:flex}
+.clist .acts{display:flex;gap:var(--sp-2)}
+.drawer__foot{padding:var(--sp-4) var(--sp-5);border-top:1px solid var(--line);background:var(--panel-2)}
+.drawer__foot h3{font-size:var(--fs-sm);margin-bottom:var(--sp-3)}
+.cform{display:grid;grid-template-columns:80px 1fr auto;gap:var(--sp-2) var(--sp-3);align-items:start}
+.cform label{display:grid;gap:4px;font-size:var(--fs-xs);color:var(--muted)}
+.cform label input{color:var(--text)}
+.cform #c-code{font-family:var(--font-num);text-transform:uppercase}
+.cform .btn{margin-top:22px}
+.cform .field-err{margin:0}
+
+/* ---------- loading skeleton (feed "connecting") */
+body[data-feed=connecting] .sk{color:transparent!important;background:linear-gradient(90deg,var(--panel-2) 0 40%,color-mix(in srgb,var(--panel-2) 60%,var(--line-strong)) 50%,var(--panel-2) 60% 100%) 0 0/300% 100%;border-radius:var(--r-2);animation:shimmer 1.4s linear infinite}
+body[data-feed=connecting] .sk *{visibility:hidden}
+body[data-feed=connecting] .chart{background:var(--panel-2);border-radius:var(--r-2)} body[data-feed=connecting] .chart svg{display:none}
+body[data-feed=connecting] .chart::after{content:"載入圖表中…";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:var(--fs-xs)}
+body[data-feed=connecting] .tick{display:none}
+@keyframes shimmer{to{background-position:-150% 0}}
+
+/* ---------- tablet */
+@media (max-width:1099px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .rail{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  .stats{margin-left:0;width:100%}
+  .stats > div:first-child{border-left:0;padding-left:0}
+  .chart{min-height:380px}
+}
+/* ---------- phone */
+@media (max-width:720px){
+  .rail{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:560px){
+  :root{--h-control:36px}
+  .topbar{padding:0 var(--sp-4);gap:var(--sp-3)}
+  .brand__pair,.topbar__meta{display:none}
+  .brand__label{display:none}
+  .topbar .btn .label{display:none}
+  .topbar .btn{width:36px;padding:0;font-size:16px}
+  .quote{padding:var(--sp-4)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3) 0;border-top:1px solid var(--line);padding-top:var(--sp-3)}
+  .stats > div{padding:0 var(--sp-3) 0 0;border:0}
+  .stats > div:nth-child(2n){padding-left:var(--sp-3);border-left:1px solid var(--line)}
+  .stats > div:last-child{grid-column:1/-1;border-left:0;padding-left:0}
+  .panel__head{padding:var(--sp-3) var(--sp-4)}
+  .ohlc{margin-left:0;width:100%}
+  .ohlc .range{display:none}
+  .chart{min-height:280px;margin-left:var(--sp-3)}
+  .seg button,.seg label{height:30px}
+  .alist li{padding:10px var(--sp-4)}
+  .toasts{right:var(--sp-4);left:var(--sp-4);width:auto}
+  .drawer{width:100vw;border-left:0}
+  .cform{grid-template-columns:72px 1fr}
+  .cform .btn{grid-column:1/-1;margin-top:0}
+  .footer{padding:var(--sp-4)}
+  .th-unit{display:none}
+  .cname{display:block;margin:0}
+  .table td{padding:6px 0}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .toast__timer{display:none}
+}
+/* Mockup control bar - deliberately styled unlike either design. */
+.mock-bar{position:fixed;left:12px;bottom:12px;z-index:9999;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;max-width:calc(100vw - 24px);
+  padding:8px 12px;font:12px/1.4 system-ui,"PingFang TC","Noto Sans TC",sans-serif;color:#1a1033;background:repeating-linear-gradient(45deg,#f3e8ff,#f3e8ff 8px,#ead8ff 8px,#ead8ff 16px);
+  border:2px dashed #7c3aed;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.mock-bar strong{color:#5b21b6}.mock-bar small{font-weight:400}
+.mock-bar [role=group]{display:flex;gap:4px;align-items:center}
+.mock-bar button{font:inherit;padding:2px 8px;border:1px solid #7c3aed;background:#fff;color:#3b0764;border-radius:4px;cursor:pointer}
+.mock-bar button[aria-pressed=true]{background:#7c3aed;color:#fff}
+.mock-bar button:focus-visible{outline:2px solid #3b0764;outline-offset:2px}
+
+</style>
+</head>
+<body data-feed="live" data-unread="1">
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand__mark" aria-hidden="true">₿</span><h1>比特幣即時價格</h1><span class="brand__pair">BTC-USD</span></div>
+    <span class="pill" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span data-status-label>即時</span><span class="pill__src">· <span data-status-source>Coinbase</span></span></span>
+    <span class="topbar__spacer"></span>
+    <button class="btn btn--ghost" type="button" data-act="open-currency" aria-haspopup="dialog" aria-label="幣別管理"><span aria-hidden="true">⚙</span><span class="label">幣別管理</span></button>
+  </header>
+
+  <section class="quote" aria-labelledby="quote-label">
+    <div>
+      <div class="quote__label" id="quote-label">BTC-USD 最新成交價</div>
+      <div class="quote__row">
+        <span class="quote__value js-dir-host sk" data-usd aria-label="BTC-USD 價格">83,211.21</span>
+        <span class="quote__unit">USD</span>
+        <span class="tick js-dir js-flash" data-dir="up"><span class="glyph" aria-hidden="true">▲</span><span class="sr">較前一筆上漲</span></span>
+        <span class="feed-chip" data-status-label>資料延遲</span>
+      </div>
+    </div>
+    <dl class="stats">
+      <div><dt>開啟後漲跌</dt><dd class="sk" data-change>+42.37（+0.05%）</dd></div>
+      <div><dt>本次開啟最高</dt><dd class="sk" data-sess-hi>—</dd></div>
+      <div><dt>本次開啟最低</dt><dd class="sk" data-sess-lo>—</dd></div>
+      <div><dt>成交來源</dt><dd class="sk"><span data-status-source>Coinbase</span><span class="src-tag" data-source-role>主要</span></dd></div>
+      <div><dt>最後更新</dt><dd class="sk"><time data-time>--:--:--</time></dd></div>
+    </dl>
+    <p class="feed-banner" role="alert" data-status-msg hidden></p>
+  </section>
+
+  <main class="grid">
+    <section class="panel panel--chart" aria-labelledby="chart-title">
+      <header class="panel__head">
+        <h2 id="chart-title">價格圖表</h2>
+        <div class="seg" role="tablist" aria-label="圖表類型">
+          <button role="tab" aria-selected="true" data-view="1m">1 分 K 線</button>
+          <button role="tab" aria-selected="false" data-view="5m" tabindex="-1">5 分 K 線</button>
+          <button role="tab" aria-selected="false" data-view="trend" tabindex="-1">1 小時走勢</button>
+        </div>
+        <div class="ohlc" aria-label="最新一根 K 線">
+          <span><b>開</b><span data-ohlc="o"></span></span><span><b>高</b><span data-ohlc="h"></span></span>
+          <span><b>低</b><span data-ohlc="l"></span></span><span><b>收</b><span data-ohlc="c"></span></span>
+          <span class="range"><b>區間高/低</b><span data-range-hi></span> / <span data-range-lo></span></span>
+        </div>
+      </header>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <aside class="rail">
+      <section class="panel" aria-labelledby="conv-title">
+        <header class="panel__head"><h2 id="conv-title">多幣別換算</h2><span class="hint" id="conv-note">1 BTC 以各幣別計價</span></header>
+        <div class="panel__body">
+          <table class="table" aria-describedby="conv-note">
+            <thead><tr><th scope="col">幣別</th><th scope="col" class="r">1 BTC</th><th scope="col" class="r">匯率<span class="th-unit">（1 USD =）</span></th></tr></thead>
+            <tbody>
+              <tr><td><span class="code">EUR</span><span class="cname">歐元</span></td><td class="r num sk" data-conv="EUR"></td><td class="r num">0.88152</td></tr>
+              <tr><td><span class="code">GBP</span><span class="cname">英鎊</span></td><td class="r num sk" data-conv="GBP"></td><td class="r num">0.755961</td></tr>
+              <tr><td><span class="code">JPY</span><span class="cname">日圓</span></td><td class="r num sk" data-conv="JPY"></td><td class="r num">157.389062</td></tr>
+              <tr><td><span class="code">TWD</span><span class="cname">新台幣</span></td><td class="r num sk" data-conv="TWD"></td><td class="r num">31.84071</td></tr>
+              <tr><td><span class="code">USD</span><span class="cname">美元</span></td><td class="r num sk" data-conv="USD"></td><td class="r num">1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="panel__foot">
+          <span>匯率更新於 <time class="num" datetime="2026-09-30T00:02:31Z">2026/9/30 08:02:31</time></span>
+          <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>
+        </footer>
+      </section>
+
+      <section class="panel panel--alerts" aria-labelledby="alert-title">
+        <header class="panel__head"><h2 id="alert-title">價格警示</h2><span class="badge" aria-label="未讀警示數"><span data-unread-count>1</span></span></header>
+        <div class="panel__scroll">
+          <form class="alert-form" id="alert-form" aria-label="新增警示" novalidate>
+            <div class="seg seg--dir" role="radiogroup" aria-label="條件">
+              <input type="radio" name="direction" id="d-above" value="ABOVE" checked><label for="d-above">▲ 高於</label>
+              <input type="radio" name="direction" id="d-below" value="BELOW"><label for="d-below">▼ 低於</label>
+            </div>
+            <label class="sr" for="alert-threshold">門檻價格（USD）</label>
+            <div class="input-affix"><input id="alert-threshold" name="threshold" type="number" inputmode="decimal" min="0" step="any" placeholder="門檻價格"><span>USD</span></div>
+            <button class="btn btn--primary" type="submit">新增</button>
+            <p class="field-err" role="alert" data-err hidden></p>
+          </form>
+          <div class="unread" aria-labelledby="unread-title">
+            <div class="unread__head"><span id="unread-title">未讀觸發（<span data-unread-count>1</span>）</span><button class="btn btn--link" type="button" data-act="read-all">全部標記已讀</button></div>
+            <ul data-unread-list id="unread-list">
+              <li data-row><span class="what"><span class="u-cond">▲ 高於 <span class="num">83,500.00</span></span><span class="u-sub"><time class="num">9/30 14:10:05</time> 觸發 · 當時 <span class="num">83,512.40</span></span></span><button class="btn" type="button" data-act="read" aria-label="標記已讀：高於 83,500">已讀</button></li>
+            </ul>
+          </div>
+          <ul class="alist" id="alert-list" aria-label="已設定的警示">
+            <li data-row>
+              <span class="dir dir--up" aria-hidden="true">▲</span>
+              <span class="cond">高於 <span class="num">83,500.00</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除警示：高於 83,500">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+              <span class="sub"><span>上次觸發 <time class="num">9/30 14:10:05</time></span><span class="num" data-dist="83500"></span></span>
+            </li>
+            <li data-row>
+              <span class="dir dir--down" aria-hidden="true">▼</span>
+              <span class="cond">低於 <span class="num">82,800.00</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除警示：低於 82,800">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+              <span class="sub"><span>尚未觸發</span><span class="num" data-dist="82800"></span></span>
+            </li>
+          </ul>
+          <p class="empty" data-empty-for="alert-list" hidden><strong>尚未設定警示</strong>在上方輸入門檻價格，價格越過時會通知你。</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>價格來源：Coinbase（主要）／ Kraken（備援）</span>
+    <span>圖表：TradingView Lightweight Charts™</span>
+    <span>警示由後端判斷，同一警示觸發後冷卻 5 分鐘</span>
+  </footer>
+</div>
+
+<div class="toasts" aria-live="assertive"></div>
+<template id="toast-tpl">
+  <div class="toast" role="alert">
+    <span class="toast__icon" aria-hidden="true">🔔</span>
+    <div class="toast__title">價格警示觸發<time data-toast-now></time></div>
+    <button class="btn btn--icon" type="button" data-toast-close aria-label="關閉通知">×</button>
+    <div class="toast__body">BTC-USD 高於 <span class="num">US$83,500.00</span>，目前 <span class="num">US$83,512.40</span></div>
+    <span class="toast__timer" aria-hidden="true"></span>
+  </div>
+</template>
+
+<dialog class="drawer" id="currency-dialog" aria-labelledby="cur-title">
+  <header class="drawer__head"><h2 id="cur-title">幣別管理</h2><button class="btn btn--icon btn--ghost" type="button" data-act="close-dialog" aria-label="關閉">×</button></header>
+  <div class="drawer__body">
+    <p>換算表會列出這裡的所有幣別。代碼為 3 個英文字母（ISO 4217）。</p>
+    <ul class="clist" id="currency-list"></ul>
+  </div>
+  <footer class="drawer__foot">
+    <h3>新增幣別</h3>
+    <form class="cform" id="currency-form" novalidate>
+      <label>代碼<input id="c-code" name="code" maxlength="3" placeholder="例 CHF" autocomplete="off"><span class="field-err" data-err="code" role="alert" hidden></span></label>
+      <label>中文名稱<input id="c-name" name="cname" maxlength="50" placeholder="例 瑞士法郎" autocomplete="off"><span class="field-err" data-err="cname" role="alert" hidden></span></label>
+      <button class="btn btn--primary" type="submit">新增</button>
+    </form>
+  </footer>
+</dialog>
+
+<script>
+window.MOCK_CFG = { axisW: 72, slot1m: 9, candleRadius: 0, tagRadius: 2 }
+window.renderCurrencyRow = (code, name) => `<li data-row data-code="${code}">
+  <span class="view"><span class="code">${code}</span><span>${name}</span></span>
+  <span class="edit"><input value="${code}" maxlength="3" aria-label="代碼"><input value="${name}" aria-label="中文名稱"><button class="btn btn--primary" type="button" data-act="save-edit">儲存</button><button class="btn" type="button" data-act="cancel-edit">取消</button></span>
+  <span class="acts"><span class="idle"><button class="btn" type="button" data-act="edit" aria-label="編輯 ${code}">編輯</button><button class="btn btn--ghost" type="button" data-act="ask-delete" aria-label="刪除 ${code}">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span></li>`
+window.renderAlertRow = (dir, v) => { const up = dir === 'ABOVE', n = MOCK.fmt(v); return `<li data-row>
+  <span class="dir dir--${up ? 'up' : 'down'}" aria-hidden="true">${up ? '▲' : '▼'}</span><span class="cond">${up ? '高於' : '低於'} <span class="num">${n}</span></span>
+  <span class="acts"><span class="idle"><button class="btn btn--ghost" type="button" data-act="ask-delete">刪除</button></span><span class="confirm"><button class="btn btn--danger" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn" type="button" data-act="cancel-delete">取消</button></span></span>
+  <span class="sub"><span>尚未觸發</span><span class="num" data-dist="${v}"></span></span></li>` }
+document.getElementById('currency-list').innerHTML = [['EUR','歐元'],['GBP','英鎊'],['JPY','日圓'],['TWD','新台幣'],['USD','美元']].map(([c,n]) => renderCurrencyRow(c,n)).join('')
+</script>
+<script>const DATA={"c1":[[1790748120,83381,83400,83333.55,83388.85],[1790748180,83388.85,83388.86,83334.01,83356.23],[1790748240,83356.23,83366.8,83334.02,83360.37],[1790748300,83357.64,83390.83,83352.7,83382.18],[1790748360,83382.18,83382.19,83331.03,83331.03],[1790748420,83331.03,83331.04,83275.5,83282.06],[1790748480,83282.06,83293.77,83264.27,83264.27],[1790748540,83264.28,83271.28,83224.05,83226.94],[1790748600,83226.95,83257.21,83226.95,83243.95],[1790748660,83243.95,83243.96,83204.58,83204.6],[1790748720,83204.6,83204.62,83173.71,83173.72],[1790748780,83173.74,83173.75,83141.24,83146],[1790748840,83145.99,83176.58,83063.96,83104.36],[1790748900,83103.25,83132.91,83087.89,83088.89],[1790748960,83090.28,83112.54,83074.45,83108.5],[1790749020,83108.5,83133.99,83102.05,83108.61],[1790749080,83108.61,83136.99,83088.42,83134.96],[1790749140,83134.97,83144.2,83107.9,83114.01],[1790749200,83114.01,83127.12,83080,83108.44],[1790749260,83108.45,83128.5,83101.98,83117.96],[1790749320,83122.24,83127.37,83069.42,83094.54],[1790749380,83094.54,83119,83094.54,83094.54],[1790749440,83094.55,83096.22,83056.79,83056.8],[1790749500,83056.79,83057,83047,83048.61],[1790749560,83048.61,83049,83022.19,83038.99],[1790749620,83038.99,83066.63,83012.86,83055.94],[1790749680,83055.99,83151.8,83048.43,83123.63],[1790749740,83123.63,83135.83,83097,83128.49],[1790749800,83126.97,83128.86,83069,83097.04],[1790749860,83097.04,83117.67,83075.69,83115.19],[1790749920,83115.2,83115.2,83069,83092.4],[1790749980,83092.39,83115.2,83046.76,83046.76],[1790750040,83046.76,83075.99,83043.95,83070.8],[1790750100,83070.84,83089.72,83046.59,83048.48],[1790750160,83048.48,83086.5,83048.48,83086.49],[1790750220,83086.49,83086.5,83021.41,83033.6],[1790750280,83033.59,83084.96,83033.59,83080.1],[1790750340,83080.76,83080.76,83005.61,83013.01],[1790750400,83013.01,83072.83,82989.89,83060.57],[1790750460,83057.43,83066.99,83005.97,83010],[1790750520,83009.99,83092.27,83009.99,83091.46],[1790750580,83091.46,83095.99,83056.21,83061.04],[1790750640,83061.04,83089.31,83056.21,83073.28],[1790750700,83073.27,83073.28,82964,83010.66],[1790750760,83010.66,83013.52,82982.49,82990.23],[1790750820,82990.23,83003.96,82958.57,82958.57],[1790750880,82958.58,82969.94,82945,82948.6],[1790750940,82948.6,82966.78,82943.69,82966.78],[1790751000,82966.79,82973.16,82923.96,82935.51],[1790751060,82935.51,82962.15,82929.99,82961.13],[1790751120,82961.13,83034.24,82961.13,83027.69],[1790751180,83023.29,83040.55,83010.73,83035.7],[1790751240,83035.69,83055.51,83029.14,83055.51],[1790751300,83055,83163.8,83054.99,83159.01],[1790751360,83159.01,83159.02,83091.76,83096],[1790751420,83096.01,83116.93,83096,83098.63],[1790751480,83098.63,83130.35,83088.18,83098.28],[1790751540,83098.27,83098.28,82969.9,83005.88],[1790751600,83005.88,83013.36,82911.86,82925.53],[1790751660,82925.54,82999.99,82911.87,82978.86],[1790751720,82978.85,83052.64,82976.74,83047.89],[1790751780,83047.9,83071.94,83030.1,83030.66],[1790751840,83030.66,83034.15,82998.25,83003.59],[1790751900,83004.25,83012.94,82979.25,83012.21],[1790751960,83012.2,83012.2,82950.84,82974.7],[1790752020,82974.7,82992,82960.5,82975.59],[1790752080,82975.59,83012.98,82975.59,83012.98],[1790752140,83012.98,83016.34,82977.23,83015.71],[1790752200,83011.12,83020.85,82989.51,83016.77],[1790752260,83016.77,83018.68,82975.59,82975.59],[1790752320,82975.59,82976.76,82953.61,82953.62],[1790752380,82953.61,82983.76,82953.61,82983.76],[1790752440,82983.76,83001.53,82969.04,82984.35],[1790752500,82984.35,83030.21,82984.35,83027.37],[1790752560,83027.37,83073.77,83027.37,83073.77],[1790752620,83072.25,83078.83,83058.71,83076.67],[1790752680,83076.67,83125.79,83072.7,83123.02],[1790752740,83123.01,83218.49,83123.01,83208.6],[1790752800,83209.63,83222.99,83186.35,83214.56],[1790752860,83214.56,83219.68,83191.71,83211.21]],"c5":[[1790746800,83416.27,83453.98,83410.52,83424.37],[1790747100,83424.37,83459.06,83380.04,83396.63],[1790747400,83396.64,83409.77,83320.42,83320.52],[1790747700,83320.52,83386.53,83248.06,83351.59],[1790748000,83351.59,83400,83308.12,83360.37],[1790748300,83357.64,83390.83,83224.05,83226.94],[1790748600,83226.95,83257.21,83063.96,83104.36],[1790748900,83103.25,83144.2,83074.45,83114.01],[1790749200,83114.01,83128.5,83056.79,83056.8],[1790749500,83056.79,83151.8,83012.86,83128.49],[1790749800,83126.97,83128.86,83043.95,83070.8],[1790750100,83070.84,83089.72,83005.61,83013.01],[1790750400,83013.01,83095.99,82989.89,83073.28],[1790750700,83073.27,83073.28,82943.69,82966.78],[1790751000,82966.79,83055.51,82923.96,83055.51],[1790751300,83055,83163.8,82969.9,83005.88],[1790751600,83005.88,83071.94,82911.86,83003.59],[1790751900,83004.25,83016.34,82950.84,83015.71],[1790752200,83011.12,83020.85,82953.61,82984.35],[1790752500,82984.35,83218.49,82984.35,83208.6]],"tr":[[1790749358,83093.48],[1790749370,83094.55],[1790749382,83119],[1790749394,83101.95],[1790749406,83106.87],[1790749418,83104.23],[1790749430,83094.55],[1790749442,83077.88],[1790749454,83089.07],[1790749466,83082.07],[1790749478,83056.79],[1790749490,83056.99],[1790749502,83056.8],[1790749514,83047.93],[1790749526,83047.02],[1790749538,83047.02],[1790749550,83048.99],[1790749562,83048.29],[1790749574,83047.98],[1790749586,83038.03],[1790749598,83039],[1790749610,83052.54],[1790749622,83045.99],[1790749634,83041.99],[1790749646,83024.53],[1790749658,83054.22],[1790749670,83054.19],[1790749682,83083.67],[1790749694,83107.64],[1790749706,83144.34],[1790749718,83123.96],[1790749730,83123.63],[1790749742,83129.08],[1790749754,83131.61],[1790749766,83121.22],[1790749778,83113.82],[1790749790,83124.82],[1790749802,83119.96],[1790749814,83101.61],[1790749826,83088.28],[1790749838,83087.26],[1790749850,83097.04],[1790749862,83075.7],[1790749874,83087.85],[1790749886,83104.02],[1790749898,83109.77],[1790749910,83115.2],[1790749922,83083.83],[1790749934,83069],[1790749946,83077.58],[1790749958,83079.65],[1790749970,83092.39],[1790749982,83100.71],[1790749994,83092.57],[1790750006,83075.73],[1790750018,83066.87],[1790750030,83046.76],[1790750042,83066.88],[1790750054,83049.03],[1790750066,83047.26],[1790750078,83068.99],[1790750090,83070.85],[1790750102,83083.45],[1790750114,83075.99],[1790750126,83046.59],[1790750138,83048.48],[1790750150,83048.48],[1790750162,83074.36],[1790750174,83066.11],[1790750186,83061.19],[1790750198,83075.99],[1790750210,83086.49],[1790750222,83075.28],[1790750234,83064.46],[1790750246,83058.16],[1790750258,83033.59],[1790750270,83033.6],[1790750282,83052.15],[1790750294,83055.01],[1790750306,83055.14],[1790750318,83059.37],[1790750330,83080.76],[1790750342,83047.99],[1790750354,83024.57],[1790750366,83024.57],[1790750378,83028.53],[1790750390,83001.87],[1790750402,83024.57],[1790750414,83034.73],[1790750426,83041.32],[1790750438,83066.19],[1790750450,83057.43],[1790750462,83028.21],[1790750474,83027.77],[1790750486,83033.6],[1790750498,83008.39],[1790750510,83009.99],[1790750522,83025.46],[1790750534,83024.58],[1790750546,83044.49],[1790750558,83068.66],[1790750570,83085.93],[1790750582,83088.55],[1790750594,83065.52],[1790750606,83075.67],[1790750618,83071.5],[1790750630,83056.21],[1790750642,83077.07],[1790750654,83086.34],[1790750666,83069.8],[1790750678,83069.67],[1790750690,83073.27],[1790750702,83034.83],[1790750714,83015.32],[1790750726,82984.9],[1790750738,82966.36],[1790750750,83010.88],[1790750762,82991.45],[1790750774,82984.9],[1790750786,82995.24],[1790750798,82983.82],[1790750810,82990.23],[1790750822,82989.57],[1790750834,82976.25],[1790750846,82962.19],[1790750858,82964.22],[1790750870,82960.27],[1790750882,82950.62],[1790750894,82945.93],[1790750906,82957.16],[1790750918,82964.45],[1790750930,82948.75],[1790750942,82953.52],[1790750954,82953.53],[1790750966,82948.94],[1790750978,82955.45],[1790750990,82965.35],[1790751002,82962.03],[1790751014,82968.6],[1790751026,82972.68],[1790751038,82951.38],[1790751050,82935.51],[1790751062,82935.49],[1790751074,82929.99],[1790751086,82956.7],[1790751098,82960.49],[1790751110,82987.13],[1790751122,82996.34],[1790751134,82996.35],[1790751146,83021.84],[1790751158,83027.9],[1790751170,83011.74],[1790751182,83010.73],[1790751194,83023.72],[1790751206,83028.48],[1790751218,83035.7],[1790751230,83035.69],[1790751242,83031.36],[1790751254,83044.5],[1790751266,83044.49],[1790751278,83048.59],[1790751290,83054.99],[1790751302,83054.99],[1790751314,83091.11],[1790751326,83149.49],[1790751338,83146.17],[1790751350,83159.01],[1790751362,83106.54],[1790751374,83111.06],[1790751386,83111.12],[1790751398,83092.62],[1790751410,83098.11],[1790751422,83099.77],[1790751434,83099.77],[1790751446,83098.54],[1790751458,83098.63],[1790751470,83098.63],[1790751482,83098.63],[1790751494,83090.3],[1790751506,83106.28],[1790751518,83113.4],[1790751530,83098.28],[1790751542,83088.18],[1790751554,83083.22],[1790751566,83002.64],[1790751578,82985.34],[1790751590,83007.53],[1790751602,82958.38],[1790751614,82953.18],[1790751626,82958.12],[1790751638,82925.54],[1790751650,82922.37],[1790751662,82955.07],[1790751674,82965.98],[1790751686,82999.97],[1790751698,82965.98],[1790751710,82978.85],[1790751722,82977.75],[1790751734,83012.99],[1790751746,83039.95],[1790751758,83040.41],[1790751770,83064.59],[1790751782,83064.54],[1790751794,83058.23],[1790751806,83064.58],[1790751818,83053.94],[1790751830,83030.65],[1790751842,83014.32],[1790751854,83029.12],[1790751866,83013.7],[1790751878,83003.7],[1790751890,82997.03],[1790751902,82992],[1790751914,82993.89],[1790751926,83005.01],[1790751938,83012.2],[1790751950,82993.9],[1790751962,82974.24],[1790751974,82970.01],[1790751986,82950.84],[1790751998,82954.37],[1790752010,82974.7],[1790752022,82979.6],[1790752034,82974.7],[1790752046,82960.5],[1790752058,82975.59],[1790752070,82985.8],[1790752082,82994.54],[1790752094,82999.98],[1790752106,82999.99],[1790752118,82999.99],[1790752130,83012.98],[1790752142,83006.96],[1790752154,82977.23],[1790752166,82987.98],[1790752178,82998.03],[1790752190,83012.34],[1790752202,82991.03],[1790752214,83006.3],[1790752226,83012.94],[1790752238,83016.77],[1790752250,83017.78],[1790752262,83016.77],[1790752274,82987.66],[1790752286,82981.5],[1790752298,82981.49],[1790752310,82971],[1790752322,82974.84],[1790752334,82973.75],[1790752346,82973.75],[1790752358,82961.73],[1790752370,82953.62],[1790752382,82954.67],[1790752394,82954.67],[1790752406,82954.67],[1790752418,82960.18],[1790752430,82983.76],[1790752442,82976.93],[1790752454,82977.68],[1790752466,82969.05],[1790752478,82974.24],[1790752490,82984.36],[1790752502,83003.76],[1790752514,83004.2],[1790752526,83025.18],[1790752538,83025.19],[1790752550,83042.76],[1790752562,83040.69],[1790752574,83041.51],[1790752586,83047.68],[1790752598,83046.56],[1790752610,83072.24],[1790752622,83072.24],[1790752634,83058.71],[1790752646,83070.72],[1790752658,83072.98],[1790752670,83072.71],[1790752682,83086.49],[1790752694,83105.19],[1790752706,83118.47],[1790752718,83111.83],[1790752730,83124.67],[1790752742,83127.67],[1790752754,83148.66],[1790752766,83197.93],[1790752778,83208.95],[1790752790,83214.8],[1790752802,83206.18],[1790752814,83210.64],[1790752826,83215.14],[1790752838,83199.33],[1790752850,83197.23],[1790752862,83219.67],[1790752874,83213.33],[1790752886,83209.35],[1790752898,83209.36],[1790752910,83213.32],[1790752922,83256.04],[1790752934,83237.5],[1790752946,83228.01]]};</script>
+<script>/* ==========================================================================
+   Shared mockup runtime (NOT part of the design): fake chart, simulated ticks,
+   state switching, toasts and a few interactions so every state can be seen.
+   Chart data (DATA) is real data captured from the running app's API.
+   ========================================================================== */
+(function () {
+  const params = new URLSearchParams(location.search)
+  const cfg = window.MOCK_CFG || {}
+  const root = document.documentElement
+  const body = document.body
+
+  const RATES = { EUR: 0.88152, GBP: 0.755961, JPY: 157.389062, TWD: 31.84071, USD: 1 }
+  const nf2 = new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v) => nf2.format(v)
+  const money = (v, code) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+  const hhmm = (s) => new Date(s * 1000).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' })
+  const hhmmss = (ms) => new Date(ms).toLocaleTimeString('zh-TW', { hour12: false })
+  const signed = (v) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v))
+  window.MOCK = { fmt, money, signed, RATES }
+
+  /* ---------------------------------------------------------------- state */
+  const c1 = DATA.c1.map((c) => c.slice())
+  const c5 = DATA.c5.map((c) => c.slice())
+  const tr = DATA.tr.map((c) => c.slice())
+  let price = c1[c1.length - 1][4]
+  const openPrice = price - 42.37           // "price when the page was opened"
+  let sessHi = Math.max(price, openPrice + 61.2), sessLo = Math.min(price, openPrice - 18.9)
+  let lastTickAt = Date.now()
+  let view = '1m'
+  let flash = { dir: null, at: 0 }
+  let feed = params.get('state') || 'live'
+  const FLASH_EVERY_MS = 2000, FLASH_MIN_GAP_MS = 1000
+
+  /* ---------------------------------------------------------------- theme */
+  function setTheme(t) {
+    if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t)
+    requestAnimationFrame(drawChart)
+    document.querySelectorAll('[data-mock-theme]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mockTheme === t))
+  }
+
+  /* ---------------------------------------------------------------- feed state */
+  const LABEL = { live: '即時', stale: '資料延遲', disconnected: '已斷線', connecting: '連線中' }
+  const MSG = {
+    stale: '資料延遲：暫時沒有收到新的價格，顯示的可能不是最新價格。',
+    disconnected: '已斷線：目前顯示的是最後收到的價格，連線恢復後會自動更新。',
+  }
+  function setFeed(s) {
+    feed = s
+    body.dataset.feed = s
+    document.querySelectorAll('[data-status-label]').forEach((e) => (e.textContent = LABEL[s]))
+    document.querySelectorAll('[data-status-source]').forEach((e) => (e.textContent = s === 'stale' ? 'Kraken' : 'Coinbase'))
+    document.querySelectorAll('[data-source-role]').forEach((e) => (e.textContent = s === 'stale' ? '備援' : '主要'))
+    document.querySelectorAll('[data-status-msg]').forEach((e) => { e.textContent = MSG[s] || ''; e.hidden = !MSG[s] })
+    document.querySelectorAll('[data-mock-state]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mockState === s))
+  }
+
+  /* ---------------------------------------------------------------- price binding */
+  function bindPrice(dir, doFlash) {
+    document.querySelectorAll('[data-usd]').forEach((e) => (e.textContent = fmt(price)))
+    document.querySelectorAll('[data-usd-int]').forEach((e) => (e.textContent = fmt(price).split('.')[0]))
+    document.querySelectorAll('[data-usd-dec]').forEach((e) => (e.textContent = '.' + fmt(price).split('.')[1]))
+    document.querySelectorAll('[data-usd-sym]').forEach((e) => (e.textContent = money(price, 'USD')))
+    document.querySelectorAll('[data-conv]').forEach((e) => (e.textContent = money(price * RATES[e.dataset.conv], e.dataset.conv)))
+    const chg = price - openPrice
+    document.querySelectorAll('[data-change]').forEach((e) => {
+      e.textContent = `${signed(chg)}（${chg >= 0 ? '+' : '−'}${Math.abs((chg / openPrice) * 100).toFixed(2)}%）`
+      e.dataset.sign = chg >= 0 ? 'up' : 'down'
+    })
+    document.querySelectorAll('[data-sess-hi]').forEach((e) => (e.textContent = fmt(sessHi)))
+    document.querySelectorAll('[data-sess-lo]').forEach((e) => (e.textContent = fmt(sessLo)))
+    document.querySelectorAll('[data-time]').forEach((e) => (e.textContent = hhmmss(lastTickAt)))
+    document.querySelectorAll('[data-dist]').forEach((e) => {
+      const d = +e.dataset.dist - price
+      e.textContent = `${d >= 0 ? '還差 +' : '還差 −'}${fmt(Math.abs(d))}`
+    })
+    if (dir) document.querySelectorAll('.js-dir').forEach((e) => {
+      e.dataset.dir = dir
+      const sr = e.querySelector('.sr'); if (sr) sr.textContent = dir === 'up' ? '較前一筆上漲' : '較前一筆下跌'
+      const g = e.querySelector('.glyph'); if (g) g.textContent = dir === 'up' ? '▲' : '▼'
+    })
+    if (doFlash) document.querySelectorAll('.js-flash').forEach((e) => {
+      e.classList.remove('flash-up', 'flash-down'); void e.offsetWidth; e.classList.add('flash-' + dir)
+    })
+  }
+
+  function tick() {
+    if (feed !== 'live' || params.get('tick') === '0') return
+    const prev = price
+    price = Math.round((price + (Math.random() - 0.48) * 9) * 100) / 100
+    if (price === prev) return
+    lastTickAt = Date.now()
+    sessHi = Math.max(sessHi, price); sessLo = Math.min(sessLo, price)
+    for (const set of [c1, c5]) { const l = set[set.length - 1]; l[4] = price; l[2] = Math.max(l[2], price); l[3] = Math.min(l[3], price) }
+    tr[tr.length - 1][1] = price
+    const dir = price > prev ? 'up' : 'down'
+    const now = lastTickAt, since = now - flash.at
+    const doFlash = since >= FLASH_MIN_GAP_MS && (dir !== flash.dir || since >= FLASH_EVERY_MS)
+    if (doFlash) flash = { dir, at: now }
+    bindPrice(dir, doFlash)
+    drawChart()
+  }
+
+  /* ---------------------------------------------------------------- fake chart (SVG, mimics lightweight-charts) */
+  function niceStep(range, n) {
+    const raw = range / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p
+    return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p
+  }
+  function drawChart() {
+    const host = document.getElementById('chart')
+    if (!host) return
+    const W = host.clientWidth, H = host.clientHeight
+    if (!W || !H) return
+    const axisW = cfg.axisW || 64, axisH = 24, padT = 12
+    const pw = W - axisW, ph = H - axisH - padT
+    const isLine = view === 'trend'
+    const src = view === '1m' ? c1 : view === '5m' ? c5 : tr
+    const slot = view === '5m' ? Math.max(10, pw / src.length) : view === '1m' ? (cfg.slot1m || 8) : 0
+    const data = isLine ? src : src.slice(-Math.max(8, Math.floor((pw - 8) / slot)))
+    const lows = data.map((d) => (isLine ? d[1] : d[3])), highs = data.map((d) => (isLine ? d[1] : d[2]))
+    let lo = Math.min(...lows), hi = Math.max(...highs)
+    const pad = (hi - lo) * 0.1 || 10; lo -= pad; hi += pad
+    const y = (v) => padT + ((hi - v) / (hi - lo)) * ph
+    const n = data.length
+    const x = isLine ? (i) => (i / (n - 1)) * (pw - 8) + 2 : (i) => (i + 0.5) * ((pw - 4) / n)
+    const bw = isLine ? 0 : Math.max(2, ((pw - 4) / n) * 0.62)
+    let g = ''
+    // horizontal grid + price labels
+    const step = niceStep(hi - lo, H < 300 ? 4 : 6)
+    for (let v = Math.ceil(lo / step) * step; v < hi; v += step) {
+      g += `<line class="ch-grid" x1="0" x2="${pw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`
+      g += `<text class="ch-axis" x="${pw + 8}" y="${(y(v) + 4).toFixed(1)}">${nf2.format(v).replace(/\.00$/, '')}</text>`
+    }
+    // vertical grid + time labels
+    const every = view === '1m' ? 15 : view === '5m' ? 30 : 15
+    let lastLx = -99
+    data.forEach((d, i) => {
+      const t = new Date(d[0] * 1000)
+      const onMark = isLine ? t.getMinutes() % every === 0 && t.getSeconds() < 12 : t.getMinutes() % every === 0
+      if (onMark && x(i) - lastLx > 56 && x(i) > 18 && x(i) < pw - 18) {
+        lastLx = x(i)
+        g += `<line class="ch-grid" x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${padT}" y2="${padT + ph}"/>`
+        g += `<text class="ch-axis" text-anchor="middle" x="${x(i).toFixed(1)}" y="${H - 7}">${hhmm(d[0])}</text>`
+      }
+    })
+    g += `<line class="ch-border" x1="${pw}" x2="${pw}" y1="0" y2="${H - axisH}"/><line class="ch-border" x1="0" x2="${W}" y1="${H - axisH}" y2="${H - axisH}"/>`
+    if (isLine) {
+      const pts = data.map((d, i) => `${x(i).toFixed(1)},${y(d[1]).toFixed(1)}`).join(' ')
+      if (cfg.area) g += `<defs><linearGradient id="ar" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="ch-area-top"/><stop offset="1" class="ch-area-bot"/></linearGradient></defs><polygon fill="url(#ar)" points="${x(0)},${padT + ph} ${pts} ${x(n - 1)},${padT + ph}"/>`
+      g += `<polyline class="ch-line" points="${pts}"/>`
+    } else {
+      data.forEach((d, i) => {
+        const [, o, h, l, c] = d, cls = c >= o ? 'ch-up' : 'ch-down', cx = x(i)
+        g += `<line class="${cls}" x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${y(h).toFixed(1)}" y2="${y(l).toFixed(1)}"/>`
+        g += `<rect class="${cls}" x="${(cx - bw / 2).toFixed(1)}" y="${y(Math.max(o, c)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(y(o) - y(c))).toFixed(1)}" rx="${cfg.candleRadius || 0}"/>`
+      })
+    }
+    // last-price line + tag on the axis
+    const last = isLine ? data[n - 1][1] : data[n - 1][4]
+    const lastUp = isLine ? true : data[n - 1][4] >= data[n - 1][1]
+    const ly = y(last)
+    g += `<line class="ch-last ${isLine ? 'ch-last--line' : lastUp ? 'ch-last--up' : 'ch-last--down'}" x1="0" x2="${pw}" y1="${ly.toFixed(1)}" y2="${ly.toFixed(1)}"/>`
+    g += `<rect class="ch-tag ${isLine ? 'ch-tag--line' : lastUp ? 'ch-tag--up' : 'ch-tag--down'}" x="${pw}" y="${(ly - 10).toFixed(1)}" width="${axisW}" height="20" rx="${cfg.tagRadius || 0}"/>`
+    g += `<text class="ch-tag-text" x="${pw + 6}" y="${(ly + 4).toFixed(1)}">${fmt(last)}</text>`
+    host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="BTC-USD 價格圖（示意）">${g}</svg>`
+    // OHLC legend + visible-range high/low (optional derived data)
+    const lc = data[n - 1]
+    document.querySelectorAll('[data-ohlc]').forEach((e) => {
+      const k = e.dataset.ohlc
+      if (isLine) { e.textContent = k === 'c' ? fmt(lc[1]) : '—'; return }
+      e.textContent = fmt(lc[{ o: 1, h: 2, l: 3, c: 4 }[k]])
+    })
+    document.querySelectorAll('[data-range-hi]').forEach((e) => (e.textContent = fmt(Math.max(...highs))))
+    document.querySelectorAll('[data-range-lo]').forEach((e) => (e.textContent = fmt(Math.min(...lows))))
+    document.querySelectorAll('[data-view-label]').forEach((e) => (e.textContent = { '1m': '1 分 K', '5m': '5 分 K', trend: '1 小時走勢' }[view]))
+  }
+
+  /* ---------------------------------------------------------------- segmented control (chart views) */
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
+    view = b.dataset.view
+    document.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-selected', x === b))
+    body.dataset.view = view
+    drawChart()
+  }))
+  document.querySelectorAll('[role=tablist]').forEach((list) => list.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return
+    const tabs = [...list.querySelectorAll('[role=tab]')], i = tabs.indexOf(document.activeElement)
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
+    next.focus(); next.click()
+  }))
+
+  /* ---------------------------------------------------------------- toasts */
+  let toastN = 0
+  function showToast() {
+    const tpl = document.getElementById('toast-tpl'), box = document.querySelector('.toasts')
+    if (!tpl || !box) return
+    const el = tpl.content.firstElementChild.cloneNode(true)
+    el.dataset.n = ++toastN
+    el.querySelectorAll('[data-toast-now]').forEach((e) => (e.textContent = hhmmss(Date.now())))
+    el.querySelector('[data-toast-close]')?.addEventListener('click', () => el.remove())
+    box.appendChild(el)
+    if (params.get('shot') !== '1') setTimeout(() => el.remove(), 10000)
+  }
+
+  /* ---------------------------------------------------------------- generic interactions */
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button, a'); if (!t) return
+    const a = t.dataset.act
+    if (!a) return
+    const row = t.closest('[data-row]')
+    if (a === 'ask-delete') { row.classList.add('is-confirming'); row.querySelector('[data-act=confirm-delete]')?.focus() }
+    if (a === 'cancel-delete') { row.classList.remove('is-confirming'); row.querySelector('[data-act=ask-delete]')?.focus() }
+    if (a === 'confirm-delete') { const list = row.parentElement; row.remove(); syncEmpty(list) }
+    if (a === 'edit') { row.classList.add('is-editing'); row.querySelector('input')?.focus() }
+    if (a === 'cancel-edit' || a === 'save-edit') row.classList.remove('is-editing')
+    if (a === 'read') { const list = row.parentElement; row.remove(); syncUnread(list) }
+    if (a === 'read-all') { document.querySelectorAll('[data-unread-list] [data-row]').forEach((r) => r.remove()); syncUnread(document.querySelector('[data-unread-list]')) }
+    if (a === 'open-currency') document.getElementById('currency-dialog')?.showModal()
+    if (a === 'close-dialog') t.closest('dialog')?.close()
+    if (a === 'fill-price') { const inp = document.querySelector('#alert-threshold'); if (inp) { inp.value = Math.round(price); inp.focus() } }
+    if (a === 'toggle') { const tgt = document.getElementById(t.getAttribute('aria-controls')); const open = t.getAttribute('aria-expanded') !== 'true'; t.setAttribute('aria-expanded', open); tgt.hidden = !open; if (open) tgt.querySelector('input,button')?.focus() }
+  })
+  function syncEmpty(list) {
+    if (!list) return
+    const empty = document.querySelector(`[data-empty-for="${list.id}"]`)
+    if (empty) empty.hidden = list.querySelectorAll('[data-row]').length > 0
+  }
+  function syncUnread(list) {
+    const n = list ? list.querySelectorAll('[data-row]').length : 0
+    document.querySelectorAll('[data-unread-count]').forEach((e) => (e.textContent = n))
+    body.dataset.unread = n
+  }
+  // alert form
+  document.getElementById('alert-form')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const f = e.target, v = Number(f.threshold.value), err = f.querySelector('[data-err]')
+    if (!f.threshold.value || !(v > 0)) { err.textContent = '請輸入大於 0 的價格'; err.hidden = false; f.threshold.setAttribute('aria-invalid', 'true'); f.threshold.focus(); return }
+    err.hidden = true; f.threshold.removeAttribute('aria-invalid')
+    const list = document.getElementById('alert-list')
+    list.insertAdjacentHTML('afterbegin', window.renderAlertRow(f.direction.value, v))
+    f.threshold.value = ''; syncEmpty(list); bindPrice()
+  })
+  // currency form
+  document.getElementById('currency-form')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const f = e.target, code = f.code.value.trim().toUpperCase(), name = f.cname.value.trim()
+    const setErr = (field, msg) => { const el = f.querySelector(`[data-err=${field}]`); el.textContent = msg || ''; el.hidden = !msg; f[field].toggleAttribute('aria-invalid', !!msg); if (msg) f[field].setAttribute('aria-invalid', 'true') }
+    const exists = [...document.querySelectorAll('#currency-list [data-code]')].some((r) => r.dataset.code === code)
+    const codeErr = !/^[A-Z]{3}$/.test(code) ? '代碼須為 3 個英文字母（ISO 4217），例如 TWD' : exists ? '代碼已存在' : ''
+    const nameErr = name ? '' : '請輸入中文名稱'
+    setErr('code', codeErr); setErr('cname', nameErr)
+    if (codeErr || nameErr) { f[codeErr ? 'code' : 'cname'].focus(); return }
+    document.getElementById('currency-list').insertAdjacentHTML('beforeend', window.renderCurrencyRow(code, name))
+    f.reset()
+  })
+
+  /* ---------------------------------------------------------------- mockup control bar (outside the design) */
+  function controlBar() {
+    if (params.get('bar') === '0') return
+    const bar = document.createElement('aside')
+    bar.className = 'mock-bar'
+    bar.setAttribute('aria-label', 'Mockup 控制列（不屬於設計）')
+    bar.innerHTML = `
+      <strong>MOCKUP 控制列 <small>（不屬於設計）</small></strong>
+      <div role="group" aria-label="主題">主題
+        <button data-mock-theme="auto">自動</button><button data-mock-theme="dark">深色</button><button data-mock-theme="light">淺色</button></div>
+      <div role="group" aria-label="連線狀態">狀態
+        <button data-mock-state="live">即時</button><button data-mock-state="stale">延遲</button><button data-mock-state="disconnected">已斷線</button><button data-mock-state="connecting">載入中</button></div>
+      <div role="group" aria-label="其他">
+        <button data-mock-toast>觸發 toast</button><button data-mock-currency>幣別管理</button><button data-mock-hide title="隱藏控制列">隱藏</button></div>`
+    document.body.appendChild(bar)
+    bar.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return
+      if (b.dataset.mockTheme) setTheme(b.dataset.mockTheme)
+      if (b.dataset.mockState) setFeed(b.dataset.mockState)
+      if ('mockToast' in b.dataset) showToast()
+      if ('mockCurrency' in b.dataset) document.getElementById('currency-dialog')?.showModal()
+      if ('mockHide' in b.dataset) bar.remove()
+    })
+  }
+
+  /* ---------------------------------------------------------------- boot */
+  controlBar()
+  setTheme(params.get('theme') || 'auto')
+  setFeed(feed)
+  body.dataset.view = view
+  bindPrice('up')
+  drawChart()
+  document.querySelectorAll('[data-unread-list]').forEach(syncUnread)
+  if (params.get('toast') === '1') showToast()
+  if (params.get('dialog') === '1') document.getElementById('currency-dialog')?.showModal()
+  if (params.get('confirm') === '1') document.querySelector('#alert-list [data-row]')?.classList.add('is-confirming')
+  if (params.get('shot') !== '1') setInterval(tick, 650)
+  let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawChart, 60) })
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', drawChart)
+})()
+</script>
+</body>
+</html>

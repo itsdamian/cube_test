@@ -1,0 +1,9 @@
+/* Mockup control bar - deliberately styled unlike either design. */
+.mock-bar{position:fixed;left:12px;bottom:12px;z-index:9999;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;max-width:calc(100vw - 24px);
+  padding:8px 12px;font:12px/1.4 system-ui,"PingFang TC","Noto Sans TC",sans-serif;color:#1a1033;background:repeating-linear-gradient(45deg,#f3e8ff,#f3e8ff 8px,#ead8ff 8px,#ead8ff 16px);
+  border:2px dashed #7c3aed;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.mock-bar strong{color:#5b21b6}.mock-bar small{font-weight:400}
+.mock-bar [role=group]{display:flex;gap:4px;align-items:center}
+.mock-bar button{font:inherit;padding:2px 8px;border:1px solid #7c3aed;background:#fff;color:#3b0764;border-radius:4px;cursor:pointer}
+.mock-bar button[aria-pressed=true]{background:#7c3aed;color:#fff}
+.mock-bar button:focus-visible{outline:2px solid #3b0764;outline-offset:2px}
