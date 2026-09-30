@@ -441,3 +441,8 @@ h2.card__title { flex: 1; }
 .footer a { color: inherit; }
 /* The alerts card fills the column next to the hero on desktop (the note sits at its bottom). */
 .side > .card { flex: 1; display: flex; flex-direction: column; }
+/* Long amounts (e.g. NT$2,645,038.51) must fit a tile: the size follows the tile's width
+   (container query units), capped at the design's 22px. Phones use the list layout (15px). */
+.tile { container-type: inline-size; }
+.tile__value { font-size: min(var(--fs-xl), 10.5cqi); }
+@media (max-width: 640px) { .tile__value { font-size: var(--fs-md); } }
