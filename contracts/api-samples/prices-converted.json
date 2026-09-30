@@ -1,0 +1,29 @@
+{
+  "pair" : "BTC-USD",
+  "usdPrice" : 84045.50,
+  "priceSource" : "coinbase",
+  "priceEventTime" : "2026-09-29T08:00:00.123456Z",
+  "rateSource" : "Rates By Exchange Rate API (https://www.exchangerate-api.com)",
+  "items" : [ {
+    "currencyId" : 1,
+    "code" : "EUR",
+    "name" : "歐元",
+    "price" : 74087.78916000,
+    "rate" : 0.88152,
+    "rateUpdatedAt" : "2026-09-30T00:02:31Z"
+  }, {
+    "currencyId" : 4,
+    "code" : "TWD",
+    "name" : "新台幣",
+    "price" : 2676068.39230500,
+    "rate" : 31.84071,
+    "rateUpdatedAt" : "2026-09-30T00:02:31Z"
+  }, {
+    "currencyId" : 9,
+    "code" : "XAU",
+    "name" : "黃金",
+    "price" : null,
+    "rate" : null,
+    "rateUpdatedAt" : null
+  } ]
+}

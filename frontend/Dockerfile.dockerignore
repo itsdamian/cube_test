@@ -1,0 +1,6 @@
+# Build context for frontend/Dockerfile is the repository root; send only what it needs.
+*
+!frontend/
+!contracts/
+frontend/node_modules/
+frontend/dist/

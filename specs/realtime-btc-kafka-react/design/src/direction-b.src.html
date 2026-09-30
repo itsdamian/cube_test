@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 B · 沉穩金融</title>
+<style>
+/*@TOKENS*/
+/* ======================================================================= Direction B - 沉穩金融 (calm & spacious fintech) */
+:root{
+  --font-sans: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 18px; --fs-xl: 22px; --fs-price: clamp(40px, 5.2vw, 64px);
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-pill: 999px;
+  --h-control: 40px;
+  --shadow-card: 0 1px 0 rgba(255,255,255,.03) inset, 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.22);
+  --shadow-pop: 0 24px 64px rgba(0,0,0,.55);
+  --glow: radial-gradient(1200px 420px at 15% -10%, color-mix(in srgb,var(--accent) 12%,transparent), transparent 70%);
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
+:root[data-theme="light"]{--shadow-card: 0 1px 2px rgba(18,21,28,.06), 0 8px 24px rgba(18,21,28,.06);--shadow-pop: 0 24px 64px rgba(18,21,28,.2)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--shadow-card: 0 1px 2px rgba(18,21,28,.06), 0 8px 24px rgba(18,21,28,.06);--shadow-pop: 0 24px 64px rgba(18,21,28,.2)}}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font:var(--fs-md)/1.6 var(--font-sans);color:var(--text);background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;min-width:320px;background:var(--glow),var(--bg);background-repeat:no-repeat}
+h1,h2,h3,p,ul,dl,dd{margin:0;padding:0} ul{list-style:none}
+a{color:var(--accent);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:var(--r-sm)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- layout */
+.wrap{max-width:1240px;margin:0 auto;padding:0 var(--sp-6)}
+.nav{display:flex;align-items:center;gap:var(--sp-4);height:76px}
+.brand{display:flex;align-items:center;gap:var(--sp-3)}
+.brand__mark{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--brand),color-mix(in srgb,var(--brand) 60%,#c2410c));color:#1a1206;font-weight:800;font-size:18px;box-shadow:0 4px 14px color-mix(in srgb,var(--brand) 35%,transparent)}
+.brand h1{font-size:var(--fs-lg);font-weight:650;letter-spacing:.01em;line-height:1.2}
+.brand p{font-size:var(--fs-xs);color:var(--muted)}
+.nav__spacer{flex:1}
+.page{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--sp-5);padding-bottom:var(--sp-7)}
+.hero{grid-column:1/9}
+.side{grid-column:9/13;display:grid;gap:var(--sp-5)}
+.side > .card{display:flex;flex-direction:column}
+.side .card__body{flex:1;display:flex;flex-direction:column}
+.side-note{margin-top:auto;padding-top:var(--sp-5);font-size:var(--fs-xs);color:var(--muted)}
+.fx{grid-column:1/-1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-card);min-width:0}
+.card__head{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);padding:var(--sp-5) var(--sp-5) 0}
+.card__head h2{font-size:var(--fs-lg);font-weight:650;flex:1;min-width:max-content}
+.card__sub{font-size:var(--fs-sm);color:var(--muted)}
+.card__body{padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+
+/* ---------- status pill */
+.pill{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 12px;border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:600;background:var(--panel);border:1px solid var(--line);white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill__src{color:var(--muted);font-weight:500}
+body[data-feed=live] .pill{color:var(--up)} body[data-feed=live] .pill .dot{animation:pulse 2.6s var(--ease) infinite}
+body[data-feed=stale] .pill{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+body[data-feed=disconnected] .pill{color:var(--down);background:var(--down-soft);border-color:transparent}
+body[data-feed=connecting] .pill{color:var(--muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 50%,transparent)}70%,100%{box-shadow:0 0 0 7px transparent}}
+
+/* ---------- hero */
+.hero__top{padding:var(--sp-6) var(--sp-6) var(--sp-5)}
+.hero__label{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--muted)}
+.coin{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--brand) 18%,transparent);color:var(--brand);font-size:12px;font-weight:800}
+.price{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin:var(--sp-2) 0 var(--sp-3)}
+.price__value{font-size:var(--fs-price);font-weight:620;letter-spacing:-.025em;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--text)}
+.price__value .dec{color:var(--muted);font-weight:500}
+.dirpill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:600}
+.dirpill[data-dir=up]{color:var(--up);background:var(--up-soft)}
+.dirpill[data-dir=down]{color:var(--down);background:var(--down-soft)}
+.dirpill .glyph{font-size:10px}
+/* Calm flash: the pill glows softly, the big number never changes colour. */
+.dirpill.flash-up{animation:glow-up 1s var(--ease)} .dirpill.flash-down{animation:glow-down 1s var(--ease)}
+@keyframes glow-up{from{box-shadow:0 0 0 4px color-mix(in srgb,var(--up) 30%,transparent)}to{box-shadow:0 0 0 4px transparent}}
+@keyframes glow-down{from{box-shadow:0 0 0 4px color-mix(in srgb,var(--down) 30%,transparent)}to{box-shadow:0 0 0 4px transparent}}
+body:not([data-feed=live]) .dirpill{display:none}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);font-size:var(--fs-sm);color:var(--muted)}
+.meta b{color:var(--text);font-weight:600}
+.meta .sep{width:3px;height:3px;border-radius:50%;background:var(--line-strong)}
+.chg[data-sign=up]{color:var(--up)} .chg[data-sign=down]{color:var(--down)}
+.stale-note{display:flex;gap:var(--sp-3);align-items:flex-start;margin-top:var(--sp-4);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--text)}
+.stale-note::before{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:800}
+body[data-feed=stale] .stale-note{background:var(--warn-soft)} body[data-feed=stale] .stale-note::before{content:"!";color:var(--warn);border:1.5px solid var(--warn)}
+body[data-feed=disconnected] .stale-note{background:var(--down-soft)} body[data-feed=disconnected] .stale-note::before{content:"✕";color:var(--down);border:1.5px solid var(--down)}
+body[data-feed=stale] .price__value, body[data-feed=disconnected] .price__value,
+body[data-feed=stale] .price__value .dec, body[data-feed=disconnected] .price__value .dec,
+body[data-feed=stale] .chg, body[data-feed=disconnected] .chg,
+body[data-feed=stale] [data-conv], body[data-feed=disconnected] [data-conv]{color:var(--muted)}
+.hero__chart{border-top:1px solid var(--line);padding:var(--sp-4) var(--sp-6) var(--sp-5)}
+.chart-bar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-3)}
+.range{margin-left:auto;font-size:var(--fs-sm);color:var(--muted);white-space:nowrap}
+.range b{color:var(--text);font-weight:600}
+.chart{position:relative;height:340px}
+.ch-grid{stroke:var(--chart-grid);stroke-width:1}
+.ch-border{stroke:transparent}
+.ch-axis{fill:var(--chart-text);font:12px var(--font-sans);font-variant-numeric:tabular-nums}
+.ch-up{fill:var(--up);stroke:var(--up);stroke-width:1.25}
+.ch-down{fill:var(--down);stroke:var(--down);stroke-width:1.25}
+.ch-line{fill:none;stroke:var(--accent);stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round}
+.ch-area-top{stop-color:var(--accent);stop-opacity:.28} .ch-area-bot{stop-color:var(--accent);stop-opacity:0}
+.ch-last{stroke-dasharray:3 4;stroke-width:1}
+.ch-last--up{stroke:var(--up)} .ch-last--down{stroke:var(--down)} .ch-last--line{stroke:var(--accent)}
+.ch-tag--up{fill:var(--up)} .ch-tag--down{fill:var(--down)} .ch-tag--line{fill:var(--accent)}
+.ch-tag-text{fill:var(--bg);font:700 11px var(--font-sans);font-variant-numeric:tabular-nums}
+
+/* ---------- segmented control */
+.seg{display:inline-flex;padding:4px;gap:2px;background:var(--panel-2);border-radius:var(--r-pill)}
+.seg button,.seg label{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 16px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--muted);font:600 var(--fs-sm)/1 var(--font-sans);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.seg button:hover,.seg label:hover{color:var(--text)}
+.seg [aria-selected=true],.seg input:checked + label{background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25),0 0 0 1px var(--line)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.seg--dir input[value=ABOVE]:checked + label{color:var(--up)} .seg--dir input[value=BELOW]:checked + label{color:var(--down)}
+
+/* ---------- buttons & fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--h-control);padding:0 18px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:transparent;color:var(--text);font:600 var(--fs-sm)/1 var(--font-sans);cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{background:var(--panel-2)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn--primary:hover{background:color-mix(in srgb,var(--accent) 88%,var(--text))}
+.btn--danger{background:var(--danger);border-color:var(--danger);color:var(--on-danger)}
+.btn--danger:hover{background:color-mix(in srgb,var(--danger) 88%,#000)}
+.btn--quiet{border-color:transparent;color:var(--muted)}
+.btn--quiet:hover{color:var(--text)}
+.btn--sm{height:32px;padding:0 12px;font-size:var(--fs-xs)}
+.btn--icon{width:var(--h-control);padding:0;font-size:18px}
+.btn--link{height:auto;padding:0;border:0;background:none;color:var(--accent)} .btn--link:hover{background:none;text-decoration:underline}
+.field{display:grid;gap:6px;font-size:var(--fs-xs);color:var(--muted);font-weight:600}
+.control{position:relative;display:flex;align-items:center}
+input{width:100%;height:var(--h-control);padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--panel-2);color:var(--text);font:var(--fs-md) var(--font-sans);font-variant-numeric:tabular-nums;min-width:0}
+input:hover{border-color:var(--muted)}
+input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
+input[aria-invalid=true]{border-color:var(--down)}
+input::placeholder{color:var(--muted)}
+.control .suffix{position:absolute;right:14px;font-size:var(--fs-xs);color:var(--muted);font-weight:600;pointer-events:none}
+.control input{padding-right:52px}
+.field-err{display:flex;gap:6px;align-items:center;color:var(--down);font-size:var(--fs-xs);font-weight:600}
+.field-err::before{content:"!";display:grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;font-size:9px}
+
+/* ---------- alerts */
+.count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:var(--r-pill);background:var(--warn-soft);color:var(--warn);font-size:var(--fs-xs);font-weight:700}
+body[data-unread="0"] .count{display:none}
+.add-form{display:grid;gap:var(--sp-3);padding:var(--sp-4);margin-bottom:var(--sp-4);border-radius:var(--r-md);background:var(--panel-2)}
+.add-form .seg{background:var(--bg);justify-self:start}
+.add-form .row{display:flex;gap:var(--sp-2);align-items:end}
+.add-form .row .field{flex:1;min-width:0}
+.add-form .hint{font-size:var(--fs-xs);color:var(--muted)}
+.unread{margin-bottom:var(--sp-4);border-radius:var(--r-md);background:var(--warn-soft);padding:var(--sp-3) var(--sp-4)}
+body[data-unread="0"] .unread{display:none}
+.unread__head{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);font-weight:650}
+.unread__head .ico{color:var(--warn)}
+.unread__head .btn--link{margin-left:auto;font-size:var(--fs-xs)}
+.unread li{display:flex;align-items:center;gap:var(--sp-3);padding-top:var(--sp-3);margin-top:var(--sp-3);border-top:1px solid color-mix(in srgb,var(--warn) 22%,transparent);font-size:var(--fs-sm)}
+.unread li .what{flex:1;min-width:0}
+.unread li .what small{display:block;font-size:var(--fs-xs);color:var(--text)}
+.alist{display:grid;gap:var(--sp-2)}
+.alist li{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);border-radius:var(--r-md);border:1px solid var(--line)}
+.alist .dir{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;font-size:12px}
+.alist .dir--up{color:var(--up);background:var(--up-soft)} .alist .dir--down{color:var(--down);background:var(--down-soft)}
+.alist .info{flex:1;min-width:0}
+.alist .cond,.alist .sub{display:block}
+.alist .cond{font-weight:650}
+.alist .sub{font-size:var(--fs-xs);color:var(--muted)}
+.acts{display:flex;gap:var(--sp-2)}
+.acts .idle{display:flex;gap:var(--sp-2)}
+.acts .confirm{display:none;gap:var(--sp-2)}
+.is-confirming .acts .confirm{display:flex} .is-confirming .acts .idle{display:none}
+.alist li.is-confirming{flex-wrap:wrap}
+.alist li.is-confirming .acts{width:100%;justify-content:flex-end}
+.is-confirming{border-color:color-mix(in srgb,var(--danger) 60%,transparent)!important}
+.empty{display:grid;justify-items:center;gap:6px;padding:var(--sp-6) var(--sp-4);text-align:center;font-size:var(--fs-sm);color:var(--muted);border:1px dashed var(--line-strong);border-radius:var(--r-md)}
+.empty .ico{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--panel-2);font-size:20px}
+.empty strong{color:var(--text)}
+
+/* ---------- conversion tiles */
+.fx .card__head{align-items:center}
+.fx__meta{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);font-size:var(--fs-sm);color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--sp-3)}
+.tile{padding:var(--sp-4);border-radius:var(--r-md);background:var(--panel-2);min-width:0}
+.tile__top{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--muted)}
+.tile__code{font-size:var(--fs-xs);font-weight:700;letter-spacing:.04em;color:var(--text);padding:2px 8px;border-radius:var(--r-pill);background:var(--panel);border:1px solid var(--line)}
+.tile__value{margin-top:var(--sp-3);font-size:var(--fs-xl);font-weight:620;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile__rate{font-size:var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}
+.tile--none .tile__value{color:var(--muted);font-size:var(--fs-md)}
+.attribution{margin-top:var(--sp-4);font-size:var(--fs-xs);color:var(--muted)}
+
+.footer{padding:var(--sp-5) 0 var(--sp-7);font-size:var(--fs-xs);color:var(--muted);display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);border-top:1px solid var(--line)}
+
+/* ---------- toast */
+.toasts{position:fixed;top:84px;right:var(--sp-5);z-index:100;display:grid;gap:var(--sp-3);width:min(380px,calc(100vw - 32px))}
+.toast{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;gap:2px var(--sp-3);padding:var(--sp-4);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);animation:toast-in .3s var(--ease)}
+.toast__icon{grid-row:span 2;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--warn-soft);color:var(--warn);font-size:16px}
+.toast__title{font-weight:650;font-size:var(--fs-md)}
+.toast__title time{font-weight:400;font-size:var(--fs-xs);color:var(--muted);margin-left:6px}
+.toast__body{grid-column:2;font-size:var(--fs-sm);color:var(--muted)} .toast__body b{color:var(--text);font-weight:600}
+.toast .btn--icon{grid-row:span 2;width:32px;height:32px;border:0;color:var(--muted)}
+.toast__timer{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--warn);opacity:.7;transform-origin:left;animation:timer 10s linear forwards}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes timer{to{transform:scaleX(0)}}
+
+/* ---------- modal (currency management) */
+.modal{width:min(560px,calc(100vw - 32px));max-height:min(720px,calc(100vh - 48px));padding:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--panel);color:var(--text);box-shadow:var(--shadow-pop)}
+.modal[open]{display:flex;flex-direction:column;animation:modal-in .25s var(--ease)}
+.modal::backdrop{background:rgba(6,8,12,.6);backdrop-filter:blur(3px)}
+@keyframes modal-in{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.modal__head{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-5) var(--sp-5) var(--sp-3)}
+.modal__head h2{font-size:var(--fs-xl);font-weight:650}
+.modal__head p{font-size:var(--fs-sm);color:var(--muted)}
+.modal__head > div{flex:1}
+.modal__body{overflow:auto;padding:0 var(--sp-5)}
+.clist li{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;border-bottom:1px solid var(--line)}
+.clist li:last-child{border-bottom:0}
+.clist .view{flex:1;display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+.clist .edit{display:none;flex:1;gap:var(--sp-2);align-items:center;min-width:0;flex-wrap:wrap;padding:var(--sp-2) 0}
+.clist .edit input:first-child{width:80px;text-transform:uppercase}
+.clist .edit input:nth-child(2){flex:1;width:auto;min-width:120px}
+.clist .is-editing .view,.clist .is-editing .acts{display:none} .clist .is-editing .edit{display:flex}
+.modal__foot{padding:var(--sp-4) var(--sp-5) var(--sp-5);border-top:1px solid var(--line);background:var(--panel-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.modal__foot h3{font-size:var(--fs-md);margin-bottom:var(--sp-3)}
+.cform{display:grid;grid-template-columns:110px 1fr auto;gap:var(--sp-3);align-items:start}
+.cform #c-code{text-transform:uppercase}
+.cform .btn{margin-top:24px}
+
+/* ---------- skeleton */
+body[data-feed=connecting] .sk{color:transparent!important;background:linear-gradient(90deg,var(--panel-2) 0 40%,color-mix(in srgb,var(--panel-2) 55%,var(--line-strong)) 50%,var(--panel-2) 60% 100%) 0 0/300% 100%;border-radius:var(--r-sm);animation:shimmer 1.6s linear infinite}
+body[data-feed=connecting] .sk *{visibility:hidden}
+body[data-feed=connecting] .dirpill{display:none}
+body[data-feed=connecting] .chart{background:var(--panel-2);border-radius:var(--r-md)} body[data-feed=connecting] .chart svg{display:none}
+body[data-feed=connecting] .chart::after{content:"載入圖表中…";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:var(--fs-sm)}
+@keyframes shimmer{to{background-position:-150% 0}}
+
+/* ---------- tablet */
+@media (max-width:1080px){
+  .hero,.side{grid-column:1/-1}
+  .side{grid-template-columns:minmax(0,1fr)}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+/* ---------- phone */
+@media (max-width:640px){
+  .wrap{padding:0 var(--sp-4)}
+  .nav{height:64px;gap:var(--sp-3)}
+  .brand p{display:none}
+  .brand h1{font-size:var(--fs-md)}
+  .brand__mark{width:32px;height:32px;font-size:16px}
+  .pill{height:30px;padding:0 10px;font-size:var(--fs-xs)}
+  .page{gap:var(--sp-4)}
+  .hero__top{padding:var(--sp-5) var(--sp-4) var(--sp-4)}
+  .hero__chart{padding:var(--sp-3) var(--sp-3) var(--sp-4)}
+  .chart-bar{padding:0 var(--sp-1)}
+  .chart-bar .seg{width:100%} .chart-bar .seg button{flex:1;justify-content:center;padding:0 8px}
+  .range{margin-left:0}
+  .meta .sep{display:none}
+  .meta{gap:2px var(--sp-4)}
+  .chart{height:260px}
+  .card__head{padding:var(--sp-4) var(--sp-4) 0}
+  .card__body{padding:var(--sp-3) var(--sp-4) var(--sp-4)}
+  .tiles{grid-template-columns:minmax(0,1fr);gap:0;background:var(--panel-2);border-radius:var(--r-md);padding:0 var(--sp-4)}
+  .tile{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0 var(--sp-3);padding:var(--sp-3) 0;background:none;border-radius:0;border-bottom:1px solid var(--line)}
+  .tile:last-child{border-bottom:0}
+  .tile__value{margin:0;font-size:var(--fs-md);text-align:right}
+  .tile__rate{grid-column:1/-1;text-align:right;margin-top:-2px}
+  .tile__rate{grid-column:2}
+  .fx__meta{width:100%}
+  .toasts{top:var(--sp-3);left:var(--sp-3);right:var(--sp-3);width:auto}
+  .modal{width:100vw;max-width:100vw;max-height:88vh;margin:auto 0 0;border-radius:var(--r-lg) var(--r-lg) 0 0;border-bottom:0}
+  .modal__foot{border-radius:0}
+  .cform{grid-template-columns:90px 1fr}
+  .cform .btn{grid-column:1/-1;margin-top:0}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .toast__timer{display:none}
+}
+/*@MOCKCSS*/
+</style>
+</head>
+<body data-feed="live" data-unread="1">
+<div class="wrap">
+  <header class="nav">
+    <div class="brand"><span class="brand__mark" aria-hidden="true">₿</span><div><h1>比特幣即時價格</h1><p>BTC-USD 即時行情 · 多幣別換算 · 價格警示</p></div></div>
+    <span class="nav__spacer"></span>
+    <span class="pill" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span data-status-label>即時</span><span class="pill__src">· <span data-status-source>Coinbase</span></span></span>
+  </header>
+
+  <main class="page">
+    <section class="card hero" aria-labelledby="hero-label">
+      <div class="hero__top">
+        <div class="hero__label" id="hero-label"><span class="coin" aria-hidden="true">₿</span>比特幣 BTC ／ 美元 USD</div>
+        <div class="price">
+          <span class="price__value sk" aria-label="BTC-USD 價格">$<span data-usd-int>83,211</span><span class="dec" data-usd-dec>.21</span></span>
+          <span class="dirpill js-dir js-flash" data-dir="up"><span class="glyph" aria-hidden="true">▲</span><span aria-hidden="true">較前一筆</span><span class="sr">較前一筆上漲</span></span>
+        </div>
+        <div class="meta">
+          <span class="sk">開啟後 <b class="chg num" data-change>+42.37（+0.05%）</b></span><span class="sep" aria-hidden="true"></span>
+          <span class="sk">成交來源 <b data-status-source>Coinbase</b>（<span data-source-role>主要</span>）</span><span class="sep" aria-hidden="true"></span>
+          <span class="sk">更新於 <time class="num" data-time>--:--:--</time></span>
+        </div>
+        <p class="stale-note" role="alert" data-status-msg hidden></p>
+      </div>
+      <div class="hero__chart">
+        <div class="chart-bar">
+          <div class="seg" role="tablist" aria-label="圖表類型">
+            <button role="tab" aria-selected="true" data-view="1m">1 分 K 線</button>
+            <button role="tab" aria-selected="false" data-view="5m" tabindex="-1">5 分 K 線</button>
+            <button role="tab" aria-selected="false" data-view="trend" tabindex="-1">1 小時走勢</button>
+          </div>
+          <span class="range">圖表區間 高 <b class="num" data-range-hi></b> · 低 <b class="num" data-range-lo></b></span>
+        </div>
+        <div class="chart" id="chart"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card" aria-labelledby="alert-title">
+        <header class="card__head">
+          <h2 id="alert-title">價格警示</h2>
+          <button class="btn btn--sm" type="button" data-act="toggle" aria-expanded="false" aria-controls="alert-form">＋ 新增警示</button>
+        </header>
+        <div class="card__body">
+          <form class="add-form" id="alert-form" aria-label="新增警示" novalidate hidden>
+            <div class="seg seg--dir" role="radiogroup" aria-label="條件">
+              <input type="radio" name="direction" id="d-above" value="ABOVE" checked><label for="d-above">▲ 價格高於</label>
+              <input type="radio" name="direction" id="d-below" value="BELOW"><label for="d-below">▼ 價格低於</label>
+            </div>
+            <div class="row">
+              <label class="field">門檻價格<span class="control"><input id="alert-threshold" name="threshold" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 85,000"><span class="suffix">USD</span></span></label>
+              <button class="btn btn--primary" type="submit">建立</button>
+            </div>
+            <p class="field-err" role="alert" data-err hidden></p>
+            <p class="hint">目前 <span class="num" data-usd-sym></span> · <button class="btn btn--link" type="button" data-act="fill-price">填入目前價格</button></p>
+          </form>
+
+          <div class="unread" aria-labelledby="unread-title">
+            <div class="unread__head"><span class="ico" aria-hidden="true">●</span><span id="unread-title">離開期間觸發 <span data-unread-count>1</span> 則</span><button class="btn btn--link" type="button" data-act="read-all">全部標記已讀</button></div>
+            <ul data-unread-list id="unread-list">
+              <li data-row><span class="what">BTC-USD 高於 <b class="num">$83,500.00</b><small>9/30 14:10:05 觸發 · 當時 $83,512.40</small></span><button class="btn btn--sm" type="button" data-act="read" aria-label="標記已讀：高於 83,500">已讀</button></li>
+            </ul>
+          </div>
+
+          <ul class="alist" id="alert-list" aria-label="已設定的警示">
+            <li data-row>
+              <span class="dir dir--up" aria-hidden="true">▲</span>
+              <span class="info"><span class="cond">高於 <span class="num">$83,500.00</span></span><span class="sub"><span class="num" data-dist="83500"></span> · 上次觸發 9/30 14:10</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--quiet btn--sm" type="button" data-act="ask-delete" aria-label="刪除警示：高於 83,500">刪除</button></span><span class="confirm"><button class="btn btn--danger btn--sm" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn btn--sm" type="button" data-act="cancel-delete">取消</button></span></span>
+            </li>
+            <li data-row>
+              <span class="dir dir--down" aria-hidden="true">▼</span>
+              <span class="info"><span class="cond">低於 <span class="num">$82,800.00</span></span><span class="sub"><span class="num" data-dist="82800"></span> · 尚未觸發</span></span>
+              <span class="acts"><span class="idle"><button class="btn btn--quiet btn--sm" type="button" data-act="ask-delete" aria-label="刪除警示：低於 82,800">刪除</button></span><span class="confirm"><button class="btn btn--danger btn--sm" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn btn--sm" type="button" data-act="cancel-delete">取消</button></span></span>
+            </li>
+          </ul>
+          <div class="empty" data-empty-for="alert-list" hidden><span class="ico" aria-hidden="true">🔔</span><strong>還沒有警示</strong>設定一個門檻，價格越過時會在這裡通知你。</div>
+          <p class="side-note">警示由後端判斷：頁面關閉時觸發的警示，下次打開會列為「離開期間觸發」。同一警示觸發後冷卻 5 分鐘。</p>
+        </div>
+      </section>
+    </aside>
+
+    <section class="card fx" aria-labelledby="fx-title">
+      <header class="card__head">
+        <h2 id="fx-title">多幣別換算 <span class="card__sub" id="fx-note">1 BTC 以各幣別計價</span></h2>
+        <div class="fx__meta">
+          <span>匯率更新於 <time class="num" datetime="2026-09-30T00:02:31Z">2026/9/30 08:02:31</time></span>
+          <button class="btn btn--sm" type="button" data-act="open-currency" aria-haspopup="dialog">管理幣別</button>
+        </div>
+      </header>
+      <div class="card__body">
+        <ul class="tiles" aria-describedby="fx-note">
+          <li class="tile"><div class="tile__top"><span class="tile__code">EUR</span>歐元</div><div class="tile__value sk" data-conv="EUR"></div><div class="tile__rate">1 USD = 0.88152</div></li>
+          <li class="tile"><div class="tile__top"><span class="tile__code">GBP</span>英鎊</div><div class="tile__value sk" data-conv="GBP"></div><div class="tile__rate">1 USD = 0.755961</div></li>
+          <li class="tile"><div class="tile__top"><span class="tile__code">JPY</span>日圓</div><div class="tile__value sk" data-conv="JPY"></div><div class="tile__rate">1 USD = 157.389062</div></li>
+          <li class="tile"><div class="tile__top"><span class="tile__code">TWD</span>新台幣</div><div class="tile__value sk" data-conv="TWD"></div><div class="tile__rate">1 USD = 31.84071</div></li>
+          <li class="tile"><div class="tile__top"><span class="tile__code">USD</span>美元</div><div class="tile__value sk" data-conv="USD"></div><div class="tile__rate">1 USD = 1</div></li>
+        </ul>
+        <p class="attribution"><a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>價格來源：Coinbase（主要）／ Kraken（備援）</span>
+    <span>圖表：TradingView Lightweight Charts™</span>
+    <span>警示由後端判斷，同一警示觸發後冷卻 5 分鐘</span>
+  </footer>
+</div>
+
+<div class="toasts" aria-live="assertive"></div>
+<template id="toast-tpl">
+  <div class="toast" role="alert">
+    <span class="toast__icon" aria-hidden="true">🔔</span>
+    <div class="toast__title">價格警示<time data-toast-now></time></div>
+    <button class="btn btn--icon" type="button" data-toast-close aria-label="關閉通知">×</button>
+    <div class="toast__body">BTC-USD 已<b>高於 $83,500.00</b>，目前 <b class="num">$83,512.40</b></div>
+    <span class="toast__timer" aria-hidden="true"></span>
+  </div>
+</template>
+
+<dialog class="modal" id="currency-dialog" aria-labelledby="cur-title">
+  <header class="modal__head"><div><h2 id="cur-title">管理幣別</h2><p>換算卡片會列出這裡的所有幣別。</p></div><button class="btn btn--icon btn--quiet" type="button" data-act="close-dialog" aria-label="關閉">×</button></header>
+  <div class="modal__body"><ul class="clist" id="currency-list"></ul></div>
+  <footer class="modal__foot">
+    <h3>新增幣別</h3>
+    <form class="cform" id="currency-form" novalidate>
+      <label class="field">代碼<input id="c-code" name="code" maxlength="3" placeholder="CHF" autocomplete="off"><span class="field-err" data-err="code" role="alert" hidden></span></label>
+      <label class="field">中文名稱<input id="c-name" name="cname" maxlength="50" placeholder="瑞士法郎" autocomplete="off"><span class="field-err" data-err="cname" role="alert" hidden></span></label>
+      <button class="btn btn--primary" type="submit">新增</button>
+    </form>
+  </footer>
+</dialog>
+
+<script>
+window.MOCK_CFG = { axisW: 68, slot1m: 11, candleRadius: 1.5, tagRadius: 6, area: true }
+window.renderCurrencyRow = (code, name) => `<li data-row data-code="${code}">
+  <span class="view"><span class="tile__code">${code}</span><span>${name}</span></span>
+  <span class="edit"><input value="${code}" maxlength="3" aria-label="代碼"><input value="${name}" aria-label="中文名稱"><button class="btn btn--primary btn--sm" type="button" data-act="save-edit">儲存</button><button class="btn btn--sm" type="button" data-act="cancel-edit">取消</button></span>
+  <span class="acts"><span class="idle"><button class="btn btn--sm" type="button" data-act="edit" aria-label="編輯 ${code}">編輯</button><button class="btn btn--quiet btn--sm" type="button" data-act="ask-delete" aria-label="刪除 ${code}">刪除</button></span><span class="confirm"><button class="btn btn--danger btn--sm" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn btn--sm" type="button" data-act="cancel-delete">取消</button></span></span></li>`
+window.renderAlertRow = (dir, v) => { const up = dir === 'ABOVE', n = '$' + MOCK.fmt(v); return `<li data-row>
+  <span class="dir dir--${up ? 'up' : 'down'}" aria-hidden="true">${up ? '▲' : '▼'}</span>
+  <span class="info"><span class="cond">${up ? '高於' : '低於'} <span class="num">${n}</span></span><span class="sub"><span class="num" data-dist="${v}"></span> · 尚未觸發</span></span>
+  <span class="acts"><span class="idle"><button class="btn btn--quiet btn--sm" type="button" data-act="ask-delete">刪除</button></span><span class="confirm"><button class="btn btn--danger btn--sm" type="button" data-act="confirm-delete">確定刪除？</button><button class="btn btn--sm" type="button" data-act="cancel-delete">取消</button></span></span></li>` }
+document.getElementById('currency-list').innerHTML = [['EUR','歐元'],['GBP','英鎊'],['JPY','日圓'],['TWD','新台幣'],['USD','美元']].map(([c,n]) => renderCurrencyRow(c,n)).join('')
+</script>
+<script>/*@DATA*/</script>
+<script>/*@MOCKJS*/</script>
+</body>
+</html>

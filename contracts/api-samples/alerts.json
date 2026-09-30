@@ -1,0 +1,15 @@
+[ {
+  "id" : 3,
+  "pair" : "BTC-USD",
+  "direction" : "ABOVE",
+  "threshold" : 90000,
+  "createdAt" : "2026-09-29T08:00:00.123456Z",
+  "lastTriggeredAt" : "2026-09-29T08:10:00.123456Z"
+}, {
+  "id" : 4,
+  "pair" : "BTC-USD",
+  "direction" : "BELOW",
+  "threshold" : 80000.50,
+  "createdAt" : "2026-09-29T08:00:00.123456Z",
+  "lastTriggeredAt" : null
+} ]

@@ -1,0 +1,57 @@
+# Shared settings for ALL tests. Activated globally by surefire
+# (systemPropertyVariables spring.profiles.active=test in pom.xml), so no test class
+# needs @ActiveProfiles. Requirement 18: tests must never reach real price/FX sources,
+# so every external URL points at 127.0.0.1:1 (nothing listens there) and the
+# background jobs that would call them are switched off.
+# NoExternalCallsGuardTest enforces this.
+#
+# Kafka and the database also point at 127.0.0.1:1: tests that extend IntegrationTest get
+# the Testcontainers addresses via @ServiceConnection (which takes precedence), and any test
+# that forgets to extend it fails fast instead of silently using a developer's local
+# localhost:9092 / localhost:5432.
+spring:
+  kafka:
+    bootstrap-servers: 127.0.0.1:1
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:1/none
+    # Spring caches up to 32 test contexts, each with its own pool: keep pools small so they fit
+    # into PostgreSQL's connection limit (Hikari's default is 10 per pool).
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 1
+
+  # Each test context that enables Kafka Streams is its own, fresh Streams application:
+  #  - own state dir (instances must not share RocksDB locks);
+  #  - own application id starting at the LATEST offset. Streams remembers "stream time" (the highest
+  #    event time seen) with its committed offsets; replaying other tests' ticks - some dated 2033/2034 -
+  #    would push it past this test's event times and every window would already be closed.
+  #    Tests therefore wait for Streams to be RUNNING before producing. (Production keeps one fixed
+  #    application id and reads from the earliest offset.)
+  kafka.streams.state-dir: ${java.io.tmpdir}/kafka-streams-test-${random.uuid}
+  kafka.streams.application-id: candles-test-${random.uuid}
+  kafka.streams.properties.auto.offset.reset: latest
+
+app:
+  ingest:
+    enabled: false
+  # Kafka Streams is off by default in tests; tests that need candles turn it on explicitly.
+  streams:
+    enabled: ${APP_STREAMS_ENABLED:false}
+  # Alert evaluation is off by default too. Spring caches test contexts, and every live context
+  # with an evaluator would judge the same ticks with ITS cooldown (e.g. one test uses 30 s).
+  # AlertEvaluationTest and EndToEndPipelineTest turn it on (both with the default 5 minutes).
+  alerts:
+    enabled: ${APP_ALERTS_ENABLED:false}
+  # Unique consumer groups per test context: cached contexts must not join each other's groups
+  # and take over partitions (QA, task 18 FAIL). Same idea as the per-context Streams application id.
+  # ${random.uuid} gives a new value on EVERY resolution, so each listener even gets its own prefix.
+  kafka:
+    group-prefix: test-${random.uuid}-
+  feed:
+    primary:
+      url: ws://127.0.0.1:1/primary
+    backup:
+      url: ws://127.0.0.1:1/backup
+  fx:
+    url: http://127.0.0.1:1/fx
+    refresh-enabled: false

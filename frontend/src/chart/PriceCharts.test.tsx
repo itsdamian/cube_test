@@ -1,0 +1,126 @@
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { afterEach, describe, expect, it } from 'vitest'
+import { LiveStreamProvider } from '../live/LiveStreamProvider'
+import { fakeChartFactory } from '../test/fakeChart'
+import { FakeEventSource } from '../test/fakeEventSource'
+import { samples } from '../test/msw/samples'
+import { server } from '../test/msw/server'
+import { PriceCharts } from './PriceCharts'
+
+function setup() {
+  const requests: URL[] = []
+  server.use(
+    http.get('/api/candles', ({ request }) => {
+      requests.push(new URL(request.url))
+      return HttpResponse.json(samples.candles)
+    }),
+    http.get('/api/prices/trend', ({ request }) => {
+      requests.push(new URL(request.url))
+      return HttpResponse.json(samples.pricesTrend)
+    }),
+  )
+  const { factory, charts } = fakeChartFactory()
+  const view = render(
+    <LiveStreamProvider eventSourceFactory={FakeEventSource.factory}>
+      <PriceCharts chartFactory={factory} />
+    </LiveStreamProvider>,
+  )
+  return { requests, chart: () => charts[0], stream: FakeEventSource.latest(), view }
+}
+
+describe('PriceCharts (requirement 11)', () => {
+  afterEach(() => {
+    FakeEventSource.instances = []
+  })
+
+  it('starts with 1-minute candles from /api/candles?interval=1m', async () => {
+    const { requests, chart } = setup()
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    expect(requests[0].pathname).toBe('/api/candles')
+    expect(requests[0].searchParams.get('interval')).toBe('1m')
+    expect(chart().candles[0]).toHaveLength(2)
+    expect(screen.getByRole('tab', { name: '1 分 K 線' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('switches to 5-minute candles', async () => {
+    const { requests, chart } = setup()
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+
+    await userEvent.click(screen.getByRole('tab', { name: '5 分 K 線' }))
+
+    await waitFor(() => expect(chart().candles).toHaveLength(2))
+    expect(requests[requests.length - 1].searchParams.get('interval')).toBe('5m')
+  })
+
+  it('shows the trend from /api/prices/trend and extends it with live prices', async () => {
+    const { requests, chart, stream } = setup()
+    await userEvent.click(screen.getByRole('tab', { name: /走勢/ }))
+
+    await waitFor(() => expect(chart().lines).toHaveLength(1))
+    const trendRequest = requests.find((r) => r.pathname === '/api/prices/trend')!
+    expect(trendRequest.searchParams.get('points')).toBe('300')
+    expect(Date.parse(trendRequest.searchParams.get('to')!) - Date.parse(trendRequest.searchParams.get('from')!))
+      .toBe(60 * 60_000)
+    expect(chart().lines[0]).toHaveLength(2)
+
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:00:09Z', price: 84100 }))
+    expect(chart().appended).toEqual([{ time: 1790668809, value: 84100 }])
+
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:00:01Z', price: 1 }))
+    expect(chart().appended).toHaveLength(1)   // older than the line's end: ignored
+  })
+
+  it('in the candle views a live price updates the forming candle (not the trend line)', async () => {
+    const { chart, stream } = setup()
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    // Last finalised 1m candle in the sample opens 08:01; a price at 08:01:30 updates it.
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:01:30Z', price: 84100 }))
+    expect(chart().appended).toHaveLength(0)
+    expect(chart().candleUpdates).toEqual([{ time: 1790668860, open: 84052.3, high: 84100, low: 84049.9, close: 84100 }])
+
+    // A price in the next minute opens a new candle.
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:02:05Z', price: 84090 }))
+    expect(chart().candleUpdates[1]).toEqual({ time: 1790668920, open: 84090, high: 84090, low: 84090, close: 84090 })
+  })
+
+  it('shows the chart range, the hovered candle, and the range again when the crosshair leaves (task 31)', async () => {
+    const { chart } = setup()
+    const legend = screen.getByTestId('chart-legend')
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    expect(legend).toHaveTextContent(/^圖表區間 高 [\d,]+\.\d{2} · 低 [\d,]+\.\d{2}$/)
+    const rangeText = legend.textContent
+
+    act(() => chart().hover({ kind: 'candle', time: 1790668860, open: 84052.3, high: 84060, low: 84049.9, close: 84055 }))
+    expect(legend).toHaveTextContent('開 84,052.30 · 高 84,060.00 · 低 84,049.90 · 收 84,055.00')
+
+    act(() => chart().hover(null))
+    expect(legend).toHaveTextContent(rangeText!)
+  })
+
+  it('switches tabs with the arrow keys', async () => {
+    const user = userEvent.setup()
+    const { chart } = setup()
+    await waitFor(() => expect(chart().candles).toHaveLength(1))
+    screen.getByRole('tab', { name: '1 分 K 線' }).focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: '5 分 K 線' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '5 分 K 線' })).toHaveFocus()
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('tab', { name: '1 小時走勢' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('explains an empty chart and disposes the chart on unmount', async () => {
+    server.use(http.get('/api/candles', () => HttpResponse.json([])))
+    const { factory, charts } = fakeChartFactory()
+    const { unmount } = render(
+      <LiveStreamProvider eventSourceFactory={FakeEventSource.factory}>
+        <PriceCharts chartFactory={factory} />
+      </LiveStreamProvider>,
+    )
+    expect(await screen.findByText(/尚無資料/)).toBeInTheDocument()
+    unmount()
+    expect(charts[0].disposed).toBe(true)
+  })
+})

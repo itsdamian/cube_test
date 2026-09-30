@@ -1,0 +1,14 @@
+{
+  "type" : "about:blank",
+  "title" : "Bad Request",
+  "status" : 400,
+  "detail" : "Validation failed",
+  "instance" : "/api/currencies",
+  "errors" : [ {
+    "field" : "code",
+    "message" : "must be 3 uppercase letters (ISO 4217), e.g. TWD"
+  }, {
+    "field" : "name",
+    "message" : "must not be blank"
+  } ]
+}

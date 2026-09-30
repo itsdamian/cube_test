@@ -1,34 +1,124 @@
-version: '3.8'
+# Whole system on one machine:  docker compose up -d --build   ->  http://localhost:3000
+# (host ports are configurable: FRONTEND_PORT=3001 BACKEND_PORT=8081 docker compose up -d)
+#
+# Networks:
+#   internal (no internet): kafka, postgres, backend, frontend talk to each other here
+#   egress:  backend only - to reach Coinbase / Kraken / open.er-api, and to publish :8080
+#   public:  frontend only - to publish :3000
+# So "cut the price sources off" (AC2/AC6) is `docker network disconnect <project>_egress <backend>`,
+# which leaves Kafka, the database and the browser connection untouched.
+# All image tags are pinned; data lives in named volumes (survives `down` without -v).
+
+name: currency
 
 services:
-  # Service for Apple Silicon (M1/M2/M3) chips
-  app-silicon:
-    build:
-      context: .
-      dockerfile: Dockerfile.silicon
-    ports:
-      - "8080:8080"
-      - "8082:8082"  # H2 console port
+  kafka:
+    image: apache/kafka:3.9.2
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_H2_CONSOLE_ENABLED=true
-      - SPRING_H2_CONSOLE_SETTINGS_WEB_ALLOW_OTHERS=true
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller          # single KRaft node, no ZooKeeper
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
-      - ~/.m2:/root/.m2
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    networks: [internal]
+    restart: unless-stopped
 
-  # Service for Intel/AMD processors
-  app-amd64:
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: currency
+      POSTGRES_USER: currency
+      POSTGRES_PASSWORD: currency
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U currency -d currency"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+    restart: unless-stopped
+
+  backend:
+    build: .
+    image: currency-backend:local
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/currency
+      SPRING_DATASOURCE_USERNAME: currency
+      SPRING_DATASOURCE_PASSWORD: currency
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Everything else uses the defaults in application.yml. The variables below are passed through
+      # from your shell ONLY if set there (no value here = not set = app default), e.g.
+      #   APP_ALERT_COOLDOWN=30s docker compose up -d backend
+      APP_FEED_PRIMARY_URL:
+      APP_FEED_BACKUP_URL:
+      APP_FEED_STALE_THRESHOLD:
+      APP_FEED_PRICE_STALE_THRESHOLD:
+      APP_ALERT_COOLDOWN:
+      APP_RETENTION_TICKS:
+      APP_RETENTION_INTERVAL:
+      APP_RETENTION_INITIAL_DELAY:
+      APP_FX_REFRESH_INTERVAL:
+    volumes:
+      - streams-state:/var/lib/currency/streams
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health/readiness > /dev/null"]
+      interval: 10s
+      timeout: 6s
+      retries: 18
+      start_period: 30s
+    networks: [internal, egress]
+    restart: unless-stopped
+
+  frontend:
     build:
       context: .
-      dockerfile: Dockerfile.amd64
-    ports:
-      - "8080:8080"
-      - "8082:8082"  # H2 console port
+      dockerfile: frontend/Dockerfile
+    image: currency-frontend:local
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_H2_CONSOLE_ENABLED=true
-      - SPRING_H2_CONSOLE_SETTINGS_WEB_ALLOW_OTHERS=true
-    volumes:
-      - ~/.m2:/root/.m2 
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [internal, public]
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
+  egress: {}
+  public: {}
+
+volumes:
+  kafka-data:
+  postgres-data:
+  streams-state:

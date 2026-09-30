@@ -1,0 +1,121 @@
+# Every app.* value below uses ${ENV_VAR:default}: the default works for local runs,
+# and docker compose / Kubernetes override it with an environment variable.
+# (Explicit placeholders are needed because Spring's automatic env binding maps
+# APP_FEED_STALETHRESHOLD - not APP_FEED_STALE_THRESHOLD - to app.feed.stale-threshold.)
+spring:
+  application:
+    name: currency-demo
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/currency}
+    username: ${SPRING_DATASOURCE_USERNAME:currency}
+    password: ${SPRING_DATASOURCE_PASSWORD:currency}
+    hikari:
+      # Fail fast when the database is unreachable: the readiness check (and requests) answer within
+      # ~5 s instead of Hikari's default 30 s. DB-writing listeners retry with backoff anyway.
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:5000}
+  # Flyway (db/migration/V*.sql) owns the schema; Hibernate only checks that the
+  # entities match it and never alters tables.
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # value serializer: JSON via Spring's ObjectMapper, see KafkaConfig
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Never block a caller for long when Kafka is down (plan: Approach #9).
+        max.block.ms: 5000
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 30000
+        linger.ms: 5
+    streams:
+      application-id: ${APP_STREAMS_APPLICATION_ID:currency-candles}
+      # Local state (RocksDB window stores). Mount a volume here in docker/K8s.
+      state-dir: ${APP_STREAMS_STATE_DIR:${java.io.tmpdir}/kafka-streams}
+      replication-factor: ${APP_KAFKA_REPLICATION_FACTOR:1}
+      properties:
+        processing.guarantee: at_least_once
+        # A record that cannot be deserialized is logged and skipped instead of killing the stream thread.
+        default.deserialization.exception.handler: org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # /actuator/health/liveness and /actuator/health/readiness (Kubernetes probes).
+      probes:
+        enabled: true
+      # No component details for anonymous callers (no auth in this app)...
+      show-details: never
+      # kafkaStreams only exists when app.streams.enabled=true; don't fail startup without it.
+      validate-group-membership: false
+      group:
+        # Liveness = "is this JVM stuck?" - never depends on Kafka/DB, or an outage would make
+        # Kubernetes restart healthy pods in a loop.
+        liveness:
+          include: livenessState
+        # Readiness = "should traffic come here?" - needs the database, Kafka and the candle stream.
+        readiness:
+          include: readinessState,db,kafka,kafkaStreams
+          # ...but readiness shows which component is DOWN (UP/DOWN only, no details).
+          show-components: always
+
+logging:
+  level:
+    root: INFO
+    com.currency.demo: INFO
+
+app:
+  ingest:
+    enabled: ${APP_INGEST_ENABLED:true}
+  streams:
+    enabled: ${APP_STREAMS_ENABLED:true}
+    grace: ${APP_STREAMS_GRACE:5s}
+  persist:
+    enabled: ${APP_PERSIST_ENABLED:true}
+  alerts:
+    enabled: ${APP_ALERTS_ENABLED:true}
+  feed:
+    primary:
+      name: coinbase
+      url: ${APP_FEED_PRIMARY_URL:wss://ws-feed.exchange.coinbase.com}
+    backup:
+      name: kraken
+      url: ${APP_FEED_BACKUP_URL:wss://ws.kraken.com/v2}
+    # A source is healthy only if it sent ANY message (heartbeats count) within stale-threshold
+    # AND a trade within price-stale-threshold.
+    stale-threshold: ${APP_FEED_STALE_THRESHOLD:10s}
+    price-stale-threshold: ${APP_FEED_PRICE_STALE_THRESHOLD:60s}
+    recovery-period: ${APP_FEED_RECOVERY_PERIOD:15s}
+    idle-timeout: ${APP_FEED_IDLE_TIMEOUT:10s}
+    reconnect-initial-backoff: ${APP_FEED_RECONNECT_INITIAL_BACKOFF:1s}
+    reconnect-max-backoff: ${APP_FEED_RECONNECT_MAX_BACKOFF:30s}
+    publish-queue-capacity: ${APP_FEED_PUBLISH_QUEUE_CAPACITY:10000}
+  fx:
+    url: ${APP_FX_URL:https://open.er-api.com/v6/latest/USD}
+    refresh-interval: ${APP_FX_REFRESH_INTERVAL:30m}
+    refresh-enabled: ${APP_FX_REFRESH_ENABLED:true}
+  retention:
+    ticks: ${APP_RETENTION_TICKS:P30D}
+    interval: ${APP_RETENTION_INTERVAL:PT1H}
+    initial-delay: ${APP_RETENTION_INITIAL_DELAY:PT1M}
+  alert:
+    cooldown: ${APP_ALERT_COOLDOWN:5m}
+  kafka:
+    replication-factor: ${APP_KAFKA_REPLICATION_FACTOR:1}
+    tick-partitions: ${APP_KAFKA_TICK_PARTITIONS:3}
+    # Prepended to the shared consumer group ids. Empty in production; lets two environments share
+    # one broker without stealing each other's partitions, and isolates test contexts.
+    group-prefix: ${APP_KAFKA_GROUP_PREFIX:}
