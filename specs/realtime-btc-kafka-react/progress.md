@@ -195,3 +195,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **發現的問題**: mvnw 在沒有 `unzip` 時會改下載 .tar.gz，導致 task 2 釘的 .zip SHA-256 校驗失敗（CI/容器都可能踩到）；mvnw 只接受 .zip 網址，所以 build 階段安裝 unzip，並在 wrapper 設定註明。
 - **注意**: docker-compose.yml 目前仍引用已刪除的檔案，task 26 會整份重寫。
 - **概念**: 多平台 image 是一個 manifest list，指向每個架構各自的 image；$BUILDPLATFORM 讓昂貴的編譯在本機架構跑，只有很薄的 runtime 層是各架構各一份。
+
+## 2026-09-30 12:01 — Stage: implement task 20（前端骨架）
+- **What changed (`8e8e1be`)**: `frontend/`（Vite 8 + React 19 + TS）、繁中版面五個區塊、`api/types.ts`（對應後端 DTO）、`api/client.ts`（ApiError + fieldErrors）、Vitest + jsdom + RTL + MSW；MSW handler 直接讀 `contracts/api-samples/`（QA T3），未 mock 的請求一律讓測試失敗；dev server 代理 /api。
+- **Verified**: 乾淨 `npm ci` → `npm test`（6 tests）、`npm run build`、`npm run lint` 全過；`git ls-files` 無 node_modules/dist（AC15 前端）。
+- **誠實紀錄**: 原註解宣稱 `as` 轉型會讓編譯器檢查樣本型別，這是錯的（只是轉型），已更正；契約同步靠後端 ContractSamplesTest + 前端對欄位的斷言。
+- **概念**: MSW 在網路層攔截 fetch，測試裡跑的是真正的 client 程式；用後端錄下的真實回應當 mock，mock 就變成契約而不是猜測。
