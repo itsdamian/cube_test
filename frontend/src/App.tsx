@@ -1,0 +1,30 @@
+/**
+ * Page layout. Each section is filled in by its own task:
+ * live price (21), conversion table (22), charts (23), currency management (24), alerts (25).
+ */
+export default function App() {
+  return (
+    <div className="app">
+      <header className="app-header">
+        <h1>比特幣即時價格</h1>
+      </header>
+      <main className="app-main">
+        <section aria-labelledby="live-title">
+          <h2 id="live-title">即時價格</h2>
+        </section>
+        <section aria-labelledby="converted-title">
+          <h2 id="converted-title">多幣別換算</h2>
+        </section>
+        <section aria-labelledby="chart-title">
+          <h2 id="chart-title">價格圖表</h2>
+        </section>
+        <section aria-labelledby="currency-title">
+          <h2 id="currency-title">幣別管理</h2>
+        </section>
+        <section aria-labelledby="alert-title">
+          <h2 id="alert-title">價格警示</h2>
+        </section>
+      </main>
+    </div>
+  )
+}
