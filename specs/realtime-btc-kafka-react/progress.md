@@ -235,3 +235,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **修正（`71a5a79`）**: 移除相對數量等待——controller 回傳前已註冊 emitter，收到 200 即代表已註冊；EndToEndPipelineTest 同樣的寫法一併移除。
 - **Verified**: SseStreamTest 單獨 10/10；random 順序完整測試（seed 3082923979307916、3085791733262166、3085907882768041）皆 152/152。
 - **概念**: 測試應該等「它真正需要的那件事」（自己的回應），而不是從會被其他活動同時改動的共享計數去推論。
+
+## 2026-09-30 13:05 — Stage: implement task 24（幣別管理介面）
+- **What changed (`8ca5480`)**: `CurrencyManager`（列表、新增、行內編輯、兩段式刪除確認，不用 window.confirm）、錯誤就近顯示（400 欄位訊息、409 代碼已存在）、`currencies-changed` 事件讓換算表立即重新載入。
+- **Verified**: `npm test`（36 tests）、build、lint 全過。
+- **概念**: 驗證規則以伺服器為準，UI 的責任是把訊息放到正確的欄位旁，而不是再實作一次規則。
