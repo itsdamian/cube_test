@@ -364,3 +364,31 @@ Branch: `feat/realtime-btc-kafka-react`
   - 用 6 個 curl 強制中斷、以及經 nginx 同時跑 4 個 headless Chrome，都重現不了。
   - 推測：`SseBroadcaster` 的 `scheduleAtFixedRate(pushLatestPrice)` 丟出 unchecked exception 後，週期任務被靜默取消。`status` 走的是 `execute`，所以不受影響。
   - 建議另開 task：週期任務包 try/catch 並記 log，加上一個會丟例外的測試。
+
+## 2026-09-30 16:25 — Stage: task 31 審查修正；implement task 32（SSE 價格凍結）
+- **Task 31 team lead 審查**: 在 Chrome 目視通過（hover 圖例、dialog、Esc 關閉並回到觸發按鈕、表單、淺色）。
+  - 決定：USD 保留 `US$`，TWD 明確顯示為 `NT$`；時間軸邊緣裁切可接受，能簡單改善就做；`check_md_links.py` 略過 `*.src.md` 同意；`design/` 要 commit。
+  - `2aa29a0`：`formatMoney` 以 formatToParts 只替換貨幣符號，TWD 顯示 NT$，新增 `format.test.ts`。timeScale `rightOffset: 3`，最新的時間標籤不再被價格軸裁切（左緣仍可能被裁切，已接受）。
+  - `92c9e1b`：commit 設計師的產出（`design/`，原樣未改）。
+- **Task 32（team lead 核准）— `652d4cc`**:
+  - **根因**（QA 獨立調查得到同一結論，並將 task 16 判為 FAIL，由本 task 修正）：`scheduleAtFixedRate(pushLatestPrice)` 只要有一次執行丟出 unchecked exception，之後的執行就被靜默取消。`send()` 只 catch IOException / IllegalStateException；client 在序列化途中斷線會丟 HttpMessageNotWritableException，catch 區塊裡的 `completeWithError` 也可能再丟例外。status 走 `execute`，所以照常推送。前端因為每 5 秒收到 status，15 秒的靜默規則一直被重設，結果畫面顯示「即時」但價格凍結，違反 AC2。
+  - **後端**：`send()`、heartbeat 改 catch `IOException | RuntimeException`，只移除出錯的 emitter；`completeWithError` 另外包起來；兩個週期任務都經過 `guarded()`（log.warn 後繼續）。
+  - **後端測試**：`SseBroadcasterResilienceTest`（不用 Spring 和 Kafka，用真的 scheduler），3 個：
+    - unchecked 例外的 emitter 不會讓後續週期停止推送；
+    - 連 close 都失敗的 emitter 也一樣；
+    - `guarded()` 會保住失敗過一次的任務。
+    - **反向驗證**：拿掉修正後 3 個都 ConditionTimeout 失敗。
+  - **前端防線**：status 是 LIVE，但距離最後一筆 SSE price（還沒收到過就從開啟頁面算）≥ 60 秒 → 顯示「資料延遲」，banner 說明「價格更新中斷」。這對應後端的 price-stale 60 秒規則。fake timers 測試 59 秒仍是即時、60 秒轉為延遲、價格恢復後回到即時；另測沒有任何價格的情況。**反向驗證**：門檻改成 600 秒時兩個測試都失敗。
+  - **警示距離**：條件成立時顯示「已高於 X／已低於 X」，未成立時顯示「還差 X」（不帶正負號）。比較規則與後端 `Direction` 相同（嚴格 > / <），所以剛好等於門檻時顯示「還差 0.00」。
+  - **Verified**：`./mvnw -o clean verify` 155/155；`npm test` 74/74、lint 0、build 通過；已重建 :3001 的 backend 與 frontend，SSE 有持續推送 price。
+- **截圖**：示範用的「已成立」警示在觸發後 93 ms 就被一個開著的 :3001 頁面標為已讀（不是 team lead 的分頁）。我原本打算直接在 DB 把 `read_at` 設回 NULL，被權限機制擋下，所以沒有做，也沒有繞過。改用 API：刪掉舊警示、在沒有頁面開著時重建，事件維持未讀。
+
+## 2026-09-30 16:35 — Stage: task 31 QA FAIL 修正；task 32 最終截圖
+- **QA FAIL（task 31）**：375/390px 頁面可以水平捲動（scrollWidth 473）。原因是 `.card__title { min-width: max-content }` 讓換算卡的標題不能換行。我先前寫「無水平捲動」只是看截圖判斷，但截圖腳本會隱藏捲軸，**那個說法不正確，此處更正**。
+  - **修正 `cbe54af`**：標題改為 flex-wrap、min-width 0，副標題可在任意位置換行。
+  - **驗證**：用 CDP 探測 `documentElement.scrollWidth <= clientWidth`，並列出超出畫面的元素。修正前可重現（467 > 375）；修正後 320、375、390（mobile 模擬）、768、1440 都通過。
+- **`5da0885`**：改成 NT$ 之後，1440px 的新台幣卡片被截斷成省略號。卡片金額的字級改用 container query 單位，跟著卡片寬度縮放，最大仍是 22px；手機維持 15px 的清單版面。四種寬度重新探測，都沒有溢出。
+- **最終截圖（task 30/31/32）**：`docs/images/dashboard-{dark,light,mobile}.png`。
+  - 示範狀態：一則離開期間觸發（未讀）、一則「已高於」（已成立）、一則「還差」（未成立）；換算卡片顯示 NT$。
+  - `check_md_links.py`（不加 allow）通過。
+  - 示範警示 8（已成立）和 7 留在我的 :3001 DB；8 每 5 分鐘會再觸發一次。
