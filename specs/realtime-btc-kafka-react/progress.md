@@ -293,3 +293,4 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Team lead 目視驗收（Chrome，localhost:3001）**: AC1、AC3、AC6（來源顯示）、1m/5m K 線與走勢圖、AC11（新增 HKD → 409 代碼已存在 → F5 仍在 → 編輯 → 刪除）、AC7/AC8（觸發後進未讀清單、F5 仍在）皆 OK；測試資料已清除。toast 未在自動化分頁顯示是因為 visibilityState=hidden，符合 S4 設計，將由使用者在自己的瀏覽器確認。
 - **Bug（`daa7ea1`）**: 刪除警示後「未讀警示」清單沒有更新（後端 cascade 正確，前端沒有發出 alert-events-changed）。先寫會失敗的測試重現、修正後通過；npm test 47/47（連跑 5 次）；已重建執行中的前端容器。
 - **剩餘**: 使用者在自己瀏覽器確認 toast；實際斷網跑 AC13；之後 QA 做 task 28 最後確認。
+- **更正（2026-09-30 14:57，QA 指出）**: 上一段寫「AC6（來源顯示）OK」不精確——team lead 確認的是畫面顯示目前來源（Coinbase），**封鎖主來源時畫面切換顯示 Kraken 尚未目視**；AC2 斷線時價格變淡＋警告也尚未目視。兩者後端/串流已驗證，畫面部分維持「待確認」。QA：daa7ea1 PASS（含反向驗證）。
