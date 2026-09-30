@@ -206,3 +206,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`e7df6d1`)**: `LiveStreamProvider`（單一 EventSource、price/status/alert、subscribePrices/subscribeAlerts、載入時先取 /api/prices/latest）、`computeDisplay`（連線錯誤 / 15 秒無任何事件 / 伺服器狀態，三者取最差）、`LivePrice` 卡片（價格、目前來源、狀態、最後更新時間、延遲時變淡並顯示警告）、`FakeEventSource`。
 - **Verified**: `npm test`（13 tests）、build、lint 全過；涵蓋 AC1、AC2（含 team lead 要求：status 事件也算活動）、AC6 前端。
 - **概念**: EventSource 會自己重連；UI 的責任是誠實呈現資料新鮮度。把多個獨立訊號合成一個顯示狀態（取最差者），每條規則都簡單、結果也安全。
+
+## 2026-09-30 12:04 — Stage: implement task 22（多幣別換算表）
+- **What changed (`c725638`)**: `ConvertedPrices` 表格（代碼、中文名、BTC 價格、匯率、匯率更新時間、無匯率、attribution 連結；匯率每 60 秒重抓、價格以即時 USD 價 × 匯率在前端計算）。
+- **修正**: task 14 的 prices-converted 契約樣本中，EUR/TWD 價格是手打且算錯（不等於 usdPrice × rate），已改為精確乘積並重新產生樣本。
+- **Verified**: `npm test`（18 tests）、build、lint 全過；後端 ContractSamplesTest 通過。
+- **概念**: 變化慢的資料（匯率）和變化快的資料（價格）分開取得、在前端組合——請求少，畫面又和最快的來源一樣新。
