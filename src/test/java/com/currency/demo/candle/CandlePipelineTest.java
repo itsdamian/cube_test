@@ -67,6 +67,9 @@ class CandlePipelineTest extends IntegrationTest {
 
     @Test
     void storedCandlesMatchStoredTicksAndSurviveAnApplicationRestart() {
+        // This context's Streams app starts at "latest": produce only once it is running.
+        await().atMost(Duration.ofSeconds(60)).until(() ->
+                health.healthForPath("readiness", "kafkaStreams").getStatus() == org.springframework.boot.actuate.health.Status.UP);
         Random random = new Random(7);
         for (int s = 0; s < 12 * 60; s += 5) {
             Instant t = T0.plusSeconds(s);

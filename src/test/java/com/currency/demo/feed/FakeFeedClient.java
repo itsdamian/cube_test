@@ -28,8 +28,12 @@ final class FakeFeedClient implements PriceFeedClient {
 
     /** Deliver one tick "now" (if connected and not blocked), exactly like the real client. */
     PriceTick tick() {
+        return tick(new BigDecimal("84000.00"));
+    }
+
+    PriceTick tick(BigDecimal price) {
         Instant now = clock.instant();
-        PriceTick tick = new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("84000.00"), name, now, now);
+        PriceTick tick = new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, price, name, now, now);
         if (connected && blockMode == BlockMode.NONE) {
             lastTickAt = now;
             lastMessageAt = now;
