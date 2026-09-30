@@ -7,7 +7,11 @@ import com.currency.demo.alert.AlertController;
 import com.currency.demo.alert.AlertDtos;
 import com.currency.demo.alert.AlertService;
 import com.currency.demo.alert.Direction;
+import com.currency.demo.currency.CurrencyController;
+import com.currency.demo.currency.CurrencyResponse;
+import com.currency.demo.currency.CurrencyService;
 import com.currency.demo.feed.FeedStatus;
+import com.currency.demo.stream.StreamEvents;
 import com.currency.demo.fx.ConversionController;
 import com.currency.demo.fx.ConversionService;
 import com.currency.demo.fx.ConvertedPrices;
@@ -50,7 +54,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>Regenerate after an intentional change: {@code ./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true}.
  * The services are mocked with fixed data, so the output is deterministic.
  */
-@WebMvcTest({PriceController.class, CandleController.class, ConversionController.class, AlertController.class})
+@WebMvcTest({PriceController.class, CandleController.class, ConversionController.class, AlertController.class,
+        CurrencyController.class})
 @Import(ContractSamplesTest.FixedClock.class)
 class ContractSamplesTest {
 
@@ -78,6 +83,39 @@ class ContractSamplesTest {
 
     @MockitoBean
     AlertService alerts;
+
+    @MockitoBean
+    CurrencyService currencyService;
+
+    @Autowired
+    com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @Test
+    void currencies() throws Exception {
+        when(currencyService.findAll()).thenReturn(List.of(
+                new CurrencyResponse(1L, "EUR", "歐元", T, T),
+                new CurrencyResponse(4L, "TWD", "新台幣", T, T.plusSeconds(3600))));
+        assertMatchesSample("/api/currencies", "currencies.json");
+    }
+
+    @Test
+    void currencyValidationError() throws Exception {
+        String actual = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/currencies").contentType("application/json").content("{\"code\":\"usd\",\"name\":\"\"}"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertJsonMatchesSample(actual, "currency-validation-error.json");
+    }
+
+    /** SSE payloads are written by the same ObjectMapper Spring MVC uses for event data. */
+    @Test
+    void sseEvents() throws Exception {
+        assertJsonMatchesSample(objectMapper.writeValueAsString(new StreamEvents.Price("BTC-USD",
+                new BigDecimal("84045.50"), "coinbase", T)), "sse-price.json");
+        assertJsonMatchesSample(objectMapper.writeValueAsString(new FeedStatus("kraken", FeedStatus.State.STALE,
+                T, T.plusSeconds(5))), "sse-status.json");
+        assertJsonMatchesSample(objectMapper.writeValueAsString(new AlertDtos.AlertTriggered(17, 3, "BTC-USD",
+                Direction.ABOVE, new BigDecimal("90000"), new BigDecimal("90012.34"), T)), "sse-alert.json");
+    }
 
     @Test
     void alerts() throws Exception {
@@ -148,6 +186,10 @@ class ContractSamplesTest {
 
     void assertMatchesSample(String url, String sample) throws Exception {
         String actual = mvc.perform(get(url)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertJsonMatchesSample(actual, sample);
+    }
+
+    void assertJsonMatchesSample(String actual, String sample) throws Exception {
         Path file = SAMPLES.resolve(sample);
         if (Boolean.getBoolean("contracts.update") || !Files.exists(file)) {
             write(file, actual);

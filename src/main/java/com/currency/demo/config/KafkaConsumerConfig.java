@@ -1,5 +1,6 @@
 package com.currency.demo.config;
 
+import com.currency.demo.alert.AlertDtos.AlertTriggered;
 import com.currency.demo.candle.Candle;
 import com.currency.demo.feed.FeedStatus;
 import com.currency.demo.pricing.PriceTick;
@@ -82,6 +83,25 @@ public class KafkaConsumerConfig {
             ConsumerFactory<?, ?> bootConsumerFactory, ObjectMapper objectMapper) {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, FeedStatus>();
         factory.setConsumerFactory(jsonConsumerFactory(bootConsumerFactory, objectMapper, FeedStatus.class));
+        return factory;
+    }
+
+    /** Single-record listener for {@link AlertTriggered} events (SSE). */
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, AlertTriggered> alertTriggeredListenerFactory(
+            ConsumerFactory<?, ?> bootConsumerFactory, ObjectMapper objectMapper) {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, AlertTriggered>();
+        factory.setConsumerFactory(jsonConsumerFactory(bootConsumerFactory, objectMapper, AlertTriggered.class));
+        return factory;
+    }
+
+    /** Batch listener for ticks that only need the newest value (SSE); no DB, so default error handling. */
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, PriceTick> tickLatestListenerFactory(
+            ConsumerFactory<?, ?> bootConsumerFactory, ObjectMapper objectMapper) {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, PriceTick>();
+        factory.setConsumerFactory(jsonConsumerFactory(bootConsumerFactory, objectMapper, PriceTick.class));
+        factory.setBatchListener(true);
         return factory;
     }
 

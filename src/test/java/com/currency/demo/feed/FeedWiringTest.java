@@ -51,9 +51,16 @@ class FeedWiringTest extends IntegrationTest {
     @Autowired
     ConsumerFactory<String, String> consumerFactory;
 
+    // Exact event times of the fixtures: other tests also write "coinbase" ticks and statuses to the
+    // same topics, so only records that can only come from THIS context's fake exchanges count.
+    static final String COINBASE_FIXTURE_TIME = "\"eventTime\":\"2026-09-29T07:37:31.089264Z\"";
+    static final String KRAKEN_FIXTURE_TIME = "\"eventTime\":\"2026-09-29T07:37:33.786450Z\"";
+
     @Test
     void ingestPublishesPrimaryTicksAndLiveStatusToKafka() {
         assertThat(feedManager.isRunning()).isTrue();
+        await().atMost(Duration.ofSeconds(30)).until(() -> feedManager.currentStatus() != null
+                && feedManager.currentStatus().state() == FeedStatus.State.LIVE);
         assertThat(feedManager.clients()).extracting(PriceFeedClient::sourceName).containsExactly("coinbase", "kraken");
 
         List<String> ticks = new ArrayList<>();
@@ -67,12 +74,13 @@ class FeedWiringTest extends IntegrationTest {
                 for (ConsumerRecord<String, String> r : consumer.poll(Duration.ofMillis(200))) {
                     (r.topic().equals(Topics.PRICE_TICKS) ? ticks : statuses).add(r.value());
                 }
-                return ticks.stream().anyMatch(v -> v.contains("\"source\":\"coinbase\""))
-                        && statuses.stream().anyMatch(v -> v.contains("\"state\":\"LIVE\""));
+                return ticks.stream().anyMatch(v -> v.contains(COINBASE_FIXTURE_TIME))
+                        && statuses.stream().anyMatch(v -> v.contains("\"activeSource\":\"coinbase\"")
+                        && v.contains("\"state\":\"LIVE\""));
             });
         }
         // Hot standby: kraken is connected and ticking too, but only the active source is published.
-        assertThat(ticks).noneMatch(v -> v.contains("\"source\":\"kraken\""));
+        assertThat(ticks).noneMatch(v -> v.contains(KRAKEN_FIXTURE_TIME));
         assertThat(feedManager.currentStatus().activeSource()).isEqualTo("coinbase");
     }
 

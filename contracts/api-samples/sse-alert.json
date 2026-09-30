@@ -1,0 +1,9 @@
+{
+  "eventId" : 17,
+  "alertId" : 3,
+  "pair" : "BTC-USD",
+  "direction" : "ABOVE",
+  "threshold" : 90000,
+  "price" : 90012.34,
+  "triggeredAt" : "2026-09-29T08:00:00.123456Z"
+}
