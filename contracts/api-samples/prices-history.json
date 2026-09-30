@@ -2,11 +2,15 @@
   "items" : [ {
     "eventTime" : "2026-09-29T08:00:00.123456Z",
     "price" : 84045.5,
-    "source" : "coinbase"
+    "source" : "coinbase",
+    "receivedAt" : "2026-09-29T08:00:00.203456Z",
+    "eventId" : "3f1c2a4e-5b6d-3e7f-8a9b-0c1d2e3f4a5b"
   }, {
     "eventTime" : "2026-09-29T08:00:00.373456Z",
     "price" : 84046.0,
-    "source" : "coinbase"
+    "source" : "coinbase",
+    "receivedAt" : "2026-09-29T08:00:00.453456Z",
+    "eventId" : "9a8b7c6d-5e4f-3a2b-9c0d-1e2f3a4b5c6d"
   } ],
   "nextCursor" : "MTc5MDY2NjgwMDoxMjM0NTYwMDA6NDI"
 }

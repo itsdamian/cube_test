@@ -49,7 +49,8 @@ public class PriceQueryService {
         boolean more = rows.size() > limit;
         List<PriceQueryRepository.Row> page = more ? rows.subList(0, limit) : rows;
         String next = more ? new HistoryCursor(page.getLast().eventTime(), page.getLast().id()).encode() : null;
-        return new HistoryPage(page.stream().map(r -> new PricePoint(r.eventTime(), r.price(), r.source())).toList(),
+        return new HistoryPage(page.stream().map(r -> new PricePoint(r.eventTime(), r.price(), r.source(), r.receivedAt(), r.eventId()))
+                        .toList(),
                 next);
     }
 

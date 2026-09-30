@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.currency.demo.pricing.PriceTickRepository.utc;
 
@@ -24,7 +25,7 @@ import static com.currency.demo.pricing.PriceTickRepository.utc;
 public class PriceQueryRepository {
 
     /** One stored tick plus its row id (the id makes the keyset cursor unique). */
-    public record Row(long id, Instant eventTime, BigDecimal price, String source) {
+    public record Row(long id, Instant eventTime, BigDecimal price, String source, Instant receivedAt, UUID eventId) {
     }
 
     public record TrendRow(Instant bucketStart, Instant eventTime, BigDecimal price) {
@@ -38,7 +39,7 @@ public class PriceQueryRepository {
 
     public Optional<Row> latest(String pair) {
         return jdbc.query("""
-                SELECT id, event_time, price, source FROM price_tick
+                SELECT id, event_time, price, source, received_at, event_id FROM price_tick
                 WHERE pair = ?
                 ORDER BY event_time DESC, received_at DESC, event_id DESC
                 LIMIT 1
@@ -52,7 +53,7 @@ public class PriceQueryRepository {
      */
     public List<Row> page(String pair, Instant from, Instant to, Instant afterTime, long afterId, int limit) {
         return jdbc.query("""
-                SELECT id, event_time, price, source FROM price_tick
+                SELECT id, event_time, price, source, received_at, event_id FROM price_tick
                 WHERE pair = ? AND event_time >= ? AND event_time < ?
                   AND (event_time, id) > (?, ?)
                 ORDER BY event_time, id
@@ -77,7 +78,8 @@ public class PriceQueryRepository {
     }
 
     private static Row row(ResultSet rs, int n) throws SQLException {
-        return new Row(rs.getLong("id"), instant(rs, "event_time"), rs.getBigDecimal("price"), rs.getString("source"));
+        return new Row(rs.getLong("id"), instant(rs, "event_time"), rs.getBigDecimal("price"), rs.getString("source"),
+                instant(rs, "received_at"), rs.getObject("event_id", UUID.class));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

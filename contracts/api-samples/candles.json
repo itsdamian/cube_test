@@ -1,0 +1,21 @@
+[ {
+  "pair" : "BTC-USD",
+  "interval" : "1m",
+  "openTime" : "2026-09-29T08:00:00Z",
+  "closeTime" : "2026-09-29T08:01:00Z",
+  "open" : 84040.10,
+  "high" : 84061.00,
+  "low" : 84031.55,
+  "close" : 84052.3,
+  "tickCount" : 57
+}, {
+  "pair" : "BTC-USD",
+  "interval" : "1m",
+  "openTime" : "2026-09-29T08:01:00Z",
+  "closeTime" : "2026-09-29T08:02:00Z",
+  "open" : 84052.3,
+  "high" : 84070.0,
+  "low" : 84049.9,
+  "close" : 84066.12,
+  "tickCount" : 61
+} ]

@@ -1,5 +1,8 @@
 package com.currency.demo.web;
 
+import com.currency.demo.candle.Candle;
+import com.currency.demo.candle.CandleController;
+import com.currency.demo.candle.CandleRepository;
 import com.currency.demo.feed.FeedStatus;
 import com.currency.demo.pricing.PriceController;
 import com.currency.demo.pricing.PriceDtos.HistoryPage;
@@ -40,7 +43,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>Regenerate after an intentional change: {@code ./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true}.
  * The services are mocked with fixed data, so the output is deterministic.
  */
-@WebMvcTest(PriceController.class)
+@WebMvcTest({PriceController.class, CandleController.class})
 @Import(ContractSamplesTest.FixedClock.class)
 class ContractSamplesTest {
 
@@ -60,6 +63,21 @@ class ContractSamplesTest {
     @MockitoBean
     PriceQueryService prices;
 
+    @MockitoBean
+    CandleRepository candles;
+
+    @Test
+    void candles() throws Exception {
+        Instant open = Instant.parse("2026-09-29T08:00:00Z");
+        when(candles.find(any(), any(), any(), any())).thenReturn(List.of(
+                new Candle("BTC-USD", "1m", open, open.plusSeconds(60), new BigDecimal("84040.10"),
+                        new BigDecimal("84061.00"), new BigDecimal("84031.55"), new BigDecimal("84052.3"), 57),
+                new Candle("BTC-USD", "1m", open.plusSeconds(60), open.plusSeconds(120), new BigDecimal("84052.3"),
+                        new BigDecimal("84070.0"), new BigDecimal("84049.9"), new BigDecimal("84066.12"), 61)));
+        assertMatchesSample("/api/candles?interval=1m&from=2026-09-29T08:00:00Z&to=2026-09-29T08:02:00Z",
+                "candles.json");
+    }
+
     @Test
     void pricesLatest() throws Exception {
         when(prices.latest()).thenReturn(new LatestPrice("BTC-USD", new BigDecimal("84045.50"), "coinbase", T,
@@ -70,8 +88,10 @@ class ContractSamplesTest {
     @Test
     void pricesHistory() throws Exception {
         when(prices.history(any(), any(), anyInt(), isNull())).thenReturn(new HistoryPage(List.of(
-                new PricePoint(T, new BigDecimal("84045.5"), "coinbase"),
-                new PricePoint(T.plusMillis(250), new BigDecimal("84046.0"), "coinbase")),
+                new PricePoint(T, new BigDecimal("84045.5"), "coinbase", T.plusMillis(80),
+                        java.util.UUID.fromString("3f1c2a4e-5b6d-3e7f-8a9b-0c1d2e3f4a5b")),
+                new PricePoint(T.plusMillis(250), new BigDecimal("84046.0"), "coinbase", T.plusMillis(330),
+                        java.util.UUID.fromString("9a8b7c6d-5e4f-3a2b-9c0d-1e2f3a4b5c6d"))),
                 "MTc5MDY2NjgwMDoxMjM0NTYwMDA6NDI"));
         assertMatchesSample("/api/prices/history?from=2026-09-29T08:00:00Z&to=2026-09-29T08:15:00Z&limit=2",
                 "prices-history.json");

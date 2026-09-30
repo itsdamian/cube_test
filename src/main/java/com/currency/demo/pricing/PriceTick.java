@@ -2,6 +2,7 @@ package com.currency.demo.pricing;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -25,7 +26,10 @@ public record PriceTick(UUID eventId, String pair, BigDecimal price, String sour
         Objects.requireNonNull(pair, "pair");
         Objects.requireNonNull(price, "price");
         Objects.requireNonNull(source, "source");
-        Objects.requireNonNull(eventTime, "eventTime");
-        Objects.requireNonNull(receivedAt, "receivedAt");
+        // PostgreSQL stores microseconds and the JDBC driver ROUNDS extra nanoseconds, which could
+        // move a tick at 12:04:59.9999996 into the 12:05 candle in the database while Kafka Streams
+        // keeps it in 12:04. Truncating here once makes every consumer see the same instant.
+        eventTime = Objects.requireNonNull(eventTime, "eventTime").truncatedTo(ChronoUnit.MICROS);
+        receivedAt = Objects.requireNonNull(receivedAt, "receivedAt").truncatedTo(ChronoUnit.MICROS);
     }
 }
