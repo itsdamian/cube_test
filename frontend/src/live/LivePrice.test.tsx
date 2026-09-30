@@ -160,6 +160,23 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('btc-price')).not.toBe(firstDown)
   })
 
+  it('never flashes more than once per second, even when the price bounces up and down', () => {
+    const stream = renderLivePrice()
+    const at = (value: number, ms: number) =>
+      ({ ...price(value), eventTime: new Date(Date.UTC(2026, 8, 30, 8, 0, 0, ms)).toISOString() })
+    act(() => stream.emit('price', at(84000, 0)))
+    act(() => stream.emit('price', at(84010, 100)))              // up: flash
+    const first = screen.getByTestId('btc-price')
+    act(() => stream.emit('price', at(84000, 400)))              // down 0.3 s later: too soon
+    act(() => stream.emit('price', at(84010, 800)))              // up again 0.7 s later: too soon
+    expect(screen.getByTestId('btc-price')).toBe(first)
+    expect(screen.getByTestId('btc-price')).toHaveTextContent('84,010.00')   // the price itself updates
+
+    act(() => stream.emit('price', at(84000, 1_100)))            // down, 1.0 s after the flash: flashes
+    expect(screen.getByTestId('btc-price')).not.toBe(first)
+    expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--flash-down')
+  })
+
   it('dims the price card and explains why whenever the data is not live, and clears both when live again (QA CONCERN 23)', () => {
     const stream = renderLivePrice()
     const card = () => screen.getByTestId('live-price-card')

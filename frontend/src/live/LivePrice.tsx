@@ -4,15 +4,18 @@ import { useLiveStream } from './liveStreamContext'
 
 type Trend = 'up' | 'down' | null
 
-/** A flash in the same direction at most this often; a change of direction flashes at once. */
+/** A flash in the same direction at most this often. */
 export const FLASH_EVERY_MS = 2_000
+/** Any two flashes at least this far apart, so a price bouncing up/down cannot strobe. */
+export const FLASH_MIN_GAP_MS = 1_000
 
 /**
  * Big BTC-USD price, the exchange of that trade and the time of the last price. The feed state
  * and the active source are shown once, in the header (StatusPill); this card dims and explains
  * itself when the data is delayed or the connection is lost.
  * Green / red when the newest trade is above / below the previous one (only data we actually
- * have - no invented 24 h change), plus a subtle flash at most every FLASH_EVERY_MS per direction.
+ * have - no invented 24 h change), plus a subtle flash at most every FLASH_EVERY_MS per direction
+ * and never more often than FLASH_MIN_GAP_MS overall.
  * The flash is a CSS animation, so prefers-reduced-motion switches it off.
  */
 export function LivePrice() {
@@ -30,7 +33,8 @@ export function LivePrice() {
       // Busy markets tick several times per second: throttle the flash so the page stays calm.
       // Measured in trade time (the price's eventTime), which keeps rendering pure and predictable.
       const now = Date.parse(price.eventTime)
-      if (direction !== flash.direction || now - flash.at >= FLASH_EVERY_MS) {
+      const sinceLast = now - flash.at
+      if (sinceLast >= FLASH_MIN_GAP_MS && (direction !== flash.direction || sinceLast >= FLASH_EVERY_MS)) {
         setFlash({ count: flash.count + 1, direction, at: now })
       }
     }

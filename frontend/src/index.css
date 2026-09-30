@@ -519,11 +519,12 @@ input::placeholder {
 
 .table .actions-col {
   text-align: right;
-  width: 1%;
-  white-space: nowrap;
+  white-space: nowrap;   /* no width:1% here - in an auto-width table it forces the table to full width */
 }
 
 .table .actions-col .actions {
+  display: inline-flex;     /* keep 編輯 / 刪除 side by side in the narrow right-aligned column */
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
