@@ -1,5 +1,6 @@
 package com.currency.demo.web;
 
+import com.currency.demo.alert.AlertNotFoundException;
 import com.currency.demo.currency.CurrencyNotFoundException;
 import com.currency.demo.currency.DuplicateCurrencyCodeException;
 import com.currency.demo.pricing.InvalidQueryException;
@@ -48,6 +49,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    @ExceptionHandler(AlertNotFoundException.class)
+    ProblemDetail alertNotFound(AlertNotFoundException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(InvalidQueryException.class)

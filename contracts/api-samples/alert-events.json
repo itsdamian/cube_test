@@ -1,0 +1,9 @@
+[ {
+  "id" : 17,
+  "alertId" : 3,
+  "direction" : "ABOVE",
+  "threshold" : 90000,
+  "price" : 90012.34,
+  "triggeredAt" : "2026-09-29T08:10:00.123456Z",
+  "readAt" : null
+} ]

@@ -3,6 +3,10 @@ package com.currency.demo.web;
 import com.currency.demo.candle.Candle;
 import com.currency.demo.candle.CandleController;
 import com.currency.demo.candle.CandleRepository;
+import com.currency.demo.alert.AlertController;
+import com.currency.demo.alert.AlertDtos;
+import com.currency.demo.alert.AlertService;
+import com.currency.demo.alert.Direction;
 import com.currency.demo.feed.FeedStatus;
 import com.currency.demo.fx.ConversionController;
 import com.currency.demo.fx.ConversionService;
@@ -46,7 +50,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>Regenerate after an intentional change: {@code ./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true}.
  * The services are mocked with fixed data, so the output is deterministic.
  */
-@WebMvcTest({PriceController.class, CandleController.class, ConversionController.class})
+@WebMvcTest({PriceController.class, CandleController.class, ConversionController.class, AlertController.class})
 @Import(ContractSamplesTest.FixedClock.class)
 class ContractSamplesTest {
 
@@ -71,6 +75,24 @@ class ContractSamplesTest {
 
     @MockitoBean
     ConversionService conversion;
+
+    @MockitoBean
+    AlertService alerts;
+
+    @Test
+    void alerts() throws Exception {
+        when(alerts.list()).thenReturn(List.of(
+                new AlertDtos.Alert(3, "BTC-USD", Direction.ABOVE, new BigDecimal("90000"), T, T.plusSeconds(600)),
+                new AlertDtos.Alert(4, "BTC-USD", Direction.BELOW, new BigDecimal("80000.50"), T, null)));
+        assertMatchesSample("/api/alerts", "alerts.json");
+    }
+
+    @Test
+    void alertEvents() throws Exception {
+        when(alerts.events(true)).thenReturn(List.of(new AlertDtos.AlertEvent(17, 3, Direction.ABOVE,
+                new BigDecimal("90000"), new BigDecimal("90012.34"), T.plusSeconds(600), null)));
+        assertMatchesSample("/api/alert-events?unread=true", "alert-events.json");
+    }
 
     @Test
     void pricesConverted() throws Exception {
