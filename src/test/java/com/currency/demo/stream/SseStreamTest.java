@@ -62,12 +62,9 @@ class SseStreamTest extends IntegrationTest {
     private final List<Event> events = new CopyOnWriteArrayList<>();
     private InputStream body;
     private Thread reader;
-    private int connectionsBefore;
 
     @BeforeEach
     void connect() throws Exception {
-        // A previous test's closed connection is only noticed on the next write, so count relatively.
-        connectionsBefore = broadcaster.connectionCount();
         HttpResponse<InputStream> response = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/stream")).GET().build(),
                 HttpResponse.BodyHandlers.ofInputStream());
@@ -75,7 +72,11 @@ class SseStreamTest extends IntegrationTest {
         assertThat(response.headers().firstValue("Content-Type")).get().asString().startsWith("text/event-stream");
         body = response.body();
         reader = Thread.ofVirtual().start(this::readEvents);
-        await().atMost(Duration.ofSeconds(5)).until(() -> broadcaster.connectionCount() == connectionsBefore + 1);
+        // No need to wait for registration: StreamController registers the emitter BEFORE it returns, and
+        // the 200 + headers are only sent after that, so receiving the response proves we are registered.
+        // (Counting connections would race with the removal of a previous test's closed connection,
+        // which only happens on the next failed write - QA, task 16 FAIL.)
+        assertThat(broadcaster.connectionCount()).isGreaterThanOrEqualTo(1);
         // The SSE consumers start at "latest": wait until they own their partitions before producing.
         await().atMost(Duration.ofSeconds(30)).until(() -> registry.getAllListenerContainers().stream()
                 .filter(c -> c.getGroupId() != null && c.getGroupId().startsWith("sse-"))

@@ -5,7 +5,6 @@ import com.currency.demo.alert.AlertRepository;
 import com.currency.demo.alert.Direction;
 import com.currency.demo.candle.CandleRepository;
 import com.currency.demo.pricing.PriceTick;
-import com.currency.demo.stream.SseBroadcaster;
 import com.currency.demo.support.IntegrationTest;
 import com.currency.demo.support.MutableClock;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -92,8 +91,6 @@ class EndToEndPipelineTest extends IntegrationTest {
     @Autowired
     KafkaListenerEndpointRegistry registry;
 
-    @Autowired
-    SseBroadcaster broadcaster;
 
     @Autowired
     ObjectMapper json;
@@ -167,7 +164,7 @@ class EndToEndPipelineTest extends IntegrationTest {
     }
 
     private InputStream openBrowserStream() throws Exception {
-        int before = broadcaster.connectionCount();
+        // Receiving the response means the emitter is already registered (see SseStreamTest).
         HttpResponse<InputStream> response = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/stream")).build(),
                 HttpResponse.BodyHandlers.ofInputStream());
@@ -187,7 +184,7 @@ class EndToEndPipelineTest extends IntegrationTest {
                 // test finished
             }
         });
-        await().atMost(Duration.ofSeconds(5)).until(() -> broadcaster.connectionCount() > before);
+        assertThat(response.statusCode()).isEqualTo(200);
         return body;
     }
 
