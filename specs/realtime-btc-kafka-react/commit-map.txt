@@ -1,0 +1,100 @@
+# Commit hash map: author rewrite damian-jtx -> itsdamian (2026-09-30)
+# Hashes cited in progress.md / qa-review.md / tasks.md before this date are OLD hashes.
+# Content (tree) of every commit is unchanged; only author/committer identity changed.
+# old     new      subject
+74df724 00bce6b docs(spec): add realtime BTC Kafka/React spec and confirmed plan
+42c43b3 5135b63 docs(spec): add confirmed task breakdown for realtime BTC feature
+ae5cb0f ea7ee25 build: Java 21 + Spring Boot 3.5.16 baseline, Maven wrapper, untrack target/
+8009ccb 14b6ede docs(progress): log task 1 hand-off
+825804f 4384a39 refactor: remove dead Coindesk code, add typed config skeleton and test guard
+101414a 93eef2a docs(progress): log task 2 hand-off
+4e65235 4667ac2 feat(currency): PostgreSQL + Flyway schema, seeded currencies, validated CRUD API
+ab8c8e3 a9986e7 docs(progress): log task 3 hand-off
+7c565b2 b86e6a2 feat(kafka): topics, JSON event serialization and non-blocking TickPublisher
+68dba77 37d48e2 fix(api): list invalid fields in validation ProblemDetail
+d42a2b6 2db29df docs(progress): log task 4 hand-off
+2b13d20 eafc2fb feat(feed): Coinbase and Kraken message parsers with captured fixtures
+b1b45ff 2d03492 docs(progress): log task 5 hand-off
+b50aba1 16adfab feat(feed): self-healing WebSocket client with backoff, idle watchdog and fault injection
+1355125 dea565c docs(progress): log task 6 hand-off
+2052a70 10ee401 feat(feed): FeedManager hot-standby failover and FeedStatus publishing
+1411e6d 7b972cd docs(progress): log task 7 hand-off
+253c111 4811653 feat(feed): chaos-profile actuator endpoint for manual failover testing
+13f14df 950c445 docs(progress): log task 8 hand-off
+fd1354f 46bad3a feat(pricing): persist every tick to PostgreSQL with idempotent batch inserts
+6c4ab4b 7e0433a docs(progress): log task 9 hand-off and feed-health guardrail
+70352c1 4ba912a feat(pricing): latest / keyset-paged history / downsampled trend API + contract samples
+730d9d0 6d193ab fix(feed): judge source health by any message (heartbeats) plus a 60 s price limit
+22b6679 e0514b5 docs(progress): log task 10 and feed-health follow-up
+8371673 4623d19 feat(candle): Kafka Streams 1m/5m OHLC candles on event time
+579d36d f5aef24 docs(progress): log task 11 hand-off
+fa7f3c3 197f00a feat(candle): persist candles, /api/candles, no-loss DB retry policy
+a2d87d1 00141bf docs(progress): log task 12 hand-off
+d58af4d 91f3e20 feat(pricing): scheduled 30-day tick retention that deletes until nothing is left
+05f9521 889870a docs(progress): log task 13 hand-off
+7c18fe2 102593a feat(fx): exchange rates from open.er-api.com and multi-currency BTC prices
+8ddbec5 9520719 docs(progress): log task 14 hand-off
+d8040cd d1ff92a feat(alert): backend price alerts with 5-minute cooldown and unread history
+dbfa64e 553e9d8 docs(progress): log task 15 hand-off
+44c3523 1819cf3 feat(stream): Server-Sent Events push of prices, feed status and alerts
+d4eda59 bc3ed59 docs(progress): log task 16 hand-off
+23eba43 217d538 fix: skip rows the DB rejects for good, log retries, earlier retention and FX retries
+3bad2b3 fa96c6a docs(progress): log QA concern 16-18 follow-up
+1091f92 be18b59 feat(health): Kubernetes-style liveness/readiness with Kafka and Streams checks
+a5896da e3294c6 docs(progress): log task 17 hand-off
+68a431f 2b21597 test: end-to-end backend pipeline with fake exchanges; isolate Streams per test
+70f7d9a d7719b1 docs(progress): log task 18 hand-off
+6b9cbf2 d4beb8c fix: fast-failing DB checks, status on real changes, self-healing Streams threads
+e7521d9 3afd4cb docs(progress): log QA concern 19-20 follow-up
+adfd8b2 8426c64 build: one multi-arch Dockerfile (amd64 + arm64) replacing the per-arch files
+5955b79 3432278 docs(progress): log task 19 hand-off
+8e8e1be 13d57c0 feat(frontend): Vite + React + TypeScript skeleton with contract-backed API mocks
+59292b5 255ecc3 docs(progress): log task 20 hand-off
+e7df6d1 d602c2c feat(frontend): live BTC price over SSE with delayed/disconnected detection
+c48512c b879c23 docs(progress): log task 21 hand-off
+c725638 c703ee1 feat(frontend): multi-currency conversion table with rate times and attribution
+4d9b022 f3d4323 docs(progress): log task 22 hand-off
+2bbd673 3d2b2aa feat(frontend): 1m/5m candlestick and live trend charts
+99f113d 3a520a8 docs(progress): log task 23 hand-off
+a134a40 cae6efe fix(test): make the backend suite order-independent (task 18 QA FAIL)
+a673cd4 c5d3dd2 fix(frontend): read the clock once for the trend range; time out "connecting"
+2a6604a b02fc48 docs: tick tasks 19-22, log task 18/23 fixes
+71a5a79 69fa89d fix(test): SSE tests no longer race on the connection count (task 16 QA FAIL)
+594933e 2d7b230 docs: tick task 23, log task 16 fix
+8ca5480 d6c95ba feat(frontend): currency management (list, add, rename, delete)
+a82b05d 4e0a14c docs(progress): log task 24 hand-off
+1c5a4aa 50cde55 feat(frontend): price alerts, unread list and toast notifications
+b018fcf fe0245c docs(progress): log task 25 hand-off
+22e6908 a6f5025 feat(deploy): full docker compose stack with frontend nginx and network isolation
+de59736 355e31d docs(progress): log task 26 hand-off
+44b5539 c9ca878 docs: README with setup, configuration, API, offline tests and acceptance steps
+d43fec7 2d454a6 docs(progress): log task 27 hand-off
+c8400fd b0979da docs(progress): task 28 acceptance evidence (automated part)
+f3a6460 856e30e docs: README note for custom ports/project names; tick tasks 24-27
+d433955 9d4984d docs: tick task 18 (QA PASS on a134a40, was missed)
+6385552 605f02c docs(progress): QA has no open concerns; task 28 awaits user checks
+daa7ea1 f28c69f fix(frontend): refresh the unread list after deleting an alert
+0147bbb 7fbff94 docs(progress): log team lead acceptance and alert-delete fix
+5a4cf03 8f0f6ad docs(progress): correct AC6/AC2 visual status (not yet seen on screen)
+640c09d d9b792a chore: add engineer/QA agent definitions and QA review log
+f5d82ad 2b096d3 feat(frontend): dark financial-dashboard look with design tokens (task 29)
+05e40c6 9436bae docs(progress): log task 29 hand-off
+b207bb7 3898d30 docs: portfolio README; move operating details to docs/ (task 30)
+ed6d612 49ec8d2 fix(frontend): calmer flash, roomier layout, live forming candle (task 29 review)
+c5797c5 00b6fb5 docs(progress): log task 29 review fixes
+b027563 103cf30 test(frontend): price card dims and explains when not live (QA CONCERN 23)
+34bd2fd cc53782 docs(progress): QA has no open concerns
+a766828 e4355a5 fix(frontend): keep row actions side by side; flash at most once per second
+30733ae 31f6417 docs(progress): log second task 29 review fixes
+35c257c 5bdcc2b docs(testing): how to regenerate the README screenshots
+850fdfa bd8f482 chore(scripts): screenshot URL and Chrome path configurable via env
+0270e05 a701ad1 feat(frontend): redesign to design direction B (task 31)
+72f2146 38d4203 docs(readme): final screenshots of the direction B dashboard (tasks 30, 31)
+2aa29a0 dd26206 fix(frontend): show TWD as NT$; keep the newest time label unclipped (task 31 review)
+92c9e1b 7ebb1c7 docs(design): add the UI/UX designer's redesign deliverables
+652d4cc ed7afbd fix(stream): a failing SSE connection can no longer freeze prices (task 32)
+cbe54af 3ddc0dd fix(frontend): card titles wrap on phones - no horizontal scroll (task 31 QA FAIL)
+5da0885 f3ba847 fix(frontend): long amounts fit the conversion tiles (NT$ is wider than $)
+b36d48c 7d19e39 docs(readme): final screenshots - unread / met / not-met alerts, NT$ (task 32)
+508f9be 00c9aaf docs(tasks): tasks 30-32 QA PASS
+d7ec028 bda4b05 docs(qa): QA verdicts for tasks 29-32 (32/32 PASS)
