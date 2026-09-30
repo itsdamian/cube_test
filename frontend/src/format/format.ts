@@ -6,10 +6,18 @@ export function formatUsd(value: number): string {
   return usd.format(value)
 }
 
+/**
+ * zh-TW shows the New Taiwan dollar as a bare "$". Next to "US$" that is ambiguous, so the
+ * symbol is spelled out (team lead decision, task 31).
+ */
+const SYMBOLS: Record<string, string> = { TWD: 'NT$' }
+
 /** A price in any currency; JPY/TWD-style currencies still get 2 decimals for BTC prices. */
 export function formatMoney(value: number, currency: string): string {
   try {
-    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+    const parts = new Intl.NumberFormat('zh-TW', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).formatToParts(value)
+    const symbol = SYMBOLS[currency]
+    return parts.map((p) => (p.type === 'currency' && symbol ? symbol : p.value)).join('')
   } catch {
     // unknown ISO code (user-defined currency): plain number + code
     return `${value.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`

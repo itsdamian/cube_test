@@ -115,7 +115,8 @@ export const lightweightChart: PriceChartFactory = (container) => {
       timeFormatter: (t: number) => new Date(t * 1000).toLocaleString('zh-TW', { hour12: false }),
       priceFormatter: formatAxisPrice,
     },
-    timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, tickMarkFormatter: (t: number) => localTime(t) },
+    // rightOffset: a few empty bars on the right, so the newest time label is not clipped by the price axis.
+    timeScale: { borderVisible: false, rightOffset: 3, timeVisible: true, secondsVisible: false, tickMarkFormatter: (t: number) => localTime(t) },
   })
   let series: ISeriesApi<'Candlestick'> | ISeriesApi<'Area'> | null = null
   let kind: 'candles' | 'line' | null = null
