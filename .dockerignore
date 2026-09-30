@@ -1,0 +1,12 @@
+# Only what the backend build needs goes into the Docker build context.
+target/
+frontend/
+node_modules/
+.git/
+.idea/
+.vscode/
+.claude/
+specs/
+contracts/
+*.md
+docker-compose*.yml
