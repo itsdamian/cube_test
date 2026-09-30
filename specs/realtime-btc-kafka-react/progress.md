@@ -150,3 +150,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`d58af4d`)**: `RetentionJob`（`APP_RETENTION_INTERVAL` 排程、`APP_RETENTION_TICKS` 保留期、每批 1 萬筆迴圈刪到清空、嚴格小於 cutoff、不動 candle）；`RetentionJobTest`（在同一個 Postgres container 另建 database 並跑 Flyway，避免刪到其他測試資料）、`RetentionScheduleTest`（PT1S、不手動呼叫）。
 - **Verified**: `./mvnw clean verify` → 109 tests / 0 failures；25,001 筆過期刪除、邊界 1 筆與未過期 100 筆保留、candle 2 筆不變、再跑一次刪 0 筆；排程 10 秒內自動刪除 2020 年資料（AC9 自動部分、QA M6、S6）。
 - **概念**: 大量刪除要分批，讓每個 transaction 短、鎖與 WAL 壓力小；迴圈刪到清空才追得上任何積壓。
+
+## 2026-09-30 11:13 — Stage: implement task 14（匯率與多幣別換算）
+- **What changed (`7c18fe2`)**: `V5__fx_rate.sql`、`ExchangeRateClient`（RestClient、timeout、429/5xx/壞 payload → FxUnavailableException）、`FxRateRefresher`（啟動時與每 30 分鐘；失敗保留舊匯率；只在 `app.fx.refresh-enabled`）、`ConversionService` + `GET /api/prices/converted`（含 rateUpdatedAt、attribution 文字、無匯率回 null）；真實回應 fixture；契約樣本 prices-converted.json；守門測試加「無 FxRateRefresher bean」。
+- **Verified**: `./mvnw clean verify` → 116 tests / 0 failures；換算誤差 < 0.01%（AC3 容許 0.5%）；429 後保留舊匯率與時間。
+- **概念**: RestClient 是 Spring 新一代同步 HTTP client（取代 RestTemplate）；MockRestServiceServer 替換底層傳輸，測試不需任何網路。
