@@ -245,3 +245,11 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`1c5a4aa`)**: `AlertManager`（新增高於/低於、列表含上次觸發、兩段式刪除）、`UnreadAlerts`（載入未讀、逐筆/全部已讀）、`AlertToasts`（SSE alert → toast；頁面可見時顯示即標記已讀，背景分頁等切回可見才顯示並標記，QA S4）、`alert-events-changed` 事件同步。
 - **Verified**: `npm test`（46 tests，連跑 5 次）、build、lint 全過；涵蓋 AC7、AC8 前端。
 - **概念**: Page Visibility API（document.visibilityState）告訴我們使用者是否真的看得到頁面——在沒有已讀回條的單一使用者 app 中，這是判斷「已看過」最誠實的訊號。
+
+## 2026-09-30 13:12 — Stage: implement task 26（前端容器與完整 docker compose）
+- **What changed (`22e6908`)**: `frontend/Dockerfile`（Node build + nginx-unprivileged）、`nginx.conf.template`（/api 代理、SSE 不緩衝、SPA fallback、資源快取、/healthz）、`docker-compose.yml`（kafka/postgres/backend/frontend、固定 tag、具名 volume、healthcheck、internal/egress/public 三個網路、`FRONTEND_PORT`/`BACKEND_PORT` 可設定）、`docker-compose.chaos.yml`。
+- **Verified**: 四個服務皆 healthy；經 nginx 的 SSE 12 秒收到 29 筆真實 Coinbase 價格 + 3 筆 LIVE status（AC1 smoke）；網路切分：internal 無法連外、egress 可以、kafka 容器無法連外、backend 可連 kafka 與匯率 API。
+- **環境注意**: 本機 3000 port 被使用者另一個專案（wms 的 Vite dev server）占用，驗證時使用 `FRONTEND_PORT=3001`；未動該程序。
+- **限制**: 本環境沒有瀏覽器自動化工具，canvas 圖表的實際畫面留待 task 28 驗收時以瀏覽器確認。
+- **目前狀態**: compose 堆疊仍在執行中（project `currency`），停止用 `docker compose down`（保留資料）。
+- **概念**: `internal: true` 的 Docker 網路沒有對外路由；只讓 backend 多接一個一般網路，「哪個服務能連網際網路」就成為明確、可測試的決定。
