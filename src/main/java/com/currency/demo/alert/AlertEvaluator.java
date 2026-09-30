@@ -20,7 +20,7 @@ import java.util.Objects;
 
 /**
  * Checks every tick against the alerts, on the backend, so alerts fire even when no browser is
- * open (spec 14a). Shared consumer group {@code alert-evaluator}: exactly one instance evaluates
+ * open (spec 14a). Shared consumer group {@code <prefix>alert-evaluator}: exactly one instance evaluates
  * each tick. A new group starts at the LATEST offset - deploying it must not replay old prices.
  *
  * <p>For each firing: claim the trigger (atomic conditional UPDATE), store an unread
@@ -46,7 +46,7 @@ public class AlertEvaluator {
         this.cooldown = props.alert().cooldown();
     }
 
-    @KafkaListener(id = "alert-evaluator", groupId = "alert-evaluator", topics = Topics.PRICE_TICKS,
+    @KafkaListener(id = "alert-evaluator", groupId = "${app.kafka.group-prefix}alert-evaluator", topics = Topics.PRICE_TICKS,
             containerFactory = "tickBatchListenerFactory", properties = "auto.offset.reset=latest")
     public void onTicks(List<PriceTick> batch) {
         List<PriceTick> ticks = batch.stream().filter(Objects::nonNull).toList();

@@ -31,7 +31,7 @@ public class TickPersister {
         this.repository = repository;
     }
 
-    @KafkaListener(id = "tick-persister", groupId = "tick-persister", topics = Topics.PRICE_TICKS,
+    @KafkaListener(id = "tick-persister", groupId = "${app.kafka.group-prefix}tick-persister", topics = Topics.PRICE_TICKS,
             containerFactory = "tickBatchListenerFactory",
             properties = {"auto.offset.reset=earliest", "max.poll.records=500"})
     public void persist(List<PriceTick> batch) {

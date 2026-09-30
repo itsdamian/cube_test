@@ -24,7 +24,9 @@ public abstract class IntegrationTest {
     public static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("apache/kafka:3.9.2");
 
     @ServiceConnection
-    protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(POSTGRES_IMAGE);
+    protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(POSTGRES_IMAGE)
+            // Many cached test contexts (each with a small pool) share this one database.
+            .withCommand("postgres", "-c", "max_connections=300");
 
     @ServiceConnection
     protected static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);

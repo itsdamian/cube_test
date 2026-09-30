@@ -116,3 +116,6 @@ app:
   kafka:
     replication-factor: ${APP_KAFKA_REPLICATION_FACTOR:1}
     tick-partitions: ${APP_KAFKA_TICK_PARTITIONS:3}
+    # Prepended to the shared consumer group ids. Empty in production; lets two environments share
+    # one broker without stealing each other's partitions, and isolates test contexts.
+    group-prefix: ${APP_KAFKA_GROUP_PREFIX:}

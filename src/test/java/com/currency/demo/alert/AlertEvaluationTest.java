@@ -5,8 +5,6 @@ import com.currency.demo.alert.AlertDtos.AlertEvent;
 import com.currency.demo.config.Topics;
 import com.currency.demo.pricing.PriceTick;
 import com.currency.demo.support.IntegrationTest;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -14,8 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,7 +24,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The threshold (9,000,000) is far above every other test's prices, so only our ticks fire it.
  * Cooldown is 5 minutes of EVENT time, so the test sends ticks with chosen event times.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.alerts.enabled=true")
 @AutoConfigureMockMvc
 class AlertEvaluationTest extends IntegrationTest {
 
@@ -54,14 +52,15 @@ class AlertEvaluationTest extends IntegrationTest {
     @Autowired
     KafkaTemplate<String, Object> kafka;
 
-    @Autowired
-    KafkaAdmin kafkaAdmin;
 
     @Autowired
     ConsumerFactory<String, String> consumerFactory;
 
     @Autowired
     MockMvc mvc;
+
+    @Autowired
+    KafkaListenerEndpointRegistry registry;
 
     @Test
     void firesWithCooldownStoresUnreadEventsAndPublishesThem() throws Exception {
@@ -107,15 +106,17 @@ class AlertEvaluationTest extends IntegrationTest {
         return repository.events(false, 1_000).stream().filter(e -> e.alertId() == alertId).toList();
     }
 
-    /** Some instance (maybe another cached test context) of group alert-evaluator owns the partitions. */
+    /**
+     * This context's evaluator owns the tick partitions. Its group id carries a per-context random
+     * prefix (note: ${random.uuid} yields a new value on every resolution, so the id is read from the
+     * container itself rather than recomputed), so no other cached test context can take them.
+     */
     private void awaitEvaluatorIsAssigned() {
-        try (AdminClient admin = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
-            await().atMost(Duration.ofSeconds(60)).until(() -> {
-                ConsumerGroupDescription group = admin.describeConsumerGroups(Set.of("alert-evaluator"))
-                        .all().get().get("alert-evaluator");
-                return group.members().stream().mapToInt(m -> m.assignment().topicPartitions().size()).sum() > 0;
-            });
-        }
+        MessageListenerContainer evaluator = registry.getListenerContainer("alert-evaluator");
+        assertThat(evaluator).isNotNull();
+        assertThat(evaluator.getGroupId()).startsWith("test-").endsWith("alert-evaluator");
+        await().atMost(Duration.ofSeconds(60)).until(() ->
+                evaluator.getAssignedPartitions() != null && !evaluator.getAssignedPartitions().isEmpty());
     }
 
     private List<Long> publishedEventIds() {

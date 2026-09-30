@@ -46,7 +46,8 @@ import static org.awaitility.Awaitility.await;
  * candle DB, alert evaluation, SSE push, and failover - with only the two exchanges replaced by
  * test-controlled fakes and time driven by a mutable clock (event times in 2035).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "app.streams.enabled=true")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"app.streams.enabled=true", "app.alerts.enabled=true"})
 class EndToEndPipelineTest extends IntegrationTest {
 
     static final Instant T0 = Instant.parse("2035-01-01T00:00:00Z");

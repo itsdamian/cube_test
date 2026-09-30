@@ -19,7 +19,7 @@ public class CandlePersister {
         this.repository = repository;
     }
 
-    @KafkaListener(id = "candle-persister", groupId = "candle-persister", topics = Topics.CANDLES,
+    @KafkaListener(id = "candle-persister", groupId = "${app.kafka.group-prefix}candle-persister", topics = Topics.CANDLES,
             containerFactory = "candleBatchListenerFactory", properties = "auto.offset.reset=earliest")
     public void persist(List<Candle> batch) {
         repository.upsertAll(batch.stream().filter(Objects::nonNull).toList());

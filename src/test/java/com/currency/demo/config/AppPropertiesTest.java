@@ -46,7 +46,8 @@ class AppPropertiesTest {
             assertThat(props.streams().enabled()).isFalse();   // off in the test profile
             assertThat(props.streams().grace()).isEqualTo(Duration.ofSeconds(5));
             assertThat(props.persist().enabled()).isTrue();
-            assertThat(props.alerts().enabled()).isTrue();
+            assertThat(props.alerts().enabled()).isFalse();   // off in the test profile
+            assertThat(props.kafka().groupPrefix()).startsWith("test-");
             assertThat(props.feed().publishQueueCapacity()).isEqualTo(10_000);
             assertThat(props.kafka().replicationFactor()).isEqualTo(1);
             assertThat(props.kafka().tickPartitions()).isEqualTo(3);

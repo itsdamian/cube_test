@@ -64,8 +64,12 @@ public record AppProperties(
     public record Retention(@NotNull Duration ticks, @NotNull Duration interval, @NotNull Duration initialDelay) {
     }
 
-    /** Topic settings; replication 1 is fine for the single local broker (not HA, see Non-Goals). */
-    public record Kafka(@Positive int replicationFactor, @Positive int tickPartitions) {
+    /**
+     * Topic settings; replication 1 is fine for the single local broker (not HA, see Non-Goals).
+     * {@code groupPrefix} is prepended to the shared consumer groups (tick-persister,
+     * candle-persister, alert-evaluator); empty in production, unique per context in tests.
+     */
+    public record Kafka(@Positive int replicationFactor, @Positive int tickPartitions, @NotNull String groupPrefix) {
     }
 
     /** Price-alert behaviour. */
