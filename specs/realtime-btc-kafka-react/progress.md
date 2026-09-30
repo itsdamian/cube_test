@@ -160,3 +160,10 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`d8040cd`)**: `V6__alerts.sql`、`AlertRule`（嚴格大於/小於、事件時間冷卻、level-based）、`AlertEvaluator`（batch listener、group alert-evaluator、latest、條件式 UPDATE 防重複觸發、寫 alert_event + 發佈 btc.alerts.triggered）、`/api/alerts`、`/api/alert-events`（unread、read、read-all）；契約樣本 alerts.json、alert-events.json。
 - **Verified**: `./mvnw clean verify` → 128 tests / 0 failures；真實 Kafka、沒有瀏覽器：T、T+4:59.999、T+5:00、T+11:00(低於) → 恰好 2 筆未讀事件並已發佈（AC7/AC8 後端）。
 - **概念**: 條件式 UPDATE 是由資料庫保證的樂觀鎖：更新到那一列的人贏，其他人得到 0 列就什麼都不做——不用鎖也不會重複。
+
+## 2026-09-30 11:28 — Stage: implement task 16（SSE 即時推播）
+- **What changed (`44c3523`)**: `/api/stream`、`SseBroadcaster`（每 instance 各自 group、latest、價格 250ms 節流且最後一筆必送、status/alert 立即推、15s keepalive、單一寫入執行緒、寫入失敗即移除連線）、`StreamEvents`；契約樣本 sse-price/status/alert、currencies、currency-validation-error。task 12～15 已依 QA PASS 勾 [x]。
+- **Verified**: `./mvnw clean verify` → 134 tests / 0 failures。
+- **修正**: FeedWiringTest 改為只認自己假交易所產生的資料（其他測試也寫同一個 topic，曾造成 race）；過程中發現自己寫錯的 fixture 時間字串（少一位數使斷言恆真）並已修正。
+- **概念**: SSE 是單向 HTTP 串流，瀏覽器內建重連，伺服器推播到瀏覽器不需要 WebSocket；「只保留最新值」的節流限制了瀏覽器的工作量，又不會漏掉最新價格。
+- **待辦（QA CONCERN 16/17/18）**: 下一個 follow-up commit 處理。
