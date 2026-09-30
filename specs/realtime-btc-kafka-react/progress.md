@@ -155,3 +155,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`7c18fe2`)**: `V5__fx_rate.sql`、`ExchangeRateClient`（RestClient、timeout、429/5xx/壞 payload → FxUnavailableException）、`FxRateRefresher`（啟動時與每 30 分鐘；失敗保留舊匯率；只在 `app.fx.refresh-enabled`）、`ConversionService` + `GET /api/prices/converted`（含 rateUpdatedAt、attribution 文字、無匯率回 null）；真實回應 fixture；契約樣本 prices-converted.json；守門測試加「無 FxRateRefresher bean」。
 - **Verified**: `./mvnw clean verify` → 116 tests / 0 failures；換算誤差 < 0.01%（AC3 容許 0.5%）；429 後保留舊匯率與時間。
 - **概念**: RestClient 是 Spring 新一代同步 HTTP client（取代 RestTemplate）；MockRestServiceServer 替換底層傳輸，測試不需任何網路。
+
+## 2026-09-30 11:18 — Stage: implement task 15（價格警示與未讀紀錄）
+- **What changed (`d8040cd`)**: `V6__alerts.sql`、`AlertRule`（嚴格大於/小於、事件時間冷卻、level-based）、`AlertEvaluator`（batch listener、group alert-evaluator、latest、條件式 UPDATE 防重複觸發、寫 alert_event + 發佈 btc.alerts.triggered）、`/api/alerts`、`/api/alert-events`（unread、read、read-all）；契約樣本 alerts.json、alert-events.json。
+- **Verified**: `./mvnw clean verify` → 128 tests / 0 failures；真實 Kafka、沒有瀏覽器：T、T+4:59.999、T+5:00、T+11:00(低於) → 恰好 2 筆未讀事件並已發佈（AC7/AC8 後端）。
+- **概念**: 條件式 UPDATE 是由資料庫保證的樂觀鎖：更新到那一列的人贏，其他人得到 0 列就什麼都不做——不用鎖也不會重複。
