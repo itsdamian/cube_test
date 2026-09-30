@@ -39,3 +39,16 @@ docker image ls --tree currency-backend:multiarch            # 應同時有 linu
 ```
 
 若出現 `Multi-platform build is not supported for the docker driver`，先執行 `docker buildx create --use --driver docker-container`（或在 Docker Desktop 開啟「Use containerd for pulling and storing images」）。前端 image：`docker build -f frontend/Dockerfile .`（需在 repo 根目錄執行）。
+
+## 重新產生 README 截圖
+
+`scripts/screenshot.mjs` 用本機的 Google Chrome（headless，暫時的 profile）透過 Chrome DevTools Protocol 開啟 http://localhost:3001，等 7 秒讓即時價格與圖表載入後截圖，不需要安裝任何套件（Node 18+）。先用 `FRONTEND_PORT=3001 docker compose up -d --wait` 啟動系統，再執行：
+
+```bash
+node scripts/screenshot.mjs docs/images/dashboard-dark.png   1440 1000 1 dark
+node scripts/screenshot.mjs docs/images/dashboard-light.png  1440 1000 1 light
+node scripts/screenshot.mjs docs/images/dashboard-mobile.png 375  812  2 dark mobile
+```
+
+參數依序為：輸出檔、寬、高、device pixel ratio、`dark` / `light`（`prefers-color-scheme`），最後的 `mobile` 代表模擬手機。截完後跑 `python3 scripts/check_md_links.py` 確認 README 的圖片路徑都有效。
+
