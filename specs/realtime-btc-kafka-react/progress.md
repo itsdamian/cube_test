@@ -201,3 +201,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **Verified**: 乾淨 `npm ci` → `npm test`（6 tests）、`npm run build`、`npm run lint` 全過；`git ls-files` 無 node_modules/dist（AC15 前端）。
 - **誠實紀錄**: 原註解宣稱 `as` 轉型會讓編譯器檢查樣本型別，這是錯的（只是轉型），已更正；契約同步靠後端 ContractSamplesTest + 前端對欄位的斷言。
 - **概念**: MSW 在網路層攔截 fetch，測試裡跑的是真正的 client 程式；用後端錄下的真實回應當 mock，mock 就變成契約而不是猜測。
+
+## 2026-09-30 12:03 — Stage: implement task 21（即時價格與連線狀態）
+- **What changed (`e7df6d1`)**: `LiveStreamProvider`（單一 EventSource、price/status/alert、subscribePrices/subscribeAlerts、載入時先取 /api/prices/latest）、`computeDisplay`（連線錯誤 / 15 秒無任何事件 / 伺服器狀態，三者取最差）、`LivePrice` 卡片（價格、目前來源、狀態、最後更新時間、延遲時變淡並顯示警告）、`FakeEventSource`。
+- **Verified**: `npm test`（13 tests）、build、lint 全過；涵蓋 AC1、AC2（含 team lead 要求：status 事件也算活動）、AC6 前端。
+- **概念**: EventSource 會自己重連；UI 的責任是誠實呈現資料新鮮度。把多個獨立訊號合成一個顯示狀態（取最差者），每條規則都簡單、結果也安全。
