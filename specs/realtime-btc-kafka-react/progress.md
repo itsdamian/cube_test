@@ -145,3 +145,8 @@ Branch: `feat/realtime-btc-kafka-react`
 - **誠實紀錄**: 原本以 pause Postgres container 測 DB 中斷，反向驗證發現換成預設 handler 也通過（JDBC 呼叫是卡住而非失敗），不具保護力，已移除並改為直接測試 error policy。
 - **AC4 手動比對規則**: 以 README 的 SQL（`CandlePipelineTest.OHLC_FROM_TICKS` 同一段）比對 OHLC；tick_count 在交易所重送成交時可能不同（Streams 會重複計數、DB 會去重），不列入比對。
 - **概念**: consumer 的錯誤策略是在「可用性」與「資料遺失」之間取捨；寫 DB 這種 sink 應該「暫停並重試到恢復」，因為資料仍保存在 Kafka。
+
+## 2026-09-30 11:09 — Stage: implement task 13（逐筆保留期清除）
+- **What changed (`d58af4d`)**: `RetentionJob`（`APP_RETENTION_INTERVAL` 排程、`APP_RETENTION_TICKS` 保留期、每批 1 萬筆迴圈刪到清空、嚴格小於 cutoff、不動 candle）；`RetentionJobTest`（在同一個 Postgres container 另建 database 並跑 Flyway，避免刪到其他測試資料）、`RetentionScheduleTest`（PT1S、不手動呼叫）。
+- **Verified**: `./mvnw clean verify` → 109 tests / 0 failures；25,001 筆過期刪除、邊界 1 筆與未過期 100 筆保留、candle 2 筆不變、再跑一次刪 0 筆；排程 10 秒內自動刪除 2020 年資料（AC9 自動部分、QA M6、S6）。
+- **概念**: 大量刪除要分批，讓每個 transaction 短、鎖與 WAL 壓力小；迴圈刪到清空才追得上任何積壓。
