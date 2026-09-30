@@ -13,6 +13,12 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.listener.RetryListener;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.ExponentialBackOff;
@@ -31,6 +37,8 @@ import java.util.Map;
  */
 @Configuration(proxyBeanMethods = false)
 public class KafkaConsumerConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaConsumerConfig.class);
 
     /** Batch listener for {@link PriceTick}s (used by the DB persister). */
     @Bean
@@ -73,8 +81,43 @@ public class KafkaConsumerConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, T>();
         factory.setConsumerFactory(consumerFactory);
         factory.setBatchListener(true);
-        factory.setCommonErrorHandler(new DefaultErrorHandler(backOff));
+        factory.setCommonErrorHandler(persistingErrorHandler(backOff));
         return factory;
+    }
+
+    /**
+     * Retry (transient) failures forever, but NOT errors that can never succeed: a row the database
+     * rejects (constraint/overflow = {@link DataIntegrityViolationException}) would otherwise block
+     * the partition for good. Those records are logged at ERROR and skipped. Every retry is logged
+     * at WARN so an outage is visible. (The persisters additionally isolate a bad row so the good
+     * rows of the same batch are still written - this is the second line of defence.)
+     */
+    static DefaultErrorHandler persistingErrorHandler(BackOff backOff) {
+        DefaultErrorHandler handler = new DefaultErrorHandler((record, ex) -> log.error(
+                "Skipping record {}-{}@{} that can never be stored: {}", record.topic(), record.partition(),
+                record.offset(), ex.toString()), backOff);
+        handler.addNotRetryableExceptions(DataIntegrityViolationException.class);
+        handler.setRetryListeners(new RetryListener() {
+            @Override
+            public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int attempt) {
+                log.warn("Write to database failed (attempt {}), will retry: {}", attempt, rootCause(ex));
+            }
+
+            @Override
+            public void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int attempt) {
+                log.warn("Writing a batch of {} record(s) to the database failed (attempt {}), will retry: {}",
+                        records.count(), attempt, rootCause(ex));
+            }
+        });
+        return handler;
+    }
+
+    private static String rootCause(Throwable t) {
+        Throwable root = t;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root.toString();
     }
 
     /** Single-record listener for {@link FeedStatus} (status tracker, SSE). */

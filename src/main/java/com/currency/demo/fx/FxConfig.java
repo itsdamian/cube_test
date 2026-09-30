@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.client.RestClient;
 
 import java.time.Clock;
@@ -24,7 +25,8 @@ public class FxConfig {
     /** Only when {@code app.fx.refresh-enabled=true} (off in tests: they must not call the real source). */
     @Bean
     @ConditionalOnProperty(name = "app.fx.refresh-enabled", havingValue = "true")
-    FxRateRefresher fxRateRefresher(ExchangeRateClient client, FxRateRepository repository, Clock clock) {
-        return new FxRateRefresher(client, repository, clock);
+    FxRateRefresher fxRateRefresher(ExchangeRateClient client, FxRateRepository repository, Clock clock,
+                                    TaskScheduler taskScheduler) {
+        return new FxRateRefresher(client, repository, clock, taskScheduler);
     }
 }

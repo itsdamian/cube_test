@@ -19,7 +19,9 @@ import static com.currency.demo.pricing.PriceTickRepository.utc;
  * Deletes raw ticks older than {@code app.retention.ticks} (default 30 days, spec 8a).
  * Candles are never touched.
  *
- * <p>Runs every {@code app.retention.interval} (default 1 h). Each run deletes in batches of
+ * <p>Runs {@code app.retention.initial-delay} after startup (default 1 min - so frequent
+ * restarts cannot postpone it forever) and then every {@code app.retention.interval} (default 1 h).
+ * The {@code pair = ?} condition lets PostgreSQL use the (pair, event_time) index. Each run deletes in batches of
  * {@link #BATCH_SIZE} and <b>loops until nothing old is left</b>: a single batch per run could
  * fall behind the insert rate (10 ticks/s = 36,000 per hour) and the table would grow forever.
  * Small batches keep each transaction and its locks short. Deleting is idempotent, so it is
@@ -51,7 +53,7 @@ public class RetentionJob {
         this.retention = retention;
     }
 
-    @Scheduled(initialDelayString = "${app.retention.interval}", fixedDelayString = "${app.retention.interval}")
+    @Scheduled(initialDelayString = "${app.retention.initial-delay}", fixedDelayString = "${app.retention.interval}")
     public void scheduled() {
         Result result = purge();
         if (result.deleted() > 0) {
@@ -69,8 +71,8 @@ public class RetentionJob {
         do {
             deleted = jdbc.update("""
                     DELETE FROM price_tick
-                    WHERE id IN (SELECT id FROM price_tick WHERE event_time < ? LIMIT ?)
-                    """, utc(cutoff), BATCH_SIZE);
+                    WHERE id IN (SELECT id FROM price_tick WHERE pair = ? AND event_time < ? LIMIT ?)
+                    """, PriceTick.BTC_USD, utc(cutoff), BATCH_SIZE);
             total += deleted;
             batches++;
         } while (deleted > 0);

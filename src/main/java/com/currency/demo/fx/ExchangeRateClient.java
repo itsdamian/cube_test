@@ -2,6 +2,7 @@ package com.currency.demo.fx;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -37,8 +38,10 @@ public class ExchangeRateClient {
         Response body;
         try {
             body = http.get().uri(url).retrieve().body(Response.class);
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new FxUnavailableException("Exchange-rate source rate-limited us (429)", e, true);
         } catch (RestClientException e) {
-            // 4xx/5xx (including 429 Too Many Requests), timeouts, unreadable JSON
+            // other 4xx/5xx, timeouts, unreadable JSON
             throw new FxUnavailableException("Exchange-rate request failed: " + e.getMessage(), e);
         }
         if (body == null || !"success".equals(body.result()) || !"USD".equals(body.baseCode())

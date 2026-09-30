@@ -1,5 +1,8 @@
 package com.currency.demo.pricing;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -23,18 +26,35 @@ public class PriceTickRepository {
             ON CONFLICT (event_id) DO NOTHING
             """;
 
+    private static final Logger log = LoggerFactory.getLogger(PriceTickRepository.class);
+
     private final JdbcTemplate jdbc;
 
     public PriceTickRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /** Inserts all ticks in one batch; ticks whose event id already exists are skipped. */
+    /**
+     * Inserts all ticks in one batch; ticks whose event id already exists are skipped.
+     * If the database rejects a row for good (e.g. a price too large for numeric(20,8)), the batch
+     * is retried row by row so only that row is dropped (logged at ERROR) - one bad tick must
+     * never block or lose the good ones.
+     */
     public void insertAll(List<PriceTick> ticks) {
         if (ticks.isEmpty()) {
             return;
         }
-        jdbc.batchUpdate(INSERT, ticks, ticks.size(), PriceTickRepository::bind);
+        try {
+            jdbc.batchUpdate(INSERT, ticks, ticks.size(), PriceTickRepository::bind);
+        } catch (DataIntegrityViolationException batchFailed) {
+            for (PriceTick tick : ticks) {
+                try {
+                    jdbc.update(INSERT, ps -> bind(ps, tick));
+                } catch (DataIntegrityViolationException rowFailed) {
+                    log.error("Dropping tick the database rejects: {} ({})", tick, rowFailed.getMostSpecificCause().getMessage());
+                }
+            }
+        }
     }
 
     private static void bind(PreparedStatement ps, PriceTick t) throws SQLException {

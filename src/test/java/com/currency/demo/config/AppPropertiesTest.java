@@ -41,6 +41,7 @@ class AppPropertiesTest {
             assertThat(props.fx().refreshInterval()).isEqualTo(Duration.ofMinutes(30));
             assertThat(props.retention().ticks()).isEqualTo(Duration.ofDays(30));
             assertThat(props.retention().interval()).isEqualTo(Duration.ofHours(1));
+            assertThat(props.retention().initialDelay()).isEqualTo(Duration.ofMinutes(1));
             assertThat(props.alert().cooldown()).isEqualTo(Duration.ofMinutes(5));
             assertThat(props.streams().enabled()).isFalse();   // off in the test profile
             assertThat(props.streams().grace()).isEqualTo(Duration.ofSeconds(5));

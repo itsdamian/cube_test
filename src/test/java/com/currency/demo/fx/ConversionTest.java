@@ -50,7 +50,8 @@ class ConversionTest extends IntegrationTest {
     PriceTickRepository ticks;
 
     private FxRateRefresher refresherReturning(ExchangeRateClient client) {
-        return new FxRateRefresher(client, repository, new MutableClock(PROVIDER_TIME.plusSeconds(60)));
+        return new FxRateRefresher(client, repository, new MutableClock(PROVIDER_TIME.plusSeconds(60)),
+                mock(org.springframework.scheduling.TaskScheduler.class));
     }
 
     @Test

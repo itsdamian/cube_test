@@ -61,7 +61,7 @@ public record AppProperties(
     }
 
     /** How long raw ticks are kept, and how often the cleanup job runs. */
-    public record Retention(@NotNull Duration ticks, @NotNull Duration interval) {
+    public record Retention(@NotNull Duration ticks, @NotNull Duration interval, @NotNull Duration initialDelay) {
     }
 
     /** Topic settings; replication 1 is fine for the single local broker (not HA, see Non-Goals). */

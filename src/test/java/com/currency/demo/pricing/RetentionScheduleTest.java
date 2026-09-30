@@ -20,7 +20,7 @@ import static org.awaitility.Awaitility.await;
  * Nothing calls purge() here. Only a tick from 2020 is old enough to be removed; every other
  * test's data is within the last 30 days or in the future, so the shared database is safe.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = "APP_RETENTION_INTERVAL=PT1S")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"APP_RETENTION_INTERVAL=PT1S", "APP_RETENTION_INITIAL_DELAY=PT1S"})
 class RetentionScheduleTest extends IntegrationTest {
 
     @Autowired

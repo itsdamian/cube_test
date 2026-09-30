@@ -67,6 +67,31 @@ class PersistingErrorHandlerTest extends IntegrationTest {
     }
 
     @Test
+    void aRecordTheDatabaseRejectsForGoodIsSkippedAfterOneAttempt() throws Exception {
+        ExponentialBackOff fast = new ExponentialBackOff(10, 2.0);
+        fast.setMaxInterval(50);
+        fast.setMaxElapsedTime(Long.MAX_VALUE);
+        String topic = "error-policy-" + UUID.randomUUID();
+        AtomicInteger badAttempts = new AtomicInteger();
+        List<String> written = new CopyOnWriteArrayList<>();
+        ConcurrentMessageListenerContainer<String, String> container = start(topic, fast, records -> {
+            if (records.iterator().next().value().equals("bad")) {
+                badAttempts.incrementAndGet();
+                throw new org.springframework.dao.DataIntegrityViolationException("numeric field overflow");
+            }
+            records.forEach(r -> written.add(r.value()));
+        });
+
+        produce(topic, "bad");
+        await().atMost(Duration.ofSeconds(30)).until(() -> badAttempts.get() >= 1);
+        produce(topic, "good");
+
+        await().atMost(Duration.ofSeconds(30)).until(() -> written.contains("good"));
+        assertThat(badAttempts.get()).as("not retried: it can never succeed").isEqualTo(1);
+        container.stop();
+    }
+
+    @Test
     void productionBackOffIsUnlimitedAndCappedAt30Seconds() {
         var execution = KafkaConsumerConfig.databaseWriteBackOff().start();
         long last = 0;
@@ -83,6 +108,20 @@ class PersistingErrorHandlerTest extends IntegrationTest {
 
     private Outcome run(BackOff backOff) {
         String topic = "error-policy-" + UUID.randomUUID();
+        AtomicInteger attempts = new AtomicInteger();
+        List<String> written = new CopyOnWriteArrayList<>();
+        ConcurrentMessageListenerContainer<String, String> container = start(topic, backOff, records -> {
+            if (attempts.incrementAndGet() <= FAILURES_BEFORE_DB_IS_BACK) {
+                throw new DataAccessResourceFailureException("database is down");
+            }
+            records.forEach(r -> written.add(r.value()));
+        });
+        produce(topic, "tick-1");
+        return new Outcome(container, attempts, written);
+    }
+
+    private ConcurrentMessageListenerContainer<String, String> start(String topic, BackOff backOff,
+                                                                     BatchMessageListener<String, String> listener) {
         try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers()))) {
             admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get();
         } catch (Exception e) {
@@ -96,22 +135,16 @@ class PersistingErrorHandlerTest extends IntegrationTest {
                 new StringDeserializer(), new StringDeserializer());
         var factory = KafkaConsumerConfig.persistingBatchFactory(consumerFactory, backOff);
         ConcurrentMessageListenerContainer<String, String> container = factory.createContainer(topic);
-
-        AtomicInteger attempts = new AtomicInteger();
-        List<String> written = new CopyOnWriteArrayList<>();
-        container.setupMessageListener((BatchMessageListener<String, String>) records -> {
-            if (attempts.incrementAndGet() <= FAILURES_BEFORE_DB_IS_BACK) {
-                throw new DataAccessResourceFailureException("database is down");
-            }
-            records.forEach(r -> written.add(r.value()));
-        });
+        container.setupMessageListener(listener);
         container.start();
+        return container;
+    }
 
+    private void produce(String topic, String value) {
         try (var producer = new KafkaProducer<>(Map.<String, Object>of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers()),
                 new StringSerializer(), new StringSerializer())) {
-            producer.send(new ProducerRecord<>(topic, "BTC-USD", "tick-1"));
+            producer.send(new ProducerRecord<>(topic, "BTC-USD", value));
         }
-        return new Outcome(container, attempts, written);
     }
 }

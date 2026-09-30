@@ -36,6 +36,9 @@ class PersisterResilienceTest extends IntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    PriceTickRepository ticks;
+
     @Test
     void unreadableRecordIsSkippedAndLaterTicksAreStillStored() {
         String source = "pp-" + UUID.randomUUID().toString().substring(0, 8);
@@ -51,6 +54,33 @@ class PersisterResilienceTest extends IntegrationTest {
         kafka.flush();
 
         await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> assertThat(count(source)).isEqualTo(1));
+    }
+
+    @Test
+    void aTickTheDatabaseRejectsIsDroppedButTheRestOfItsBatchIsStored() {
+        String source = "ov-" + UUID.randomUUID().toString().substring(0, 8);
+        Instant t = Instant.parse("2033-03-01T00:00:00Z");
+        // 16 integer digits do not fit numeric(20,8) -> "numeric field overflow" for that row only.
+        PriceTick tooBig = new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("1000000000000000"),
+                source, t, t);
+        kafka.send(Topics.PRICE_TICKS, tooBig.pair(), tooBig);
+        send(source, t.plusSeconds(1));
+        send(source, t.plusSeconds(2));
+        kafka.flush();
+
+        await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> assertThat(count(source)).isEqualTo(2));
+    }
+
+    @Test
+    void repositoryIsolatesTheRejectedRowWithinOneBatch() {
+        String source = "ob-" + UUID.randomUUID().toString().substring(0, 8);
+        Instant t = Instant.parse("2033-04-01T00:00:00Z");
+        ticks.insertAll(java.util.List.of(
+                new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("84000"), source, t, t),
+                new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("1000000000000000"), source, t, t),
+                new PriceTick(UUID.randomUUID(), PriceTick.BTC_USD, new BigDecimal("84001"), source, t, t)));
+
+        assertThat(count(source)).isEqualTo(2);
     }
 
     private void send(String source, Instant t) {

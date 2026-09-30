@@ -90,6 +90,7 @@ app:
   retention:
     ticks: ${APP_RETENTION_TICKS:P30D}
     interval: ${APP_RETENTION_INTERVAL:PT1H}
+    initial-delay: ${APP_RETENTION_INITIAL_DELAY:PT1M}
   alert:
     cooldown: ${APP_ALERT_COOLDOWN:5m}
   kafka:

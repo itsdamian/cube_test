@@ -1,5 +1,8 @@
 package com.currency.demo.candle;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -22,6 +25,8 @@ public class CandleRepository {
                 low = EXCLUDED.low, close = EXCLUDED.close, tick_count = EXCLUDED.tick_count
             """;
 
+    private static final Logger log = LoggerFactory.getLogger(CandleRepository.class);
+
     private final JdbcTemplate jdbc;
 
     public CandleRepository(JdbcTemplate jdbc) {
@@ -33,6 +38,21 @@ public class CandleRepository {
         if (candles.isEmpty()) {
             return;
         }
+        try {
+            batch(candles);
+        } catch (DataIntegrityViolationException batchFailed) {
+            for (Candle candle : candles) {       // isolate the row the database rejects for good
+                try {
+                    batch(List.of(candle));
+                } catch (DataIntegrityViolationException rowFailed) {
+                    log.error("Dropping candle the database rejects: {} ({})", candle,
+                            rowFailed.getMostSpecificCause().getMessage());
+                }
+            }
+        }
+    }
+
+    private void batch(List<Candle> candles) {
         jdbc.batchUpdate(UPSERT, candles, candles.size(), (ps, c) -> {
             ps.setString(1, c.pair());
             ps.setString(2, c.interval());

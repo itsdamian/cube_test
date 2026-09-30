@@ -52,14 +52,16 @@ class ExchangeRateClientTest {
     void rateLimitIsReportedAsUnavailable() {
         server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
 
-        assertThatThrownBy(client::fetch).isInstanceOf(FxUnavailableException.class).hasMessageContaining("429");
+        assertThatThrownBy(client::fetch).isInstanceOf(FxUnavailableException.class).hasMessageContaining("429")
+                .satisfies(e -> assertThat(((FxUnavailableException) e).isRateLimited()).isTrue());
     }
 
     @Test
     void serverErrorIsReportedAsUnavailable() {
         server.expect(requestTo(URL)).andRespond(withServerError());
 
-        assertThatThrownBy(client::fetch).isInstanceOf(FxUnavailableException.class);
+        assertThatThrownBy(client::fetch).isInstanceOf(FxUnavailableException.class)
+                .satisfies(e -> assertThat(((FxUnavailableException) e).isRateLimited()).isFalse());
     }
 
     @Test
