@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
 import type { AlertTriggered, FeedStatus, PriceEvent } from '../api/types'
-import { browserEventSource, computeDisplay, type AlertListener, type EventSourceFactory } from './liveStream'
+import { browserEventSource, computeDisplay, pricesStalled, type AlertListener, type EventSourceFactory } from './liveStream'
 import { LiveStreamContext, type LiveStreamContextValue } from './liveStreamContext'
 
 interface Props {
@@ -21,6 +21,7 @@ export function LiveStreamProvider({ children, eventSourceFactory = browserEvent
   const [price, setPrice] = useState<PriceEvent | null>(null)
   const [status, setStatus] = useState<FeedStatus | null>(null)
   const [lastEventAt, setLastEventAt] = useState<number | null>(null)
+  const [lastPriceAt, setLastPriceAt] = useState<number | null>(null)
   const [connectionLost, setConnectionLost] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [startedAt] = useState(() => Date.now())
@@ -48,6 +49,7 @@ export function LiveStreamProvider({ children, eventSourceFactory = browserEvent
     source.addEventListener('price', (event) => {
       const data = JSON.parse(event.data) as PriceEvent
       heard()
+      setLastPriceAt(Date.now())
       setPrice(data)
       priceListeners.current.forEach((listener) => listener(data))
     })
@@ -82,9 +84,10 @@ export function LiveStreamProvider({ children, eventSourceFactory = browserEvent
   }, [])
 
   const value = useMemo<LiveStreamContextValue>(() => {
-    const base = { startedAt, price, status, lastEventAt, connectionLost }
-    return { ...base, display: computeDisplay(base, now), subscribeAlerts, subscribePrices }
-  }, [startedAt, price, status, lastEventAt, connectionLost, now, subscribeAlerts, subscribePrices])
+    const base = { startedAt, price, status, lastEventAt, lastPriceAt, connectionLost }
+    const display = computeDisplay(base, now)
+    return { ...base, display, pricesStalled: display === 'delayed' && pricesStalled(base, now), subscribeAlerts, subscribePrices }
+  }, [startedAt, price, status, lastEventAt, lastPriceAt, connectionLost, now, subscribeAlerts, subscribePrices])
 
   return <LiveStreamContext.Provider value={value}>{children}</LiveStreamContext.Provider>
 }

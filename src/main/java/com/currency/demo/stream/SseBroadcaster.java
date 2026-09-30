@@ -37,6 +37,11 @@ import java.util.concurrent.atomic.AtomicReference;
  *       proxies from closing idle connections.</li>
  *   <li>All writes go through one thread, so events on a connection never interleave.
  *       A failed write means the browser left: the emitter is removed.</li>
+ *   <li><b>The periodic tasks never die</b> (task 32): {@link ScheduledExecutorService} silently
+ *       cancels every later run of a periodic task once a run throws, without logging. That once
+ *       froze the price for every browser while status events (sent via {@code execute}) kept
+ *       saying LIVE. So a failing emitter is dropped individually, and each periodic run is
+ *       guarded and logged.</li>
  * </ul>
  */
 @Component
@@ -55,13 +60,30 @@ public class SseBroadcaster implements DisposableBean {
 
     public SseBroadcaster(FeedStatusTracker statusTracker) {
         this.statusTracker = statusTracker;
-        sender.scheduleAtFixedRate(this::pushLatestPrice, PRICE_INTERVAL_MS, PRICE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-        sender.scheduleAtFixedRate(this::heartbeat, HEARTBEAT_SECONDS, HEARTBEAT_SECONDS, TimeUnit.SECONDS);
+        sender.scheduleAtFixedRate(guarded("price push", this::pushLatestPrice),
+                PRICE_INTERVAL_MS, PRICE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        sender.scheduleAtFixedRate(guarded("heartbeat", this::heartbeat),
+                HEARTBEAT_SECONDS, HEARTBEAT_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /** A periodic task that logs and carries on instead of being cancelled by one failed run. */
+    static Runnable guarded(String name, Runnable task) {
+        return () -> {
+            try {
+                task.run();
+            } catch (RuntimeException e) {
+                log.warn("SSE {} failed; retrying on the next run", name, e);
+            }
+        };
     }
 
     /** Register a new browser connection and immediately send what we know. */
     public SseEmitter connect() {
-        SseEmitter emitter = new SseEmitter(0L); // no server-side timeout; the heartbeat keeps it alive
+        return register(new SseEmitter(0L)); // no server-side timeout; the heartbeat keeps it alive
+    }
+
+    /** Package-private so tests can register emitters that fail in specific ways. */
+    SseEmitter register(SseEmitter emitter) {
         emitter.onCompletion(() -> emitters.remove(emitter));
         emitter.onTimeout(() -> emitters.remove(emitter));
         emitter.onError(e -> emitters.remove(emitter));
@@ -114,7 +136,7 @@ public class SseBroadcaster implements DisposableBean {
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event().comment("keepalive"));
-            } catch (IOException | IllegalStateException e) {
+            } catch (IOException | RuntimeException e) {
                 emitters.remove(emitter);
             }
         }
@@ -126,13 +148,19 @@ public class SseBroadcaster implements DisposableBean {
         }
     }
 
+    /** Send to one connection; any failure drops just that connection, never the others. */
     private void send(SseEmitter emitter, String name, Object data) {
         try {
             emitter.send(SseEmitter.event().name(name).data(data));
-        } catch (IOException | IllegalStateException e) {
+        } catch (IOException | RuntimeException e) {
             log.debug("SSE client gone: {}", e.toString());
             emitters.remove(emitter);
-            emitter.completeWithError(e);
+            try {
+                emitter.completeWithError(e);
+            } catch (RuntimeException alreadyGone) {
+                // the connection is already completed / its request no longer usable: nothing to close
+                log.debug("SSE emitter already closed: {}", alreadyGone.toString());
+            }
         }
     }
 

@@ -6,22 +6,27 @@ import { useOptionalLiveStream } from '../live/liveStreamContext'
 import { ALERT_EVENTS_CHANGED, notifyAlertEventsChanged } from './events'
 import { DIRECTION_LABEL } from './format'
 
-const signed = new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const amount = new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-/** "還差 +5,954.50" = threshold − current price (user decision, task 31). */
-function describeDistance(threshold: number, price: number): string {
-  const d = threshold - price
-  return `還差 ${d >= 0 ? '+' : '−'}${signed.format(Math.abs(d))}`
+/**
+ * How far the price is from an alert's threshold. Once the condition holds (same strict rule as
+ * the backend's Direction: above = price > threshold) it says so - "已高於 135.57" - otherwise
+ * "還差 X"; no sign needed, the direction is already in 高於 / 低於 (team lead, task 32).
+ */
+function describeDistance(direction: Direction, threshold: number, price: number): string {
+  const met = direction === 'ABOVE' ? price > threshold : price < threshold
+  const gap = amount.format(Math.abs(price - threshold))
+  return met ? `已${DIRECTION_LABEL[direction]} ${gap}` : `還差 ${gap}`
 }
 
 /**
  * The distance of one alert to the live price. Its own component (reading the stream itself), so
  * only these few spans re-render on every price, not the whole alert card.
  */
-function Distance({ threshold }: { threshold: number }) {
+function Distance({ direction, threshold }: { direction: Direction; threshold: number }) {
   const price = useOptionalLiveStream()?.price
   if (!price) return null
-  return <><span className="num" data-testid="alert-distance">{describeDistance(threshold, price.price)}</span> · </>
+  return <><span className="num" data-testid="alert-distance">{describeDistance(direction, threshold, price.price)}</span> · </>
 }
 
 /** "目前 US$84,045.50 · 填入目前價格" under the form (rounded to whole dollars when filled in). */
@@ -163,7 +168,7 @@ export function AlertManager({ children }: Props) {
                       <span className="visually-hidden">BTC-USD </span>{DIRECTION_LABEL[a.direction]} <span className="num">{formatUsd(a.threshold)}</span>
                     </span>
                     <span className="sub">
-                      <Distance threshold={a.threshold} />
+                      <Distance direction={a.direction} threshold={a.threshold} />
                       {a.lastTriggeredAt ? <>上次觸發 {formatDateTime(a.lastTriggeredAt)}</> : '尚未觸發'}
                     </span>
                   </span>

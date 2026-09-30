@@ -221,7 +221,7 @@ describe('AlertManager with the live price (task 31)', () => {
     FakeEventSource.instances = []
   })
 
-  it('shows each alert\'s distance (threshold − price) and fills in the rounded current price', async () => {
+  it('shows how far each alert is from the price, or that its condition already holds, and fills in the rounded price', async () => {
     server.use(http.get('/api/alerts', () => HttpResponse.json(samples.alerts)))
     const user = userEvent.setup()
     render(
@@ -233,13 +233,24 @@ describe('AlertManager with the live price (task 31)', () => {
     await screen.findByTestId('alert-3')
     act(() => stream.emit('price', { ...samples.ssePrice, price: 84045.5 }))
 
-    // alert 3: above 90,000 -> 還差 +5,954.50; alert 4: below 80,000.50 -> 還差 −4,045.00
-    expect(within(screen.getByTestId('alert-3')).getByTestId('alert-distance')).toHaveTextContent('還差 +5,954.50')
-    expect(within(screen.getByTestId('alert-4')).getByTestId('alert-distance')).toHaveTextContent('還差 −4,045.00')
+    const distance = (id: number) => within(screen.getByTestId(`alert-${id}`)).getByTestId('alert-distance')
+    // Not met: alert 3 above 90,000 / alert 4 below 80,000.50, price 84,045.50 -> 還差 (no sign).
+    expect(distance(3)).toHaveTextContent(/^還差 5,954.50$/)
+    expect(distance(4)).toHaveTextContent(/^還差 4,045.00$/)
+
+    // Met (same strict rule as the backend): 已高於 / 已低於 by how much.
+    act(() => stream.emit('price', { ...samples.ssePrice, price: 90135.57 }))
+    expect(distance(3)).toHaveTextContent(/^已高於 135.57$/)
+    act(() => stream.emit('price', { ...samples.ssePrice, price: 80000 }))
+    expect(distance(4)).toHaveTextContent(/^已低於 0.50$/)
+    // Exactly at the threshold is not "above" yet (backend: price > threshold).
+    act(() => stream.emit('price', { ...samples.ssePrice, price: 90000 }))
+    expect(distance(3)).toHaveTextContent(/^還差 0.00$/)
 
     await user.click(screen.getByRole('button', { name: '新增警示' }))
+    act(() => stream.emit('price', { ...samples.ssePrice, price: 84045.5 }))
     await user.click(screen.getByRole('button', { name: '填入目前價格' }))
-    expect(screen.getByRole('spinbutton', { name: '門檻價格' })).toHaveValue(84046)
+    expect(screen.getByRole('spinbutton', { name: '門檻價格' })).toHaveValue(84046)   // rounded
   })
 })
 

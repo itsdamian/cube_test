@@ -92,6 +92,41 @@ describe('LivePrice', () => {
     expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
   })
 
+  it('shows 資料延遲（價格更新中斷）when status says LIVE but no price arrives for 60 s (task 32)', () => {
+    const stream = renderLivePrice()
+    act(() => stream.emit('status', status({ state: 'LIVE' })))
+    act(() => stream.emit('price', price(84045.5)))
+    // The stream keeps delivering status every 5 s (so the 15 s silence rule never fires) but
+    // no price: exactly what a frozen price push on the server looks like.
+    for (let second = 5; second < 60; second += 5) {
+      act(() => vi.advanceTimersByTime(5_000))
+      act(() => stream.emit('status', status({ state: 'LIVE' })))
+    }
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')   // 55 s
+    act(() => vi.advanceTimersByTime(4_000))
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')   // 59 s
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1_000))
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('資料延遲')   // 60 s
+    expect(screen.getByRole('alert')).toHaveTextContent('價格更新中斷')
+
+    // A price arriving again makes it live again.
+    act(() => stream.emit('price', price(84050)))
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('counts the 60 s from opening the page when no price has arrived at all (task 32)', () => {
+    const stream = renderLivePrice()
+    for (let second = 5; second <= 55; second += 5) {
+      act(() => vi.advanceTimersByTime(5_000))
+      act(() => stream.emit('status', status({ state: 'LIVE' })))
+    }
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
+    act(() => vi.advanceTimersByTime(5_000))
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('資料延遲')
+  })
+
   it('stops saying 連線中 and shows 資料延遲 if nothing arrives within 15 s of opening (QA CONCERN 21)', () => {
     renderLivePrice()
     act(() => vi.advanceTimersByTime(14_000))

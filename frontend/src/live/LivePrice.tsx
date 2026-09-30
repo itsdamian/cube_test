@@ -34,7 +34,7 @@ function splitDecimals(formatted: string): [string, string] {
  * explains why (styling keyed off the page's data-feed attribute).
  */
 export function LivePrice() {
-  const { price, display } = useLiveStream()
+  const { price, display, pricesStalled } = useLiveStream()
   const stale = display !== 'live'
   // Values derived from earlier renders are kept in state and updated while rendering (React's
   // recommended pattern for this) - no effect, no extra render cascade.
@@ -98,7 +98,9 @@ export function LivePrice() {
             <p className="stale-note" role="alert">
               {display === 'disconnected'
                 ? '已斷線：目前顯示的是最後收到的價格，連線恢復後會自動更新。'
-                : '資料延遲：暫時沒有收到新的價格，顯示的可能不是最新價格。'}
+                : pricesStalled
+                  ? '資料延遲（價格更新中斷）：已超過 60 秒沒有收到新的價格，顯示的可能不是最新價格。'
+                  : '資料延遲：暫時沒有收到新的價格，顯示的可能不是最新價格。'}
             </p>
           )}
         </>
