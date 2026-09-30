@@ -177,3 +177,9 @@ Branch: `feat/realtime-btc-kafka-react`
 - **What changed (`1091f92`)**: probes 啟用；liveness 只含 livenessState；readiness = readinessState + db + kafka + kafkaStreams；`KafkaHealthIndicator`（AdminClient describeCluster 3s）、`KafkaStreamsHealthIndicator`（只有 RUNNING/REBALANCING 為 UP）；QA CONCERN 4：show-details never、readiness 只顯示各元件 UP/DOWN。
 - **Verified**: `./mvnw clean verify` → 150 tests / 0 failures；docker pause Kafka → 10 秒內 readiness 503、liveness 200；unpause → 60 秒內 200（AC12 自動部分、QA M1）。
 - **概念**: liveness 回答「要不要重啟這個容器」，readiness 回答「要不要把流量導過來」；外部依賴只該放在 readiness。
+
+## 2026-09-30 11:47 — Stage: implement task 18（後端全鏈路整合測試）
+- **What changed (`68a431f`)**: `EndToEndPipelineTest`（只把兩個交易所 socket 換成測試控制的假來源 + MutableClock，其餘全部真實）：143 筆 coinbase tick 入庫、備援 0 筆、≥10 根 1m/≥2 根 5m、警示觸發 2 次未讀、SSE 收到 price/alert；主來源靜默 → 切 kraken 並推 status；恢復 15 秒 → 切回並推 status。
+- **發現並修正的隔離問題**: Kafka Streams 的 stream time 跟 committed offset 一起保存；共用 application-id 時，重播其他測試 2033/2034 年的 tick 會讓 CandlePipelineTest 的 2032 年視窗被視為已關閉——之前只是剛好測試順序有利。test profile 改為每個啟用 Streams 的 context 使用獨立 application-id 並從 latest 讀，測試先等 kafkaStreams UP 再送資料；正式環境不變。
+- **Verified**: `./mvnw clean verify` → 151 tests / 0 failures；反向字母順序跑整套也全過。
+- **概念**: Kafka Streams 的時間由資料驅動（stream time = 看過的最大事件時間）且會持久化，這讓 grace/suppress 可預期——也正是共用輸入 topic 的測試不能共用同一個 Streams 應用的原因。
