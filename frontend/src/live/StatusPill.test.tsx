@@ -29,7 +29,7 @@ describe('StatusPill (header)', () => {
     expect(pill).toHaveTextContent('即時')
     expect(pill).toHaveTextContent('Kraken')
     expect(pill).toHaveClass('status-pill--live')
-    expect(pill).toHaveAccessibleName('資料狀態：即時')
+    expect(pill).toHaveAccessibleName('資料狀態：即時，目前來源 Kraken')
 
     act(() => stream.emit('status', { ...samples.sseStatus, state: 'STALE' }))
     expect(pill).toHaveTextContent('資料延遲')

@@ -3,14 +3,23 @@ import { api } from '../api/client'
 import type { CandleInterval } from '../api/types'
 import { useLiveStream } from '../live/liveStreamContext'
 import { lightweightChart, type PriceChartAdapter, type PriceChartFactory } from './chartAdapter'
-import { livePoint, toCandlePoints, toLinePoints, type ChartTime } from './series'
+import {
+  applyLivePrice,
+  INTERVAL_SECONDS,
+  livePoint,
+  mergeForming,
+  toCandlePoints,
+  toLinePoints,
+  type CandlePoint,
+  type ChartTime,
+} from './series'
 
 export type ChartView = CandleInterval | 'trend'
 
 const VIEWS: { id: ChartView; label: string }[] = [
   { id: '1m', label: '1 分 K 線' },
   { id: '5m', label: '5 分 K 線' },
-  { id: 'trend', label: '走勢（最近 1 小時）' },
+  { id: 'trend', label: '走勢 1h' },
 ]
 
 export const TREND_MINUTES = 60
@@ -31,6 +40,9 @@ export function PriceCharts({ chartFactory = lightweightChart, candleRefreshMs =
   const container = useRef<HTMLDivElement>(null)
   const chart = useRef<PriceChartAdapter | null>(null)
   const lastLineTime = useRef<ChartTime | null>(null)
+  // Candle view: last finalised candle from the API, and the one currently forming from live prices.
+  const lastFinal = useRef<CandlePoint | null>(null)
+  const forming = useRef<CandlePoint | null>(null)
   const [view, setView] = useState<ChartView>('1m')
   const [message, setMessage] = useState<string | null>(null)
   const { subscribePrices } = useLiveStream()
@@ -46,6 +58,8 @@ export function PriceCharts({ chartFactory = lightweightChart, candleRefreshMs =
   useEffect(() => {
     let cancelled = false
     lastLineTime.current = null
+    lastFinal.current = null
+    forming.current = null
     const load = () => {
       const now = Date.now()   // read the clock once: from and to must be exactly TREND_MINUTES apart
       const request = view === 'trend'
@@ -60,7 +74,13 @@ export function PriceCharts({ chartFactory = lightweightChart, candleRefreshMs =
           })
         : api.candles(view).then((candles) => {
           const points = toCandlePoints(candles)
-          if (!cancelled) chart.current?.showCandles(points)
+          if (!cancelled) {
+            lastFinal.current = points.length ? points[points.length - 1] : null
+            // The backend's finalised candles win; keep the local one only if it is newer.
+            const merged = mergeForming(points, forming.current)
+            if (merged.length === points.length) forming.current = null
+            chart.current?.showCandles(merged)
+          }
           return points.length
         })
       request
@@ -75,14 +95,22 @@ export function PriceCharts({ chartFactory = lightweightChart, candleRefreshMs =
     }
   }, [view, candleRefreshMs])
 
-  // The trend line keeps moving with every live price.
+  // Live prices: the trend line keeps extending; in the candle views the last (still forming)
+  // candle follows the price, so the chart never looks behind the header price.
   useEffect(() => {
-    if (view !== 'trend') return undefined
     return subscribePrices((price) => {
-      const point = livePoint(lastLineTime.current, price)
-      if (point) {
-        chart.current?.appendLine(point)
-        lastLineTime.current = point.time
+      if (view === 'trend') {
+        const point = livePoint(lastLineTime.current, price)
+        if (point) {
+          chart.current?.appendLine(point)
+          lastLineTime.current = point.time
+        }
+        return
+      }
+      const next = applyLivePrice(forming.current ?? lastFinal.current, INTERVAL_SECONDS[view], price)
+      if (next) {
+        forming.current = next
+        chart.current?.updateCandle(next)
       }
     })
   }, [view, subscribePrices])

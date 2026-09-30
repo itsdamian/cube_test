@@ -29,8 +29,10 @@ describe('ConvertedPrices (AC3 frontend)', () => {
     expect(within(twd).getByText('31.84071')).toBeInTheDocument()
     // price = latest USD price (84,045.50 from /api/prices/latest) x rate
     expect(twd).toHaveTextContent('2,676,068.39')
-    const updated = within(twd).getByText((_, el) => el?.tagName === 'TIME')
+    // One line under the table (all rates share the provider's update time).
+    const updated = within(screen.getByTestId('rates-updated')).getByText((_, el) => el?.tagName === 'TIME')
     expect(updated).toHaveAttribute('dateTime', '2026-09-30T00:02:31Z')
+    expect(screen.getByTestId('rates-updated')).toHaveTextContent('匯率更新於')
 
     expect(within(screen.getByTestId('converted-EUR')).getByText('歐元')).toBeInTheDocument()
   })

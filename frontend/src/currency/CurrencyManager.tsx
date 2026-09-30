@@ -115,12 +115,12 @@ export function CurrencyManager() {
   return (
     <div>
       <div className="table-scroll">
-      <table className="table">
+      <table className="table table--compact">
         <thead>
           <tr>
             <th scope="col">代碼</th>
             <th scope="col">中文名稱</th>
-            <th scope="col">操作</th>
+            <th scope="col" className="actions-col">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -139,9 +139,9 @@ export function CurrencyManager() {
               </tr>
             ) : (
               <tr key={c.id} data-testid={`currency-${c.code}`}>
-                <td>{c.code}</td>
-                <td>{c.name}</td>
-                <td className="actions">
+                <td className="nowrap">{c.code}</td>
+                <td className="nowrap">{c.name}</td>
+                <td className="actions-col"><div className="actions">
                   <button type="button" onClick={() => setEditing(c.id)} aria-label={`編輯 ${c.code}`}>編輯</button>
                   {confirmDelete === c.id ? (
                     <>
@@ -151,7 +151,7 @@ export function CurrencyManager() {
                   ) : (
                     <button type="button" onClick={() => setConfirmDelete(c.id)} aria-label={`刪除 ${c.code}`}>刪除</button>
                   )}
-                </td>
+                </div></td>
               </tr>
             ),
           )}

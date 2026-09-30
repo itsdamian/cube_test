@@ -13,11 +13,12 @@ const LABELS: Record<DisplayState, string> = {
 export function StatusPill() {
   const { status, display } = useLiveStream()
   return (
-    <span className={`status-pill status-pill--${display}`} aria-label={`資料狀態：${LABELS[display]}`}
+    <span className={`status-pill status-pill--${display}`} role="status" aria-live="polite"
+          aria-label={`資料狀態：${LABELS[display]}${status ? `，目前來源 ${sourceName(status.activeSource)}` : ''}`}
           data-testid="header-feed-state">
       <span className={`dot dot--${display}`} aria-hidden="true" />
       {LABELS[display]}
-      {status && <span className="status-pill__source">· {sourceName(status.activeSource)}</span>}
+      {status && <span className="status-pill__source" data-testid="active-source">· {sourceName(status.activeSource)}</span>}
     </span>
   )
 }

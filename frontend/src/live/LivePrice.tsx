@@ -1,55 +1,49 @@
 import { useState } from 'react'
 import { formatTime, formatUsd, sourceName } from '../format/format'
-import type { DisplayState } from './liveStream'
 import { useLiveStream } from './liveStreamContext'
-
-const LABELS: Record<DisplayState, string> = {
-  connecting: '連線中',
-  live: '即時',
-  delayed: '資料延遲',
-  disconnected: '已斷線',
-}
 
 type Trend = 'up' | 'down' | null
 
+/** A flash in the same direction at most this often; a change of direction flashes at once. */
+export const FLASH_EVERY_MS = 2_000
+
 /**
- * Big BTC-USD price with its source, the feed state and the time of the last price.
- * Green / red + a short flash when the newest trade is above / below the previous one (only data
- * we actually have - no invented 24 h change). The flash is a CSS animation, so
- * prefers-reduced-motion switches it off.
+ * Big BTC-USD price, the exchange of that trade and the time of the last price. The feed state
+ * and the active source are shown once, in the header (StatusPill); this card dims and explains
+ * itself when the data is delayed or the connection is lost.
+ * Green / red when the newest trade is above / below the previous one (only data we actually
+ * have - no invented 24 h change), plus a subtle flash at most every FLASH_EVERY_MS per direction.
+ * The flash is a CSS animation, so prefers-reduced-motion switches it off.
  */
 export function LivePrice() {
-  const { price, status, display } = useLiveStream()
+  const { price, display } = useLiveStream()
   const stale = display !== 'live'
   // "Previous value" kept in state and updated while rendering (React's recommended pattern for
   // values derived from the previous render) - no effect, no extra render cascade.
   const [previous, setPrevious] = useState<number | null>(null)
   const [trend, setTrend] = useState<Trend>(null)
-  const [flash, setFlash] = useState(0)
+  const [flash, setFlash] = useState({ count: 0, direction: null as Trend, at: 0 })
   if (price && price.price !== previous) {
     if (previous !== null) {
-      setTrend(price.price > previous ? 'up' : 'down')
-      setFlash(flash + 1)
+      const direction: Trend = price.price > previous ? 'up' : 'down'
+      setTrend(direction)
+      // Busy markets tick several times per second: throttle the flash so the page stays calm.
+      // Measured in trade time (the price's eventTime), which keeps rendering pure and predictable.
+      const now = Date.parse(price.eventTime)
+      if (direction !== flash.direction || now - flash.at >= FLASH_EVERY_MS) {
+        setFlash({ count: flash.count + 1, direction, at: now })
+      }
     }
     setPrevious(price.price)
   }
 
   return (
     <div className={`live-price live-price--${display}`}>
-      <div className="live-price__status" role="status" aria-live="polite">
-        <span className={`dot dot--${display}`} aria-hidden="true" />
-        <span data-testid="feed-state">{LABELS[display]}</span>
-        {status && (
-          <span className="live-price__source">
-            目前來源：<strong data-testid="active-source">{sourceName(status.activeSource)}</strong>
-          </span>
-        )}
-      </div>
       {price ? (
         <>
           <div className="live-price__row">
-            <div key={flash}
-                 className={`live-price__value${trend ? ` live-price__value--${trend}` : ''}${trend && flash > 0 ? ` live-price__value--flash-${trend}` : ''}`}
+            <div key={flash.count}
+                 className={`live-price__value${trend ? ` live-price__value--${trend}` : ''}${flash.direction ? ` live-price__value--flash-${flash.direction}` : ''}`}
                  data-testid="btc-price" aria-label="BTC-USD 價格">
               {formatUsd(price.price)}
             </div>

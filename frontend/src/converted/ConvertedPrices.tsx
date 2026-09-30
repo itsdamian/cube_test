@@ -48,34 +48,35 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
   }
 
   const usd = price?.price ?? data.usdPrice
+  // The provider updates all rates together; if they ever differ, show the oldest (most cautious).
+  const rateTimes = data.items.map((i) => i.rateUpdatedAt).filter((t): t is string => t !== null).sort()
+  const oldestRate = rateTimes.length ? rateTimes[0] : null
   return (
     <div>
+      <p className="table__note" id="converted-note">
+        1 BTC 以各幣別計價（依目前 BTC-USD 價格 {formatMoney(usd, 'USD')} 換算）
+      </p>
       <div className="table-scroll">
-      <table className="table">
-        <caption className="table__caption">1 BTC 以各幣別計價（依目前 BTC-USD 價格 {formatMoney(usd, 'USD')} 換算）</caption>
+      <table className="table" aria-describedby="converted-note">
         <thead>
           <tr>
             <th scope="col">代碼</th>
             <th scope="col">名稱</th>
             <th scope="col" className="num">BTC 價格</th>
             <th scope="col" className="num">匯率（1 USD =）</th>
-            <th scope="col">匯率更新時間</th>
           </tr>
         </thead>
         <tbody>
           {data.items.map((item) => (
             <tr key={item.currencyId} data-testid={`converted-${item.code}`}>
-              <td>{item.code}</td>
-              <td>{item.name}</td>
+              <td className="nowrap">{item.code}</td>
+              <td className="nowrap">{item.name}</td>
               {item.rate === null ? (
-                <td className="num muted" colSpan={3}>無匯率</td>
+                <td className="num muted" colSpan={2}>無匯率</td>
               ) : (
                 <>
                   <td className="num">{formatMoney(usd * item.rate, item.code)}</td>
                   <td className="num">{item.rate}</td>
-                  <td>
-                    {item.rateUpdatedAt && <time dateTime={item.rateUpdatedAt}>{formatDateTime(item.rateUpdatedAt)}</time>}
-                  </td>
                 </>
               )}
             </tr>
@@ -83,6 +84,11 @@ export function ConvertedPrices({ refreshMs = REFRESH_MS }: { refreshMs?: number
         </tbody>
       </table>
       </div>
+      {oldestRate && (
+        <p className="table__note" data-testid="rates-updated">
+          匯率更新於 <time dateTime={oldestRate}>{formatDateTime(oldestRate)}</time>
+        </p>
+      )}
       <p className="attribution">
         {/* Required by the exchange-rate provider's terms of use. */}
         <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>

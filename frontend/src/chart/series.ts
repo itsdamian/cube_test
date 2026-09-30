@@ -54,3 +54,36 @@ export function livePoint(lastTime: ChartTime | null, price: PriceEvent): LinePo
   }
   return { time, value: price.price }
 }
+
+export const INTERVAL_SECONDS: Record<'1m' | '5m', number> = { '1m': 60, '5m': 300 }
+
+/**
+ * The candle that is still forming, updated with one live price.
+ *
+ * - price inside the last candle's bucket -> same candle, high/low/close follow the price;
+ * - price in a later bucket                -> a new candle opened at this price;
+ * - price older than the last candle       -> null (ignored).
+ * The backend's finalised candle for a bucket always replaces this local estimate when it arrives
+ * (see mergeForming), so a slightly different "open" is corrected within a minute.
+ */
+export function applyLivePrice(last: CandlePoint | null, intervalSeconds: number, price: PriceEvent): CandlePoint | null {
+  const time = toChartTime(price.eventTime)
+  const bucket = time - (time % intervalSeconds)
+  const value = price.price
+  if (last && bucket < last.time) {
+    return null
+  }
+  if (last && bucket === last.time) {
+    return { ...last, high: Math.max(last.high, value), low: Math.min(last.low, value), close: value }
+  }
+  return { time: bucket, open: value, high: value, low: value, close: value }
+}
+
+/**
+ * Finalised candles from the API plus the locally forming one: the forming candle is kept only
+ * if its bucket is newer than every finalised candle; otherwise the backend's version wins.
+ */
+export function mergeForming(finalised: CandlePoint[], forming: CandlePoint | null): CandlePoint[] {
+  const last = finalised.length ? finalised[finalised.length - 1].time : null
+  return forming && (last === null || forming.time > last) ? [...finalised, forming] : finalised
+}

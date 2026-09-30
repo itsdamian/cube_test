@@ -16,6 +16,8 @@ import type { CandlePoint, LinePoint } from './series'
  */
 export interface PriceChartAdapter {
   showCandles(points: CandlePoint[]): void
+  /** Replace the last candle or append a newer one (the candle still forming). */
+  updateCandle(point: CandlePoint): void
   showLine(points: LinePoint[]): void
   appendLine(point: LinePoint): void
   dispose(): void
@@ -84,6 +86,11 @@ export const lightweightChart: PriceChartFactory = (container) => {
       replace(chart.addSeries(CandlestickSeries, candleColors()))
         .setData(points.map((p) => ({ ...p, time: p.time as UTCTimestamp })))
       chart.timeScale().fitContent()
+    },
+    updateCandle(point) {
+      if (kind === 'candles') {
+        ;(series as ISeriesApi<'Candlestick'>).update({ ...point, time: point.time as UTCTimestamp })
+      }
     },
     showLine(points) {
       kind = 'line'

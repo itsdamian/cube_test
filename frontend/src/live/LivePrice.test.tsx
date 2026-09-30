@@ -7,10 +7,14 @@ import { samples } from '../test/msw/samples'
 import { server } from '../test/msw/server'
 import { LivePrice } from './LivePrice'
 import { LiveStreamProvider } from './LiveStreamProvider'
+import { StatusPill } from './StatusPill'
 
+// The feed state and active source are shown once, in the header pill (task 29); the price card
+// only dims and explains. So the state assertions below read the pill.
 function renderLivePrice() {
   render(
     <LiveStreamProvider eventSourceFactory={FakeEventSource.factory} tickMs={1_000}>
+      <StatusPill />
       <LivePrice />
     </LiveStreamProvider>,
   )
@@ -36,12 +40,12 @@ describe('LivePrice', () => {
   it('connects to /api/stream and shows each new price without reloading (AC1)', () => {
     const stream = renderLivePrice()
     expect(stream.url).toBe('/api/stream')
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('連線中')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('連線中')
 
     act(() => stream.emit('status', status({ state: 'LIVE', activeSource: 'coinbase' })))
     act(() => stream.emit('price', price(84045.5)))
     expect(screen.getByTestId('btc-price')).toHaveTextContent('84,045.50')
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
 
     act(() => stream.emit('price', price(84100.25)))
     expect(screen.getByTestId('btc-price')).toHaveTextContent('84,100.25')
@@ -58,11 +62,11 @@ describe('LivePrice', () => {
     act(() => stream.emit('price', price(84045.5)))
 
     act(() => stream.emit('status', status({ state: 'STALE' })))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('資料延遲')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('資料延遲')
     expect(screen.getByRole('alert')).toHaveTextContent('資料延遲')
 
     act(() => stream.emit('status', status({ state: 'DISCONNECTED' })))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('已斷線')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('已斷線')
   })
 
   it('shows 資料延遲 after 15 s without ANY event, and status events count as activity (AC2)', () => {
@@ -75,25 +79,25 @@ describe('LivePrice', () => {
       act(() => vi.advanceTimersByTime(5_000))
       act(() => stream.emit('status', status({ state: 'LIVE' })))
     }
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
 
     // Nothing at all for 14 s: still live; at 15 s: delayed.
     act(() => vi.advanceTimersByTime(14_000))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
     act(() => vi.advanceTimersByTime(1_000))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('資料延遲')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('資料延遲')
 
     // Anything arriving again makes it live again.
     act(() => stream.emit('price', price(84050)))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
   })
 
   it('stops saying 連線中 and shows 資料延遲 if nothing arrives within 15 s of opening (QA CONCERN 21)', () => {
     renderLivePrice()
     act(() => vi.advanceTimersByTime(14_000))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('連線中')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('連線中')
     act(() => vi.advanceTimersByTime(1_000))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('資料延遲')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('資料延遲')
   })
 
   it('shows 已斷線 when the connection to the backend fails, and recovers when it reopens', () => {
@@ -101,12 +105,12 @@ describe('LivePrice', () => {
     act(() => stream.emit('price', price(84045.5)))
 
     act(() => stream.fail())
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('已斷線')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('已斷線')
     expect(screen.getByRole('alert')).toHaveTextContent('已斷線')
 
     act(() => stream.open())
     act(() => stream.emit('status', status({ state: 'LIVE' })))
-    expect(screen.getByTestId('feed-state')).toHaveTextContent('即時')
+    expect(screen.getByTestId('header-feed-state')).toHaveTextContent('即時')
   })
 
   it('shows which exchange is currently used (AC6)', () => {
@@ -130,6 +134,30 @@ describe('LivePrice', () => {
     act(() => stream.emit('price', price(83990.5)))
     expect(screen.getByTestId('btc-price')).toHaveClass('live-price__value--down')
     expect(screen.getByTestId('price-trend')).toHaveTextContent('較前一筆下跌')
+  })
+
+  it('flashes at most every 2 s (trade time) in the same direction, but at once when the direction changes', () => {
+    const stream = renderLivePrice()
+    const at = (value: number, second: number) =>
+      ({ ...price(value), eventTime: new Date(Date.UTC(2026, 8, 30, 8, 0, second)).toISOString() })
+    act(() => stream.emit('price', at(84000, 0)))
+    act(() => stream.emit('price', at(84010, 1)))                 // up: flash
+    const firstUp = screen.getByTestId('btc-price')
+    expect(firstUp).toHaveClass('live-price__value--flash-up')
+
+    act(() => stream.emit('price', at(84020, 2)))                 // up again 1 s later: no new flash
+    expect(screen.getByTestId('btc-price')).toBe(firstUp)          // same element = animation not replayed
+    expect(screen.getByTestId('btc-price')).toHaveTextContent('84,020.00')
+
+    act(() => stream.emit('price', at(84000, 2)))                 // down: flashes immediately
+    const firstDown = screen.getByTestId('btc-price')
+    expect(firstDown).not.toBe(firstUp)
+    expect(firstDown).toHaveClass('live-price__value--flash-down')
+
+    act(() => stream.emit('price', at(83995, 3)))                 // down 1 s later: no new flash
+    expect(screen.getByTestId('btc-price')).toBe(firstDown)
+    act(() => stream.emit('price', at(83990, 4)))                 // down 2 s after the last flash: flashes
+    expect(screen.getByTestId('btc-price')).not.toBe(firstDown)
   })
 
   it('closes the stream when the page unmounts', () => {

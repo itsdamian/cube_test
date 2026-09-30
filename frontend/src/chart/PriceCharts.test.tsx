@@ -72,11 +72,17 @@ describe('PriceCharts (requirement 11)', () => {
     expect(chart().appended).toHaveLength(1)   // older than the line's end: ignored
   })
 
-  it('live prices do not touch the candle view', async () => {
+  it('in the candle views a live price updates the forming candle (not the trend line)', async () => {
     const { chart, stream } = setup()
     await waitFor(() => expect(chart().candles).toHaveLength(1))
-    act(() => stream.emit('price', samples.ssePrice))
+    // Last finalised 1m candle in the sample opens 08:01; a price at 08:01:30 updates it.
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:01:30Z', price: 84100 }))
     expect(chart().appended).toHaveLength(0)
+    expect(chart().candleUpdates).toEqual([{ time: 1790668860, open: 84052.3, high: 84100, low: 84049.9, close: 84100 }])
+
+    // A price in the next minute opens a new candle.
+    act(() => stream.emit('price', { ...samples.ssePrice, eventTime: '2026-09-29T08:02:05Z', price: 84090 }))
+    expect(chart().candleUpdates[1]).toEqual({ time: 1790668920, open: 84090, high: 84090, low: 84090, close: 84090 })
   })
 
   it('explains an empty chart and disposes the chart on unmount', async () => {

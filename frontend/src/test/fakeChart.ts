@@ -4,12 +4,17 @@ import type { CandlePoint, LinePoint } from '../chart/series'
 /** Records what would have been drawn (jsdom cannot render the real canvas chart). */
 export class FakeChart implements PriceChartAdapter {
   candles: CandlePoint[][] = []
+  candleUpdates: CandlePoint[] = []
   lines: LinePoint[][] = []
   appended: LinePoint[] = []
   disposed = false
 
   showCandles(points: CandlePoint[]): void {
     this.candles.push(points)
+  }
+
+  updateCandle(point: CandlePoint): void {
+    this.candleUpdates.push(point)
   }
 
   showLine(points: LinePoint[]): void {
