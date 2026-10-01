@@ -316,3 +316,18 @@
   - **最後以備份重建**（260 秒），並重新部署 dev / prod（local-ssefix1），SSE 正常。
   - repo 中搜尋不到明文密碼（`git grep` 0 筆）。
 - **私鑰備份**：目前在工程師的 scratchpad（chmod 600，位於 repo 外，`git check-ignore` 也確認），不在使用者的家目錄。repo 中的 SealedSecret 只有這把私鑰能解開。正式備份是使用者清單第 9 項：請使用者在叢集執行中時跑 `scripts/seal-secret.sh --backup-key`（預設寫到 `~/cube-secrets/`），之後即可刪除 scratchpad 的副本。
+
+## 2026-10-02 00:30 — task 11 QA PASS；implement task 12（CI workflow）
+- **Task 11 QA PASS**（`74a3433`）：QA 在新叢集上獨立算出相同的 sha256；AC14 以叢集中實際的 Grafana 密碼搜尋整個 repo 的歷史（`git log --all -S`）與檔案（`git grep`）都是 0 筆。→ 勾選。第二次 push 前署名閘門 PASS（15 個 commit 都沒有 trailer）。
+- **`.github/workflows/ci.yml`**：
+  - `changes`：判斷是否只改了 `deploy/`、`docs/`、`specs/` 或 `*.md`；
+  - `backend`：`./mvnw -B -ntp verify`，Temurin 21，Maven 快取；
+  - `frontend`：Node 24，`npm ci`、test、lint、build；
+  - `manifests`：`validate-manifests.sh`、`test-alert-rules.sh`、actionlint；
+  - `secrets`：gitleaks 掃整個歷史；
+  - `images`：backend / frontend 各一，先 amd64 load → Trivy SARIF（HIGH+CRITICAL，上傳 Security 分頁）→ Trivy 對可修補的 CRITICAL 失敗 → amd64+arm64（QEMU）建置，main 才 push `sha-<7>`；
+  - `ci-ok`：`needs` 全部、`if: always()`，任何 failure / cancelled 就失敗、skipped 視為通過。
+- **供應鏈**：所有 action 釘 commit SHA（annotated tag 取 `^{}` 指向的 commit）；docker image 以 tag + digest 釘住（actionlint 1.7.12、gitleaks v8.30.1）。trivy-action v0.36.0（v0.35.0 之後受 immutable release 保護），trivy 執行檔明確指定 **v0.70.0**：公告列出的惡意版本是 0.69.4–0.69.6；最新的 v0.75.0 昨天才發布，不採用。
+- **權限**：頂層 `permissions: {}`；PR 不使用任何 secret（Dependabot PR 也能跑完整 CI）；Dependabot 的 SARIF 上傳略過（它的 token 是唯讀）。
+- **`.gitleaks.toml`**：沿用預設規則，只允許 `*.sealed.yaml`（SealedSecret 的密文）。本機掃描 213 個 commit，原本只有這 1 筆 → 允許後 no leaks。反向驗證：在一般檔案中的假金鑰仍會被抓到。
+- 本機 actionlint exit 0。

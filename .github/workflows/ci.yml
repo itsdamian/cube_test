@@ -1,0 +1,248 @@
+# CI (spec k8s-gitops-cicd, requirements 10-13, 18; plan: CI / CD workflows).
+#
+#   changes   -> which kind of files changed (code vs. deploy/docs only)
+#   backend   -> ./mvnw verify (Testcontainers: Kafka + PostgreSQL on the runner's Docker)
+#   frontend  -> npm ci, test, lint, build
+#   manifests -> kustomize + kubeconform, Argo CD apps up to date, promtool rule tests, actionlint
+#   secrets   -> gitleaks over the whole history
+#   images    -> backend / frontend for linux/amd64 + linux/arm64, Trivy scan; pushed to GHCR only
+#                from main
+#   ci-ok     -> the ONE required status check: passes if nothing failed or was cancelled
+#                (skipped jobs count as passing, so deploy-only PRs do not wait forever)
+#
+# Security: no secrets are used on pull requests (Dependabot PRs run the full CI too); every
+# third-party action is pinned to a commit SHA (the 2026-03 trivy-action tag hijack, plan R1);
+# the top-level token has no permissions, each job asks for what it needs.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io/itsdamian
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        name: Did anything besides deploy/, docs and specs change?
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_BASE...$PR_HEAD" ;;
+            push) range="$PUSH_BEFORE..$GITHUB_SHA" ;;
+            *) range="" ;;
+          esac
+          if [[ -z "$range" || "$PUSH_BEFORE" == 0000000000000000000000000000000000000000 ]]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; echo "no comparable base: build everything"; exit 0
+          fi
+          files="$(git diff --name-only "$range")"
+          echo "$files"
+          # Only these never affect the application or its images. Anything else (code, build
+          # files, workflows, scripts) runs the full pipeline.
+          code=$(grep -vE '^(deploy/|docs/|specs/)|\.md$' <<<"$files" | grep -c . || true)
+          echo "code=$([[ "$code" -gt 0 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: backend
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # Testcontainers finds the runner's Docker by itself; tests never reach real price/FX
+      # sources (test profile, NoExternalCallsGuardTest).
+      - run: ./mvnw -B -ntp verify
+
+  frontend:
+    name: frontend
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+
+  manifests:
+    name: manifests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: kustomize + kubeconform (incl. CRDs), Argo CD apps up to date
+        run: scripts/validate-manifests.sh
+      - name: promtool check + test of the alert rules
+        run: scripts/test-alert-rules.sh
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks (whole history; .gitleaks.toml allows only Sealed Secrets ciphertext)
+        run: >-
+          docker run --rm -v "$PWD:/repo" -w /repo
+          zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git --no-banner --redact --config .gitleaks.toml .
+
+  images:
+    name: images (${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write          # push to GHCR (main only)
+      security-events: write   # Trivy SARIF -> Security tab
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: cube-backend
+            dockerfile: Dockerfile
+          - image: cube-frontend
+            dockerfile: frontend/Dockerfile
+    env:
+      IMAGE: ghcr.io/itsdamian/${{ matrix.image }}
+      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag sha-<7>
+        id: tag
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to GHCR (main only)
+        if: env.PUSH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # 1. amd64 into the local Docker for the vulnerability scan.
+      - name: Build (linux/amd64, for the scan)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:scan
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+      - name: Trivy report (SARIF, HIGH + CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0     # pinned; never 0.69.4-0.69.6 (GHSA-69fq-xp46-6x23)
+          image-ref: ${{ env.IMAGE }}:scan
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Upload the report to the Security tab
+        if: always() && github.actor != 'dependabot[bot]'
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
+      - name: Fail on fixable CRITICAL vulnerabilities (requirement 18)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          image-ref: ${{ env.IMAGE }}:scan
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+      # 2. Both platforms (arm64 through QEMU - the heavy stages run on $BUILDPLATFORM); pushed
+      #    as sha-<7> from main only. On pull requests this proves the arm64 build works.
+      - name: Build linux/amd64 + linux/arm64${{ env.PUSH == 'true' && ' and push' || '' }}
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+  ci-ok:
+    name: ci-ok
+    needs: [changes, backend, frontend, manifests, secrets, images]
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Every job succeeded or was skipped
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$RESULTS" | jq -e 'to_entries | map(.value.result) | any(. == "failure" or . == "cancelled")' > /dev/null; then
+            echo "::error::a required job failed or was cancelled"; exit 1
+          fi
