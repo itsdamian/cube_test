@@ -346,3 +346,8 @@
   1. pom 註解已寫明 CVE 編號、覆寫原因，並把移除條件改為「Spring Boot 3.5.x 管理的 Tomcat ≥ 10.1.60 時移除」；
   2. task 18 的完成條件加上「確認 Dependabot（maven）看得到這個覆寫」（屬性只被 Boot BOM 使用，可能偵測不到）；
   3. 沒有回歸：本機 `clean verify` 169/0，CI run 36892744494 全綠（https://github.com/itsdamian/cube_test/actions/runs/36892744494）。
+
+## 2026-10-02 01:10 — task 12 QA PASS
+- QA 用 `gh` 查證全部 run（Trivy 表格、全綠、deploy-only skipped、壞規則 fail）、PR #2–#4 已關閉、遠端沒有 `test/*` 分支、沒有 trailer；ci.yml 的 `permissions: {}`、SHA pin、只在 main push 時登入 GHCR、`persist-credentials: false` 都 OK；判定 Tomcat 覆寫在範圍內。→ 勾選 12。
+- 提醒：Dependabot 若追不到這個覆寫，要在文件中列為人工追蹤項目（已寫進 task 18）。
+- **下一步**：task 13 起需要使用者先完成設定：清單第 4、5 項，以及功能 PR 由誰開。
