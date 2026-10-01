@@ -1,0 +1,22 @@
+# The cube application for ONE environment. overlays/dev and overlays/prod add the namespace,
+# hostname, replicas / resources / storage sizes and the image versions (requirement 9).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs: {app.kubernetes.io/part-of: cube}
+    includeSelectors: false
+resources:
+  - kafka.yaml
+  - postgres.yaml
+  - backend-worker.yaml
+  - backend-api.yaml
+  - frontend.yaml
+  - httproute.yaml
+  - networkpolicy.yaml
+configMapGenerator:
+  - name: backend-common
+    envs: [backend-common.env]
+images:
+  # Overlays pin the actual version (CI writes it: sha-<commit> for dev, vX.Y.Z@digest for prod).
+  - {name: ghcr.io/itsdamian/cube-backend, newTag: unset}
+  - {name: ghcr.io/itsdamian/cube-frontend, newTag: unset}

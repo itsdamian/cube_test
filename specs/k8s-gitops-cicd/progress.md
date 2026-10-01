@@ -127,3 +127,23 @@
   - SSE 收得到從 Kafka 讀到的價格。
 - **反向驗證**：把 `app.persist.enabled` 改為 true 時，`[TickPersister]` 斷言失敗；改回後通過。
 - **Verified**：`./mvnw clean verify` 166 tests 0 failures。
+
+## 2026-10-01 16:30 — Stage: implement task 4（應用 manifests）+ K1
+- **What changed**：
+  - `deploy/apps/cube/base/`：
+    - `kafka.yaml`：Strimzi `kafka.strimzi.io/v1` 的 KafkaNodePool + Kafka。格式以 Strimzi 1.2.0 官方 single-node 範例為準；Kafka 4.3.1、`metadataVersion` 4.3-IV0、只有 plain 9092、Kafka Exporter、**不啟用 Entity Operator**。
+    - `postgres.yaml`：CNPG Cluster，PG 17.11，image 用不可變的日期標籤；應用從 operator 產生的 `cube-db-app` Secret 讀帳密。
+    - `backend-worker.yaml`：StatefulSet ×1 + headless Service，streams state 放 PVC，`fsGroup` 1001。
+    - `backend-api.yaml`：Deployment + Service + HPA；不寫 replicas，scaleDown 穩定窗 120 秒，`preStop sleep`。
+    - `frontend.yaml`、`httproute.yaml`（parentRef 為 traefik namespace 的 Gateway `cube`）。
+    - `networkpolicy.yaml`：plan 中的完整允許清單（QA M5）。
+    - `kustomization.yaml`（`backend-common` ConfigMap）。
+  - `overlays/dev`、`overlays/prod`：Namespace（label `cube.io/environment`）、hostname、HPA 範圍、frontend 副本數、資源、PVC 大小、image。**兩個 overlay 渲染結果的 diff 只有 namespace、副本、資源、儲存大小、網址**（image 尚未設定，暫為 `unset`，由 CI / task 8 設定）。
+  - `deploy/platform/policies/worker-single-replica.yaml`：ValidatingAdmissionPolicy + Binding。**放在 platform 而非 app base**：VAP 是 cluster-scoped，放在 base 時 dev / prod 會各產生一份同名物件而衝突；binding 以 namespace label `cube.io/environment` 涵蓋兩個環境；規則同時比對 `statefulsets/scale` subresource（`kubectl scale` 的路徑），task 8 實測。
+  - **K1（team lead 決定採 (b)，broker 層級）**：Strimzi `Kafka.spec.kafka.config` 與 compose 都加 `log.message.timestamp.after.max.ms=86400000`，附註解；`docs/configuration.md` 記一筆說明。
+  - `scripts/validate-manifests.sh`（CI 也會用）：用 kustomize 渲染兩個 overlay 與 policies；把 Strimzi 1.2.0、CNPG 1.30.1、Gateway API v1.6.2、Prometheus Operator v0.94.1 的 CRD 以 kubeconform 官方的 `openapi2jsonschema.py` 轉成 JSON schema；`kubeconform -strict`（K8s 1.35.0，對應 k3d 預設的 k3s v1.35.5）。只需要 Docker。`.cache/` 加進 `.gitignore`。
+- **Verified**：
+  - `scripts/validate-manifests.sh`：40 個資源 Valid 40 / Invalid 0 / Errors 0（含 CRD 自訂資源）。
+  - **反向驗證**：把 Kafka CR 的 `kafkaExporter` 改成 `kafkaExportr` → 兩個環境都 Invalid（additional properties not allowed）；在 NetworkPolicy 加上不存在的 `podSelectr` → Invalid，且腳本 exit 1。還原後 40/40 通過。
+  - K1 在 compose 實際生效：`kafka-configs --describe --entity-type brokers --all` 顯示 `log.message.timestamp.after.max.ms=86400000`（STATIC_BROKER_CONFIG，覆蓋 DEFAULT 3600000）；Kafka 重啟後 SSE 正常。
+- **尚未在叢集上驗證**（task 7–8）：Strimzi / CNPG 實際 reconcile、VAP 對 scale subresource 的攔截、NetworkPolicy 的實際效果。

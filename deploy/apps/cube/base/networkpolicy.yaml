@@ -1,0 +1,86 @@
+# Ingress isolation for one environment (plan, QA M5). Deny all ingress, then allow exactly:
+#   same namespace          -> everything   (frontend->api, api/worker->Kafka and PostgreSQL)
+#   traefik                 -> frontend:8080 (browser traffic)
+#   strimzi                 -> Kafka pods    (operator reconcile / rolling / health checks)
+#   cnpg-system             -> PostgreSQL :8000 (instance manager status), :5432
+#   monitoring              -> backend :8080, Kafka Exporter :9404, PostgreSQL :9187 (metrics)
+# Another environment's pods match none of these: dev cannot reach prod's Kafka or database
+# (Kafka has no authentication inside the cluster). Egress is not restricted: the worker
+# needs the exchanges and the FX API, every pod needs DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-frontend
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: frontend}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: traefik}
+      ports: [{port: 8080, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-strimzi-to-kafka
+spec:
+  podSelector:
+    matchLabels: {strimzi.io/cluster: cube-kafka}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: strimzi}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-to-postgres
+spec:
+  podSelector:
+    matchLabels: {cnpg.io/cluster: cube-db}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: cnpg-system}
+      ports:
+        - {port: 8000, protocol: TCP}
+        - {port: 5432, protocol: TCP}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports:
+        - {port: 8080, protocol: TCP}   # backend /actuator/prometheus
+        - {port: 9404, protocol: TCP}   # Strimzi Kafka Exporter
+        - {port: 9187, protocol: TCP}   # CloudNativePG exporter
