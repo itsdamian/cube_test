@@ -1,0 +1,14 @@
+# Shared monitoring content for both environments (installed into namespace "monitoring" by
+# Argo CD): the alert rules and the Grafana dashboard. kube-prometheus-stack's Grafana sidecar
+# loads every ConfigMap labelled grafana_dashboard=1 (values: deploy/platform).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - cube-alerts.yaml
+configMapGenerator:
+  - name: cube-dashboards
+    files: [dashboards/cube-overview.json]
+    options:
+      labels: {grafana_dashboard: "1"}
+      disableNameSuffixHash: true

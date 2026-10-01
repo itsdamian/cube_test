@@ -3,7 +3,8 @@
 #
 #   scripts/validate-manifests.sh
 #
-# 1. Renders deploy/apps/cube/overlays/{dev,prod} and deploy/platform/policies with kustomize.
+# 1. Renders deploy/apps/cube/overlays/{dev,prod}, deploy/platform/policies and
+#    deploy/monitoring with kustomize.
 # 2. Converts the CRDs of the operators we use (pinned versions below) into JSON schemas with
 #    kubeconform's own openapi2jsonschema.py, so custom resources (Strimzi Kafka, CNPG Cluster,
 #    Gateway API HTTPRoute, Prometheus Operator monitors) are checked as strictly as built-ins.
@@ -53,6 +54,7 @@ render() { docker run --rm --platform linux/amd64 -v "$ROOT:/repo:ro" "$KUSTOMIZ
 render deploy/apps/cube/overlays/dev  > "$RENDERED/cube-dev.yaml"
 render deploy/apps/cube/overlays/prod > "$RENDERED/cube-prod.yaml"
 render deploy/platform/policies       > "$RENDERED/policies.yaml"
+render deploy/monitoring              > "$RENDERED/monitoring.yaml"
 
 # --- 3. validate ---------------------------------------------------------------------------
 docker run --rm -v "$CACHE/schemas:/schemas:ro" -v "$RENDERED:/rendered:ro" "$KUBECONFORM_IMAGE" \
@@ -60,4 +62,4 @@ docker run --rm -v "$CACHE/schemas:/schemas:ro" -v "$RENDERED:/rendered:ro" "$KU
   -kubernetes-version "$K8S_VERSION" \
   -schema-location default \
   -schema-location '/schemas/{{.ResourceKind}}-{{.Group}}-{{.ResourceAPIVersion}}.json' \
-  /rendered/cube-dev.yaml /rendered/cube-prod.yaml /rendered/policies.yaml
+  /rendered/cube-dev.yaml /rendered/cube-prod.yaml /rendered/policies.yaml /rendered/monitoring.yaml

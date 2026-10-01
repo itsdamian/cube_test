@@ -147,3 +147,27 @@
   - **反向驗證**：把 Kafka CR 的 `kafkaExporter` 改成 `kafkaExportr` → 兩個環境都 Invalid（additional properties not allowed）；在 NetworkPolicy 加上不存在的 `podSelectr` → Invalid，且腳本 exit 1。還原後 40/40 通過。
   - K1 在 compose 實際生效：`kafka-configs --describe --entity-type brokers --all` 顯示 `log.message.timestamp.after.max.ms=86400000`（STATIC_BROKER_CONFIG，覆蓋 DEFAULT 3600000）；Kafka 重啟後 SSE 正常。
 - **尚未在叢集上驗證**（task 7–8）：Strimzi / CNPG 實際 reconcile、VAP 對 scale subresource 的攔截、NetworkPolicy 的實際效果。
+
+## 2026-10-01 17:00 — tasks 2–4 QA PASS；implement task 5（監控 manifests + 告警單元測試）
+- **QA**：
+  - task 2（`26fd092`）PASS：同意改用本機收到時間；Resilience 測試完整反向驗證 3/3 fail。
+  - task 3（`2015e58`）PASS：反向驗證把 streams 改成 true 時 2 個測試失敗。
+  - task 4（`5e39b50`）PASS：QA 自己把 CNPG `instances` 改成 `instancez` 也被抓到；VAP 放在 platform 的決定正確；K1 結案。
+  - → 勾選 2、3、4。
+- **QA CONCERN-K2（既有問題，task 8 觀察）**：backend 在 Streams 還在 REBALANCING（啟動後約 12 秒內）時收到 SIGTERM，會在 3.2 秒後以 exit 137 結束，Hikari 未關閉；RUNNING 之後停止則是 143、1.1 秒。task 8 觀察 rolling / scale 時的 exit code，並查明 SIGKILL 的來源。
+- **QA CONCERN-K3（task 7/8 實測）**：`MaxRAMPercentage=75` 搭配 worker limit 640Mi（heap 約 480Mi）只剩約 160Mi 給 metaspace、執行緒與 RocksDB；api 560Mi 只剩約 140Mi，有 OOMKilled 風險。觀察 restarts、lastState.reason 與 `kubectl top`；必要時用 `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60` 或調高 limit。
+- **Task 5 — What changed**：
+  - `deploy/monitoring/cube-alerts.yaml`：PrometheusRule，**只有一份**，放在 `monitoring` namespace、以 `by (namespace)` 涵蓋兩個環境（放在 app base 會讓同一個告警觸發兩次）。三條規則：
+    - `PriceIngestStalled`：`kube_statefulset_created … unless (新鮮的 last_tick)`，指標變舊或消失都會觸發；
+    - `PricePushStalled`：只在擷取正常時觸發；
+    - `IngestDuplicated`。
+  - `deploy/monitoring/cube-alerts.test.yaml`：promtool 單元測試 5 組——全部新鮮→不告警；變舊→只觸發 Ingest；**series 消失**（8m 與 20m，後者已超過 Prometheus 的 5 分鐘 lookback）→觸發；推送凍結→只觸發 Push；兩個 ingest→Duplicated（另一環境不受影響）。
+  - `scripts/test-alert-rules.sh`（CI 也會用）：從 PrometheusRule 取出 `.spec` → `promtool check rules` + `promtool test rules`（prom/prometheus:v3.15.0）。
+  - app base `monitoring.yaml`：ServiceMonitor（backend api + worker，`/actuator/prometheus`）、PodMonitor（Kafka Exporter port `tcp-prometheus`，已對照 Strimzi 1.2.0 官方範例；CNPG port `metrics`）。
+  - `deploy/monitoring/dashboards/cube-overview.json` + kustomization（ConfigMap label `grafana_dashboard: "1"`）：15 個面板，`namespace` 多選變數。新鮮度、目前來源、擷取行程數用 stat 面板，依 namespace 重複並排；其餘時間序列依 namespace 分線。lag 只顯示 `tick-persister|candle-persister|alert-evaluator|currency-candles`（QA C4）。
+  - `validate-manifests.sh` 納入 `deploy/monitoring`。
+- **Verified**：
+  - `test-alert-rules.sh`：check 3 rules SUCCESS、test SUCCESS。
+  - **反向驗證**：把 `PriceIngestStalled` 改回 `time() - max(...) > 60` → `FAILED: PriceIngestStalled, time: 20m, exp [cube-dev] got []`（series 消失後永遠不觸發，正是 QA M2 的情況）；還原後 SUCCESS。
+  - `validate-manifests.sh` 48/48 Valid。
+  - 儀表板 JSON 可解析；在 Grafana 實際載入留到 task 9。

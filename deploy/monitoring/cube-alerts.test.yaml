@@ -1,0 +1,110 @@
+# promtool unit tests for cube-alerts.yaml (spec k8s-gitops-cicd, task 5; QA M2).
+# Times are relative: promtool starts the clock at 0, so "value = time in seconds" means fresh.
+rule_files:
+  - /work/cube-alerts.rules.yaml
+evaluation_interval: 15s
+tests:
+  # 1. Everything fresh -> no alert.
+  - interval: 15s
+    input_series:
+      - series: 'kube_statefulset_created{namespace="cube-prod", statefulset="backend-worker"}'
+        values: '1x80'
+      - series: 'kube_deployment_created{namespace="cube-prod", deployment="backend-api"}'
+        values: '1x80'
+      - series: 'cube_feed_last_tick_seconds{namespace="cube-prod", pod="backend-worker-0"}'
+        values: '0+15x80'
+      - series: 'cube_sse_last_push_seconds{namespace="cube-prod", pod="backend-api-a"}'
+        values: '0+15x80'
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-worker-0"}'
+        values: '1x80'
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-api-a"}'
+        values: '0x80'
+    alert_rule_test:
+      - {eval_time: 15m, alertname: PriceIngestStalled, exp_alerts: []}
+      - {eval_time: 15m, alertname: PricePushStalled, exp_alerts: []}
+      - {eval_time: 15m, alertname: IngestDuplicated, exp_alerts: []}
+
+  # 2. Ingest stops at 5 m, the series stays but goes stale -> PriceIngestStalled only.
+  - interval: 15s
+    input_series:
+      - series: 'kube_statefulset_created{namespace="cube-dev", statefulset="backend-worker"}'
+        values: '1x80'
+      - series: 'kube_deployment_created{namespace="cube-dev", deployment="backend-api"}'
+        values: '1x80'
+      - series: 'cube_feed_last_tick_seconds{namespace="cube-dev", pod="backend-worker-0"}'
+        values: '0+15x20 300x60'
+      - series: 'cube_sse_last_push_seconds{namespace="cube-dev", pod="backend-api-a"}'
+        values: '0+15x20 300x60'
+    alert_rule_test:
+      - {eval_time: 6m, alertname: PriceIngestStalled, exp_alerts: []}     # 60 s old: not yet
+      - eval_time: 8m
+        alertname: PriceIngestStalled
+        exp_alerts:
+          - exp_labels: {namespace: cube-dev, severity: critical}
+            exp_annotations:
+              summary: "cube-dev：超過 60 秒沒有擷取到新的成交價格"
+              description: "backend-worker 沒有從交易所收到並發布新的成交（指標變舊或不存在）。檢查 worker Pod、交易所連線與 Kafka。"
+      - {eval_time: 8m, alertname: PricePushStalled, exp_alerts: []}       # no duplicate alert
+
+  # 3. Worker scaled to 0 at 5 m: the series DISAPPEARS (QA M2) -> PriceIngestStalled still fires,
+  #    also long after Prometheus' 5 m lookback has forgotten the last sample.
+  - interval: 15s
+    input_series:
+      - series: 'kube_statefulset_created{namespace="cube-dev", statefulset="backend-worker"}'
+        values: '1x100'
+      - series: 'cube_feed_last_tick_seconds{namespace="cube-dev", pod="backend-worker-0"}'
+        values: '0+15x20 _x80'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: PriceIngestStalled
+        exp_alerts:
+          - exp_labels: {namespace: cube-dev, severity: critical}
+            exp_annotations:
+              summary: "cube-dev：超過 60 秒沒有擷取到新的成交價格"
+              description: "backend-worker 沒有從交易所收到並發布新的成交（指標變舊或不存在）。檢查 worker Pod、交易所連線與 Kafka。"
+      - eval_time: 20m
+        alertname: PriceIngestStalled
+        exp_alerts:
+          - exp_labels: {namespace: cube-dev, severity: critical}
+            exp_annotations:
+              summary: "cube-dev：超過 60 秒沒有擷取到新的成交價格"
+              description: "backend-worker 沒有從交易所收到並發布新的成交（指標變舊或不存在）。檢查 worker Pod、交易所連線與 Kafka。"
+
+  # 4. Ingest fine, SSE push loop frozen at 5 m (task 32) -> PricePushStalled only.
+  - interval: 15s
+    input_series:
+      - series: 'kube_statefulset_created{namespace="cube-prod", statefulset="backend-worker"}'
+        values: '1x80'
+      - series: 'kube_deployment_created{namespace="cube-prod", deployment="backend-api"}'
+        values: '1x80'
+      - series: 'cube_feed_last_tick_seconds{namespace="cube-prod", pod="backend-worker-0"}'
+        values: '0+15x80'
+      - series: 'cube_sse_last_push_seconds{namespace="cube-prod", pod="backend-api-a"}'
+        values: '0+15x20 300x60'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: PricePushStalled
+        exp_alerts:
+          - exp_labels: {namespace: cube-prod, severity: critical}
+            exp_annotations:
+              summary: "cube-prod：價格擷取正常，但 SSE 超過 60 秒沒有推送新價格"
+              description: "backend-api 的推送迴圈沒有取到新價格（前一份 spec task 32 的事故型態：畫面顯示即時、價格卻凍結）。只在擷取正常時觸發，不與 PriceIngestStalled 重複。"
+      - {eval_time: 8m, alertname: PriceIngestStalled, exp_alerts: []}
+
+  # 5. Two processes ingesting in one environment -> IngestDuplicated; the other env is fine.
+  - interval: 15s
+    input_series:
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-worker-0"}'
+        values: '1x10'
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-api-a"}'
+        values: '1x10'
+      - series: 'cube_feed_ingest_active{namespace="cube-dev", pod="backend-worker-0"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: IngestDuplicated
+        exp_alerts:
+          - exp_labels: {namespace: cube-prod, severity: critical}
+            exp_annotations:
+              summary: "cube-prod：有 2 個行程同時在擷取價格"
+              description: "交易所連線必須只有一個（需求 6）。檢查 backend-worker 是否被擴容，或 api 是否誤開 ingest。"

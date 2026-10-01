@@ -13,6 +13,7 @@ resources:
   - frontend.yaml
   - httproute.yaml
   - networkpolicy.yaml
+  - monitoring.yaml
 configMapGenerator:
   - name: backend-common
     envs: [backend-common.env]

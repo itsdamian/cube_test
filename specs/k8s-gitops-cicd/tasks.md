@@ -18,17 +18,17 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 ## Phase A — 應用程式的部署準備（本機，不需叢集）
 
 - [x] 1. **Kafka 升到 4.3.x，讓測試、compose、叢集版本一致**（plan R4；team lead 核准，附 QA C5 的條件）：`docker-compose.yml` 與 `IntegrationTest.KAFKA_IMAGE` 改為 `apache/kafka:4.3.x`，**不改應用程式碼** — done when: `./mvnw clean verify` 連續 3 次 `-Dsurefire.runOrder=random` 全部通過；compose 回歸冒煙（`docker compose up -d --build --wait` → SSE 有 price、1 分鐘後 `/api/candles?interval=1m` 有新 K 線、`/actuator/health/readiness` 為 UP）；`docs/testing.md`〈離線跑測試〉與 `docs/configuration.md` 中的 Kafka image 清單同步更新（前一份 spec 的 AC13 斷網測試會用到，QA C2）；如果有任何不相容，停下來回報 team lead，不修改應用程式碼
-- [ ] 2. **Prometheus 指標與 graceful shutdown**：加 `micrometer-registry-prometheus`、暴露 `prometheus` 端點、`server.shutdown=graceful`；新增 plan 定義的指標，語意如下：
+- [x] 2. **Prometheus 指標與 graceful shutdown**：加 `micrometer-registry-prometheus`、暴露 `prometheus` 端點、`server.shutdown=graceful`；新增 plan 定義的指標，語意如下：
   - `cube_feed_last_tick_seconds`、`cube_feed_active_source{source}`、`cube_feed_ingest_active`
   - `cube_sse_last_push_seconds`：與 client 數無關
   - `cube_sse_prices_pushed_total`、`cube_sse_connections`
 
   — done when: 單元測試（`SimpleMeterRegistry`）涵蓋每個指標，包括「0 個 SSE client 時 `cube_sse_last_push_seconds` 仍會前進」與「ingest 關閉時 `cube_feed_ingest_active`=0」；`./mvnw clean verify` 通過；compose 上 `curl /actuator/prometheus` 看得到全部指標，nginx（:3001）**不**對外提供 `/actuator`
-- [ ] 3. **api 角色（所有背景功能關閉）的設定驗證**：新增整合測試，用 api 的環境變數組合（ingest / streams / persist / alerts / FX refresh 全關）啟動 context — done when: context 能啟動、readiness 為 UP（沒有 kafkaStreams 也不報錯）、REST 與 SSE 可用、沒有建立任何交易所連線、`cube_feed_ingest_active` 不存在或為 0；`./mvnw clean verify` 通過
+- [x] 3. **api 角色（所有背景功能關閉）的設定驗證**：新增整合測試，用 api 的環境變數組合（ingest / streams / persist / alerts / FX refresh 全關）啟動 context — done when: context 能啟動、readiness 為 UP（沒有 kafkaStreams 也不報錯）、REST 與 SSE 可用、沒有建立任何交易所連線、`cube_feed_ingest_active` 不存在或為 0；`./mvnw clean verify` 通過
 
 ## Phase B — Manifests 與 CI 前置（離線驗證，不需叢集）
 
-- [ ] 4. **應用 manifests：Kustomize base + dev / prod overlays**（`deploy/apps/cube/`）：內容包括
+- [x] 4. **應用 manifests：Kustomize base + dev / prod overlays**（`deploy/apps/cube/`）：內容包括
   - backend-worker StatefulSet ×1（streams state PVC）、backend-api Deployment + HPA（dev 1–2、prod 2–4，scaleDown stabilization 120 秒）、frontend；
   - Services、HTTPRoute（`dev.cube.localhost`、`cube.localhost`）；
   - Strimzi `Kafka` + `KafkaNodePool`（KRaft 單節點、Kafka Exporter、**不啟用 Entity Operator**）、CNPG `Cluster`（PG 17，應用讀 `<cluster>-app` Secret）；
