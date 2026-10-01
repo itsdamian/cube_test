@@ -335,3 +335,10 @@
   - 原因：Spring Boot 3.5.16 是最新的 3.5.x，但它管理的 Tomcat 仍是 10.1.55。
   - 修正：pom 以 `<tomcat.version>10.1.60</tomcat.version>` 覆寫（Boot 官方支援的方式，附註解說明何時可移除）。本機 `clean verify` 169/0；打包後的 jar 中為 tomcat-embed-*-10.1.60。
   - 時間：backend 3 分 41 秒（比 plan 估的 5–9 分鐘快）、frontend 24 秒、manifests 33 秒、secrets 56 秒、images 1.5–5 分鐘，整體約 5.5 分鐘。
+- **Task 12 驗證完成**（`evidence/task12.txt` 有全部 PR / run 連結）：
+  - 修正後的完整 CI（PR #2，run 36892744494）：**全部成功**，5 分 37 秒。
+  - **deploy-only**（PR #3）：base 為 main 時跑了完整流程，這是**正確**的——相對 main 的差異包含整個功能分支。把 base 改為 `feat/k8s-gitops-cicd` 後關閉再重開（改 base 不會觸發 pull_request），run 36894346178：1 分 04 秒，backend / frontend / images **skipped**，`ci-ok` success。
+  - **反向驗證**（PR #4，弄壞的 PriceIngestStalled 規則）：`manifests` 失敗於 promtool「time: 20m … got []」，`ci-ok` failure。
+  - actionlint 在 CI 中通過。
+  - 三個測試 PR 都已關閉並刪除分支。
+- **待使用者**（清單第 4 項）：Actions workflow permissions 設為 Read、開啟 Allow auto-merge——已請 team lead 轉達。CI 不依賴這兩項，但 task 16 的 auto-merge 需要。
