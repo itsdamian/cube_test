@@ -1,0 +1,20 @@
+# The only object applied by hand (scripts/cluster-up.sh): Argo CD then manages everything in
+# deploy/argocd/apps (app of apps), including Argo CD itself, from the main branch.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/itsdamian/cube_test.git
+    targetRevision: main
+    path: deploy/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -36,7 +36,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - plan 列出的完整 NetworkPolicy 允許清單、ValidatingAdmissionPolicy + Binding（拒絕 worker >1，包含 `statefulsets/scale`）。
 
   — done when: `kubectl kustomize overlays/dev`、`overlays/prod` 都能 build；以 kubeconform（docker image 執行）`-strict` 驗證通過，含 Strimzi、CNPG、Gateway API、Prometheus Operator、VAP 的 CRD schema；兩個 overlay 的 diff 只有副本數、資源、網址、image、PVC 大小
-- [ ] 5. **監控 manifests 與告警單元測試**：
+- [x] 5. **監控 manifests 與告警單元測試**：
   - ServiceMonitor（api + worker）、Strimzi PodMonitor、CNPG metrics；
   - PrometheusRule：`PriceIngestStalled`、`PricePushStalled`、`IngestDuplicated`，使用 plan 的 `unless` 寫法；
   - `alerts.test.yaml`；

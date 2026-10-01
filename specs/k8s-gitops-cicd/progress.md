@@ -171,3 +171,30 @@
   - **反向驗證**：把 `PriceIngestStalled` 改回 `time() - max(...) > 60` → `FAILED: PriceIngestStalled, time: 20m, exp [cube-dev] got []`（series 消失後永遠不觸發，正是 QA M2 的情況）；還原後 SUCCESS。
   - `validate-manifests.sh` 48/48 Valid。
   - 儀表板 JSON 可解析；在 Grafana 實際載入留到 task 9。
+
+## 2026-10-01 18:10 — task 5 QA PASS；implement task 6（平台元件與叢集腳本）
+- **Task 5 QA PASS**（`51f4d2e`）：QA 另做兩個反向驗證（拿掉 PricePushStalled 的新鮮條件、IngestDuplicated 改成 >2）都 FAILED。→ 勾選。
+- **QA CONCERN-K4（task 6 處理）**：kube-prometheus-stack 預設只選帶 `release` label 的 rule / monitor，沒有 label 的會被**靜默忽略**。→ values 設 `{rule,serviceMonitor,podMonitor,probe,scrapeConfig}SelectorNilUsesHelmValues: false`；task 9 的完成條件加上「`/api/v1/rules` 有 3 條規則、`/api/v1/targets` 的 backend / kafka-exporter / cnpg 都 up」。
+- **What changed**：
+  - **單一來源**：`deploy/platform/components.tsv` 列出 Argo CD 部署的全部元件（名稱、namespace、sync wave、helm/git、來源、版本、values、選項）。
+    - `scripts/gen-argocd-apps.py`（只用 Python 標準庫，主機沒有 PyYAML）由它產生 `deploy/argocd/apps/*.yaml`（12 個 Application）；
+    - `cluster-up.sh --mode=direct` 直接讀它來安裝，兩種模式**不可能裝到不同版本或 values**；
+    - `validate-manifests.sh` 會跑 `--check`。
+  - **元件**：gateway-api CRD v1.6.2、Argo CD chart 10.9.5（v3.5.3，自我管理、`noprune,nofinalizer`）、Traefik 41.6.1、Sealed Secrets 2.20.0（repo 已搬到 `bitnami.github.io/sealed-secrets`）、Strimzi 1.2.0（傳統 Helm repo，不需 OCI）、CNPG 0.29.1（operator 1.30.1）、kube-prometheus-stack 91.8.2（operator v0.94.1，與驗證用的 CRD 一致）；platform-policies、platform-routes、monitoring、cube-dev、cube-prod（prod：`noselfheal`）。
+  - **values**（`deploy/platform/values/`）：
+    - Argo CD：非 HA、無 Dex / notifications、`server.insecure`、`timeout.reconciliation: 60s` **加上 `jitter: 0s`**（chart 預設 jitter 60 秒，實際間隔會到 120 秒）；
+    - Traefik：Gateway API provider、Gateway `cube`（listener `web` 開放所有 namespace）、LoadBalancer :80、關閉 Ingress / CRD provider、IngressClass、dashboard；
+    - kube-prometheus-stack：retention 3d + 5Gi PVC（task 21 要看 24 小時告警歷史）、K4 的 selector 設定、Grafana 從 `grafana-admin` Secret 取密碼、dashboard sidecar 搜尋所有 namespace、關閉 k3s 沒有獨立端點的 controller-manager / scheduler / proxy / etcd 抓取；
+    - 每個元件都有 resources。
+  - `deploy/argocd/root.yaml`（app of apps）、`deploy/platform/routes/`（argocd.localhost、grafana.localhost）、`deploy/k3d/cluster.yaml`（k3s v1.35.5 釘住、停用內建 Traefik、host :80 → LB）。
+  - **腳本**（以 macOS bash 3.2 撰寫）：
+    - `cluster-up.sh --mode=gitops|direct --prepull`：prepull 分開記錄下載時間；有備份就先還原 Sealed Secrets 私鑰；**安裝前**先建立 `grafana-admin` Secret（否則 Grafana 起不來、helm `--wait` 逾時）；gitops 模式等待所有 Application Synced/Healthy；
+    - `cluster-down.sh`；
+    - `seal-secret.sh`（加密 / `--backup-key` 備份到 repo 外）；
+    - `deploy/k3d/prepull-images.txt`（task 7 從實際叢集填入）。
+- **helm v4（team lead 提醒）**：6 個 chart 都以 helm v4.3.0 `helm template` 成功；只用 `--repo/--version/--namespace/--create-namespace/--values/--wait/--timeout` 等 v3、v4 共通旗標。v4 的實際安裝行為（例如預設使用 server-side apply）在 task 7 驗證。
+- **Verified**：
+  - `validate-manifests.sh` 63 個資源全部 Valid（含 12 個 Argo CD Application，使用 argo-cd v3.5.3 的 CRD schema）；
+  - **反向驗證**：只改 `components.tsv` 的 traefik 版本 → `deploy/argocd/apps is out of date: traefik.yaml`、exit 1；
+  - shellcheck 檢查 5 支腳本無警告；`bash -n`（3.2）通過；未知參數 exit 2。
+- **尚未驗證（task 7）**：k3d 設定、實際安裝、Gateway 路由、資源用量。

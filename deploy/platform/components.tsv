@@ -1,0 +1,21 @@
+# Single source of truth for everything Argo CD deploys (spec k8s-gitops-cicd, task 6).
+#   scripts/gen-argocd-apps.py  -> deploy/argocd/apps/*.yaml (Argo CD Applications; CI checks they are up to date)
+#   scripts/cluster-up.sh       -> --mode=direct installs exactly these versions/values with helm / kubectl
+# Columns (tab separated):
+#   name  namespace  wave  type  source  ref  path_or_chart  values  options
+#   type helm: source = chart repo URL, ref = chart version, path_or_chart = chart name, values = file in deploy/platform/values
+#   type git : source = git repo URL (or "self" = this repo), ref = tag/branch, path_or_chart = directory
+#   options: comma list - ssa (server-side apply), noprune, noselfheal, manual,
+#            nofinalizer (deleting the Application must not delete what it runs - Argo CD itself)
+gateway-api-crds	-	-30	git	https://github.com/kubernetes-sigs/gateway-api.git	v1.6.2	config/crd/standard	-	ssa,noprune
+argocd	argocd	-20	helm	https://argoproj.github.io/argo-helm	10.9.5	argo-cd	argocd.yaml	noprune,nofinalizer
+traefik	traefik	-20	helm	https://traefik.github.io/charts	41.6.1	traefik	traefik.yaml	-
+sealed-secrets	sealed-secrets	-20	helm	https://bitnami.github.io/sealed-secrets	2.20.0	sealed-secrets	sealed-secrets.yaml	-
+strimzi	strimzi	-20	helm	https://strimzi.io/charts/	1.2.0	strimzi-kafka-operator	strimzi.yaml	ssa
+cnpg	cnpg-system	-20	helm	https://cloudnative-pg.github.io/charts	0.29.1	cloudnative-pg	cnpg.yaml	ssa
+kube-prometheus-stack	monitoring	-20	helm	https://prometheus-community.github.io/helm-charts	91.8.2	kube-prometheus-stack	kube-prometheus-stack.yaml	ssa
+platform-policies	-	-10	git	self	main	deploy/platform/policies	-	-
+platform-routes	-	-10	git	self	main	deploy/platform/routes	-	-
+monitoring	monitoring	-10	git	self	main	deploy/monitoring	-	-
+cube-dev	cube-dev	0	git	self	main	deploy/apps/cube/overlays/dev	-	-
+cube-prod	cube-prod	0	git	self	main	deploy/apps/cube/overlays/prod	-	noselfheal

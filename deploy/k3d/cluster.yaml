@@ -1,0 +1,23 @@
+# Local cluster: one k3s server node in Docker (plan: k3d).
+#   scripts/cluster-up.sh creates it; scripts/cluster-down.sh deletes it (including all data).
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: cube
+servers: 1
+agents: 0
+image: rancher/k3s:v1.35.5-k3s1    # pinned; kubeconform validates against 1.35 (scripts/validate-manifests.sh)
+ports:
+  # Browser -> host :80 -> k3d load balancer -> Traefik (Gateway API).
+  - port: 80:80
+    nodeFilters: [loadbalancer]
+options:
+  k3s:
+    extraArgs:
+      # Our own version-pinned Traefik is installed instead (deploy/platform/components.tsv),
+      # so the setup does not depend on k3s' bundled one and works on any cluster.
+      - arg: --disable=traefik
+        nodeFilters: ["server:*"]
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
