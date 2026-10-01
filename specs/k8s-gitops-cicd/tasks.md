@@ -67,6 +67,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - **M5**：套用 NetworkPolicy 後 Kafka / Cluster CR 仍然 Ready；dev→prod 的 Kafka 9092 與 PG 5432 逾時，同環境連線成功。
   - **需求 8**：rolling update api 時，瀏覽器的 SSE 自動重連，頁面不會停在「已斷線」
 - [ ] 9. **監控實際運作**：🤝 暫停 dev auto-sync 前先通知 QA — done when:
+  - **QA K4**：Prometheus `/api/v1/rules` 有 3 條 cube 規則，`/api/v1/targets` 中 backend、kafka-exporter、cnpg 都是 up。
   - Grafana「cube 概覽」可以並排顯示 dev / prod 的 JVM、HTTP、固定 group 的 Kafka lag、價格推送速率、SSE 連線數（截圖）。
   - **AC12**：dev worker scale 到 0（series 消失的情況）後約 2 分鐘內 `PriceIngestStalled` firing，恢復後 resolved。
   - 沒有開任何頁面時，dev 與 prod 都不會出現 `PricePushStalled`，觀察至少 10 分鐘；task 21 再檢查 24 小時（含冷清時段）的告警歷史（QA C4）

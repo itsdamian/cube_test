@@ -44,6 +44,10 @@ spec:
             description: "backend-api 的推送迴圈沒有取到新價格（前一份 spec task 32 的事故型態：畫面顯示即時、價格卻凍結）。只在擷取正常時觸發，不與 PriceIngestStalled 重複。"
         - alert: IngestDuplicated
           expr: count by (namespace) (cube_feed_ingest_active == 1) > 1
+          # A worker restart briefly shows the old and the new pod's series together (the old
+          # one only goes stale at the next scrape) - task 9 saw a 15 s false alarm with for: 0m.
+          # A real second ingest does not go away by itself.
+          for: 1m
           labels:
             severity: critical
           annotations:

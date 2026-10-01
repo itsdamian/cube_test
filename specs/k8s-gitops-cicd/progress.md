@@ -260,3 +260,17 @@
   - 工作中的工具教訓：macOS 沒有 `timeout`；zsh 不會對未加引號的變數斷詞。
 - **Verified**：`./mvnw clean verify` 168 tests 0 failures；`validate-manifests.sh` 63/63。
 - **狀態**：prod HPA 2–4、兩個 worker 都是 1、沒有殘留的除錯 Pod。
+
+## 2026-10-01 20:20 — Stage: implement task 9（監控實際運作）
+- **證據**：`evidence/task9.txt`、`evidence/task9-grafana.png`。
+- **K4 ✅**：Prometheus `/api/v1/rules` 載入 3 條 cube 規則（health ok）；`/api/v1/targets` 的 cube-* 全部 up（dev backend 2、prod backend 3、kafka-exporter 1+1、postgres 1+1），叢集中沒有任何 down 的 target。kube-prometheus-stack 的 selector 設定確實讓沒有 `release` label 的物件被選到。
+- **儀表板 ✅**：Grafana 經由 sidecar 載入「cube 概覽」（15 個面板、`datasource` / `namespace` 變數）。用儀表板中的 PromQL 逐一查詢：11/12 個面板兩個環境都有資料。「HTTP 平均延遲」沒有流量時為 NaN（0/0），task 10 壓測時會有值。截圖（以 API 登入取得 session cookie 後用 headless Chrome 拍攝）顯示新鮮度 / 來源 / 擷取行程數依環境並排，流量、SSE、lag 依 namespace 分線；lag 只顯示固定 group。
+- **AC12 ✅**：12:13:17 把 dev worker scale 到 0（series 消失的情況）→ 12:14:15（+58 s）`PriceIngestStalled{namespace=cube-dev}` pending → 12:15:27（+130 s）**firing**。Alertmanager 收到並顯示中文摘要；`PricePushStalled` 沒有觸發；prod 不受影響。12:15:38 恢復 worker → 12:16:30 resolved，dev SSE 正常。
+- **沒人開頁面時不誤報 ✅**：過去約一小時，大部分時間 SSE 連線數為 0，`PricePushStalled` 從未出現（ALERTS 歷史）。24 小時的告警歷史在 task 21 再檢查（QA C4）。
+- **規則修正（發現誤報）**：ALERTS 歷史顯示 `IngestDuplicated` 曾在 prod firing 15 秒（11:55:51–11:56:06），時間點是 task 8 部署新 image 時 worker 滾動更新。StatefulSet 保證沒有兩份 ingest 同時執行，這是**誤報**：新舊 Pod 的 series（不同 instance）同時存在，直到舊的被寫入 staleness marker，而規則是 `for: 0m`。
+  - 改為 `for: 1m`，因為真正的重複 ingest 不會自己消失。
+  - 新增 promtool 案例 6：新舊 series 重疊 30 秒（舊的以 `stale` 結束）→ 不告警；案例 5 改為 30 秒時 pending、2 分鐘時 firing。
+  - 反向驗證：改回 `for: 0m` 時案例 5（30 秒）與案例 6（2 分鐘）FAILED；還原後 SUCCESS。
+  - 已套用到叢集，Prometheus 中 3 條規則的 `for` 都是 60 秒。
+  - 另外兩次 `PriceIngestStalled` pending（11:37–11:38）是第一次部署時 worker 因 Flyway 而反覆重啟，屬於正確行為（未達 firing）。
+- 工具教訓：`{ …; T0=…; } | tee` 會在子 shell 中執行，變數取不到。

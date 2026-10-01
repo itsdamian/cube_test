@@ -95,16 +95,29 @@ tests:
   - interval: 15s
     input_series:
       - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-worker-0"}'
-        values: '1x10'
+        values: '1x20'
       - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-api-a"}'
-        values: '1x10'
+        values: '1x20'
       - series: 'cube_feed_ingest_active{namespace="cube-dev", pod="backend-worker-0"}'
-        values: '1x10'
+        values: '1x20'
     alert_rule_test:
-      - eval_time: 1m
+      - {eval_time: 30s, alertname: IngestDuplicated, exp_alerts: []}   # pending, not yet 1 m
+      - eval_time: 2m
         alertname: IngestDuplicated
         exp_alerts:
           - exp_labels: {namespace: cube-prod, severity: critical}
             exp_annotations:
               summary: "cube-prod：有 2 個行程同時在擷取價格"
               description: "交易所連線必須只有一個（需求 6）。檢查 backend-worker 是否被擴容，或 api 是否誤開 ingest。"
+
+  # 6. Worker restart: old and new pod's series overlap for 30 s only (task 9) -> no alert.
+  #    "stale" = the staleness marker Prometheus writes when the old pod's target disappears.
+  - interval: 15s
+    input_series:
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-worker-0", instance="10.42.0.10:8080"}'
+        values: '1x9 stale'
+      - series: 'cube_feed_ingest_active{namespace="cube-prod", pod="backend-worker-0", instance="10.42.0.11:8080"}'
+        values: '_x7 1x22'
+    alert_rule_test:
+      - {eval_time: 2m, alertname: IngestDuplicated, exp_alerts: []}
+      - {eval_time: 7m, alertname: IngestDuplicated, exp_alerts: []}
