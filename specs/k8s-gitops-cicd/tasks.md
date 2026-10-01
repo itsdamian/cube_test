@@ -46,7 +46,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 - [x] 6. **平台元件與叢集腳本**（`deploy/k3d/cluster.yaml`、`deploy/bootstrap/`、`deploy/platform/`、`scripts/cluster-up.sh`、`cluster-down.sh`、`seal-secret.sh`）：
   - k3d 叢集設定（停用內建 Traefik、80 port 對到 LB）；
   - 各元件的 Application + values：Argo CD（非 HA、無 Dex / notifications、reconciliation 60s）、Traefik + Gateway、Sealed Secrets、Strimzi、CNPG、kube-prometheus-stack（retention 3 天）；
-  - `cluster-up.sh --prepull`，下載時間與建置時間分開記錄；有備份就先還原 Sealed Secrets 私鑰；
+  - `cluster-up.sh`（計時包含下載；原本的 `--prepull` 在 task 7 因 Docker Desktop 的 containerd image store 無法匯入多平台 image 而移除）；有備份就先還原 Sealed Secrets 私鑰；
   - 所有 chart 版本以 `targetRevision` 釘住。
 
   — done when: 每個 values 檔都能 `helm template`（docker 執行）成功；`shellcheck` 檢查兩支腳本無錯誤；`cluster.yaml` 能通過 `k3d` schema 驗證（task 7 實際建立）
@@ -55,8 +55,8 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
 > 開始 task 7 前：👤 Docker 記憶體 16 GB（清單 2）、工具安裝（清單 3）；工程師停掉 `currency` compose stack（`docker compose -p currency down`），🤝 QA 停掉 `currency-qa`。
 
-- [ ] 7. **建立叢集與平台元件**：🤝（`cluster-down` 會摧毀共用叢集）先以腳本直接安裝（Argo CD 先裝好，但此階段還不指向 GitHub）— done when:
-  - `cluster-down` → `cluster-up` 從零重建成功，記錄下載時間與建置時間；
+- [x] 7. **建立叢集與平台元件**：🤝（`cluster-down` 會摧毀共用叢集）先以腳本直接安裝（Argo CD 先裝好，但此階段還不指向 GitHub）— done when:
+  - `cluster-down` → `cluster-up` 從零重建成功，記錄總時間（包含下載）；
   - 所有平台 Pod Ready；`argocd.localhost`、`grafana.localhost` 可以從瀏覽器開啟；`kubectl top nodes` 可用（metrics-server）；
   - 記錄 `docker stats` 與 `kubectl top pods -A`，和 plan 的資源表對照（偏差超過 30% 要回報）
 - [ ] 8. **部署 dev / prod 兩套應用**：🤝（刪 Pod、擴容、rolling update 前通知 QA）本機 build image → `k3d image import`，用暫時的 image override 套用兩個 overlay（不 commit 本機 tag）— done when:
@@ -90,7 +90,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 - [ ] 13. **Branch protection 與 AC5 的「無法合併」部分**：👤 清單 5（main ruleset：必要 PR + `ci-ok`、禁止 force push）— done when: 故意讓一個後端測試失敗的 draft 測試 PR → `ci-ok` 紅燈、合併按鈕不可用（截圖）；驗證後關閉 PR 並刪除分支。Claude 的分析部分在 task 19 補上
 - [ ] 14. **main 推送 image 到 GHCR**：👤 使用者合併 Phase A–D 目前為止的 PR 到 main（PR 說明要寫清楚：此時 main 已包含 `deploy/`，但 root Application 尚未指向 main，所以叢集不會有任何變化，QA C3）；👤 清單 7（GHCR package 設為 Public）— done when: main 上的 CI 推出 `ghcr.io/itsdamian/cube-backend:sha-<7>` 與 `cube-frontend:sha-<7>`，manifest list 包含 amd64 與 arm64；匿名 `docker pull` 成功；Trivy 報告出現在 Security 分頁
 - [ ] 15. **切換為 GitOps**：root Application 指向 `main`（dev / prod overlay 改用 GHCR 的 `sha-*`）；🤝 由 QA 獨立執行一次 AC1 — done when:
-  - **AC1**：`cluster-down` → `cluster-up --prepull` 從零建置 30 分鐘內完成（下載時間另外記錄），Argo CD 顯示所有 Application Synced / Healthy；**QA 獨立重建一次**。
+  - **AC1**：`cluster-down` → `cluster-up` 從零建置 30 分鐘內完成（計時包含下載，比 AC 更嚴格），Argo CD 顯示所有 Application Synced / Healthy；**QA 獨立重建一次**。
   - **AC10**：`kubectl scale deploy/frontend -n cube-dev --replicas=3` 被 Argo CD 改回；prod 的同樣操作只顯示 OutOfSync（selfHeal 關閉）
 - [ ] 16. **dev 自動部署（`deploy-dev.yml`）**：🏁 👤 使用者先把 `deploy-dev.yml` 合併到 main；👤 清單 6（建立 GitHub App `cube-deployer` 與 secrets）；🤝（會改變 dev 的版本）— done when（證據必須由 **main 上的 workflow 版本**觸發後取得）:
   - **AC7**：合併一個小改動到 main 後 15 分鐘內，dev 的 Pod image tag = 該 merge commit 的 `sha-<7>`，prod 不變（記錄完整時間軸）；

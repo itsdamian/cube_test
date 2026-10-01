@@ -5,6 +5,10 @@ apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: cube-db
+  annotations:
+    # Argo CD syncs this wave first and waits until it is Healthy before deploying the backend
+    # (wave 0); otherwise the backend starts before Kafka / PostgreSQL and crash-loops (task 8).
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: 1
   # Same major/minor as the tests (postgres:17.11); an immutable, dated tag.

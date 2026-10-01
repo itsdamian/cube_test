@@ -12,6 +12,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -52,6 +54,12 @@ import java.util.concurrent.atomic.AtomicReference;
  *       itself freezes (the task 32 incident), never just because nobody has the page open.
  *       {@code cube_sse_prices_pushed_total} counts price events actually written to browsers,
  *       {@code cube_sse_connections} the open streams.</li>
+ *   <li><b>Shutdown closes the streams first</b> (spec k8s-gitops-cicd, requirement 8): Spring
+ *       stops the Kafka listeners before the web server's graceful shutdown, which then waits up
+ *       to 30 s for in-flight requests - and an SSE stream never finishes by itself. Browsers on a
+ *       stopping pod would sit on a silent connection for ~30 s (measured in a rolling update) and
+ *       show "資料延遲". Completing every stream on {@link ContextClosedEvent} - published before
+ *       anything is stopped - makes them reconnect to another pod right away.</li>
  * </ul>
  */
 @Component
@@ -68,6 +76,7 @@ public class SseBroadcaster implements DisposableBean {
     private final Clock clock;
     private final Counter pricesPushed;
     private volatile Instant lastPushAt;
+    private volatile boolean closing;
     private final ScheduledExecutorService sender = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().name("sse-sender").daemon().factory());
 
@@ -108,6 +117,11 @@ public class SseBroadcaster implements DisposableBean {
 
     /** Package-private so tests can register emitters that fail in specific ways. */
     SseEmitter register(SseEmitter emitter) {
+        if (closing) {
+            // Arrived after shutdown began (before readiness turned off): send it elsewhere.
+            emitter.complete();
+            return emitter;
+        }
         emitter.onCompletion(() -> emitters.remove(emitter));
         emitter.onTimeout(() -> emitters.remove(emitter));
         emitter.onError(e -> emitters.remove(emitter));
@@ -187,6 +201,20 @@ public class SseBroadcaster implements DisposableBean {
                 emitter.completeWithError(e);
             } catch (RuntimeException alreadyGone) {
                 // the connection is already completed / its request no longer usable: nothing to close
+                log.debug("SSE emitter already closed: {}", alreadyGone.toString());
+            }
+        }
+    }
+
+    /** On shutdown, end every stream at once so browsers reconnect to a pod that stays up. */
+    @EventListener(ContextClosedEvent.class)
+    public void closeConnectionsOnShutdown() {
+        closing = true;
+        for (SseEmitter emitter : emitters) {
+            emitters.remove(emitter);
+            try {
+                emitter.complete();
+            } catch (RuntimeException alreadyGone) {
                 log.debug("SSE emitter already closed: {}", alreadyGone.toString());
             }
         }

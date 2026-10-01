@@ -1,0 +1,125 @@
+# task 8 evidence (raw command output, cluster cube, local images local-e23c19d / local-ssefix1)
+=== AC3 2026-10-01T11:42:01Z
+BEFORE cube-prod: currencies=6 alerts=1 ticks=717 candles=5 max_tick=2026-10-01 11:42:01.867263+00
+BEFORE cube-dev: currencies=6 alerts=0 ticks=723 candles=5 max_tick=2026-10-01 11:42:01.867263+00
+pod "cube-kafka-dual-role-0" deleted from cube-prod namespace
+pod "cube-db-1" deleted from cube-prod namespace
+pod "cube-kafka-dual-role-0" deleted from cube-dev namespace
+pod "cube-db-1" deleted from cube-dev namespace
+pods Ready again at 2026-10-01T11:45:37Z
+AFTER cube-prod: currencies=6 alerts=1 ticks=1454 candles=10 max_tick=2026-10-01 11:45:37.674632+00 currency_codes=
+AFTER cube-dev: currencies=6 alerts=0 ticks=1460 candles=10 max_tick=2026-10-01 11:45:37.674632+00 currency_codes=
+cube-dev    kafka.kafka.strimzi.io/cube-kafka   True         4.3.1   4.3-IV0
+cube-prod   kafka.kafka.strimzi.io/cube-kafka   True         4.3.1   4.3-IV0
+cube-dev    cluster.postgresql.cnpg.io/cube-db   8m49s   1     1     Cluster in healthy state   cube-db-1
+cube-prod   cluster.postgresql.cnpg.io/cube-db   8m49s   1     1     Cluster in healthy state   cube-db-1
+cube-prod codes=EUR,GBP,JPY,KRW,TWD,USD ticks_before_1142=717 min_tick=2026-10-01 11:37:45.113679+00
+cube-dev codes=CHF,EUR,GBP,JPY,TWD,USD ticks_before_1142=723 min_tick=2026-10-01 11:37:42.487171+00
+dev.cube.localhost sse prices in 5s after restart: 14
+cube.localhost sse prices in 5s after restart: 16
+
+=== AC4 2026-10-01T11:46:12Z
+horizontalpodautoscaler.autoscaling/backend-api patched
+backend-api-56dbf4dd87-b74ln 1/1 Running
+backend-api-56dbf4dd87-pdw7c 1/1 Running
+backend-api-56dbf4dd87-vqv89 1/1 Running
+backend-worker-0 1/1 Running
+backend-api-56dbf4dd87-b74ln: 
+backend-api-56dbf4dd87-pdw7c: 
+backend-api-56dbf4dd87-vqv89: 
+backend-worker-0: 
+backend-api-56dbf4dd87-b74ln: cube_feed_ingest_active 0.0 http_server_requests_seconds_count{error="IOException",exception="IOException",method="GET",outcome="SUCCESS",status="200",uri="/api/stream"}  …(truncated: full Prometheus scrape output; the cube_* lines are summarised in the AC4 line below)
+backend-api-56dbf4dd87-pdw7c: cube_feed_ingest_active 0.0 http_server_requests_seconds_count{error="IOException",exception="IOException",method="GET",outcome="SUCCESS",status="200",uri="/api/stream"}  …(truncated: full Prometheus scrape output; the cube_* lines are summarised in the AC4 line below)
+backend-api-56dbf4dd87-vqv89: cube_feed_ingest_active 0.0 http_server_requests_seconds_count{error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/health/**"} 6 http …(truncated: full Prometheus scrape output; the cube_* lines are summarised in the AC4 line below)
+backend-worker-0: cube_feed_active_source{source="coinbase"} 1.0 cube_feed_active_source{source="kraken"} 0.0 cube_feed_ingest_active 1.0 http_client_requests_seconds_count{client_name="open.er-api.co …(truncated: full Prometheus scrape output; the cube_* lines are summarised in the AC4 line below)
+AC4 ingest_active: 3 api pods = 0.0, backend-worker-0 = 1.0 (coinbase active); producer send errors earlier (84) date from the AC3 Kafka pod restart, current error rate 0
+window start 2026-10-01T11:46:52Z
+window end 2026-10-01T11:47:52Z
+AC4 window 2026-10-01T11:48:07Z .. 2026-10-01T11:49:08Z (backend-api replicas=3), partition 0 offsets 2000..2196
+records=196 distinct_eventId=196 sources:  196 "source":"coinbase" 
+{"eventId":"4f828cd6-e3a1-3a0a-9f5f-7e0251ced644","pair":"BTC-USD","price":84019,"source":"coinbase","eventTime":"2026-10-01T11:48:09.101757Z","receivedAt":"2026-10-01T11:48:09.174001Z"}
+{"eventId":"46829f34-aef7-39ef-9806-1dbed93169d5","pair":"BTC-USD","price":84018.99,"source":"coinbase","eventTim
+backend-api-56dbf4dd87-b74ln websocket/feed log lines: 56
+backend-api-56dbf4dd87-pdw7c websocket/feed log lines: 38
+backend-api-56dbf4dd87-vqv89 websocket/feed log lines: 16
+worker websocket/feed log lines: 146
+horizontalpodautoscaler.autoscaling/backend-api patched
+HPA restored: 2-4
+backend-api-56dbf4dd87-b74ln WebSocketPriceFeedClient/FeedManager log lines: 0
+backend-api-56dbf4dd87-pdw7c WebSocketPriceFeedClient/FeedManager log lines: 0
+backend-worker-0 WebSocketPriceFeedClient/FeedManager log lines: 5
+
+=== M1 VAP 2026-10-01T11:49:38Z
+$ kubectl scale sts/backend-worker -n cube-prod --replicas=2
+The statefulsets "backend-worker" is invalid: : ValidatingAdmissionPolicy 'cube-single-ingest-worker' with binding 'cube-single-ingest-worker' denied request: backend-worker runs the exchange connections and must have at most 1 replica (spec k8s-gitops-cicd, requirement 6)
+exit=1
+$ kubectl patch sts backend-worker -n cube-dev -p {"spec":{"replicas":3}}
+The statefulsets "backend-worker" is invalid: : ValidatingAdmissionPolicy 'cube-single-ingest-worker' with binding 'cube-single-ingest-worker' denied request: backend-worker runs the exchange connections and must have at most 1 replica (spec k8s-gitops-cicd, requirement 6)
+exit=1
+replicas now: prod=1 dev=1
+$ kubectl scale sts/backend-worker -n cube-prod --replicas=1 (allowed, no-op)
+statefulset.apps/backend-worker scaled
+
+=== M5 NetworkPolicy 2026-10-01T11:49:50Z (temporary pod np-check in cube-dev)
+cube-kafka-kafka-bootstrap.cube-prod.svc:9092 -> OPEN (0 s)
+cube-db-rw.cube-prod.svc:5432 -> BLOCKED (1 s)
+cube-kafka-kafka-bootstrap.cube-dev.svc:9092 -> OPEN (0 s)
+cube-db-rw.cube-dev.svc:5432 -> OPEN (0 s)
+pod "np-check" deleted from cube-dev namespace
+Kafka/Cluster CRs: cube-dev/kafka.kafka.strimzi.io/cube-kafka=True cube-prod/kafka.kafka.strimzi.io/cube-kafka=True cube-dev/cluster.postgresql.cnpg.io/cube-db=13m cube-prod/cluster.postgresql.cnpg.io/cube-db=13m 
+
+=== M5 rerun after networkPolicyPeers fix 2026-10-01T11:50:51Z
+cube-kafka-kafka-bootstrap.cube-prod.svc:9092 -> BLOCKED (1 s)
+cube-db-rw.cube-prod.svc:5432 -> BLOCKED (1 s)
+cube-kafka-kafka-bootstrap.cube-dev.svc:9092 -> OPEN (0 s)
+cube-db-rw.cube-dev.svc:5432 -> OPEN (0 s)
+debug pods left: 0
+CRs: cube-dev=True cube-prod=True  cube-dev=Cluster in healthy state cube-prod=Cluster in healthy state 
+dev.cube.localhost sse 5s: 9
+cube.localhost sse 5s: 7
+
+=== K3 memory 2026-10-01T12:03:31Z
+backend-api-586b56f9c-fq6dr                  14m   336Mi   
+backend-api-586b56f9c-nwdgd                  21m   321Mi   
+backend-api-5996fd9f8f-8sn4c                10m    315Mi   
+backend-worker-0                             24m   387Mi   
+backend-worker-0                            103m   327Mi   
+cube-db-1                                    10m   118Mi   
+cube-db-1                                   12m    97Mi    
+cube-kafka-dual-role-0                       37m   796Mi   
+cube-kafka-dual-role-0                      24m    884Mi   
+cube-kafka-kafka-exporter-64756497f4-nlsz8   3m    11Mi    
+cube-kafka-kafka-exporter-67f6778bc-wjvgl   1m     10Mi    
+frontend-5859c56df-45lpm                    1m     11Mi    
+frontend-5859c56df-6t75j                     1m    8Mi     
+frontend-5859c56df-9hd65                     1m    8Mi     
+limits: worker dev 640Mi / prod 800Mi, api 560Mi, kafka dev 960Mi / prod 1280Mi, pg dev 320Mi / prod 400Mi
+OOMKilled ever (lastState): 0
+backend-api-5996fd9f8f-8sn4c restarts=0 last=
+backend-worker-0 restarts=0 last=
+cube-db-1 restarts=0 last=
+cube-kafka-dual-role-0 restarts=0 last=
+cube-kafka-kafka-exporter-67f6778bc-wjvgl restarts=0 last=
+frontend-5859c56df-45lpm restarts=0 last=
+backend-api-586b56f9c-fq6dr restarts=0 last=
+backend-api-586b56f9c-nwdgd restarts=0 last=
+backend-worker-0 restarts=0 last=
+cube-db-1 restarts=0 last=
+cube-kafka-dual-role-0 restarts=0 last=
+cube-kafka-kafka-exporter-64756497f4-nlsz8 restarts=0 last=
+frontend-5859c56df-6t75j restarts=0 last=
+frontend-5859c56df-9hd65 restarts=0 last=
+state check: hpa prod=2-4 workers=cube-dev:1 cube-prod:1  debug-pods=0
+
+=== Requirement 8 rolling update, BEFORE the SSE shutdown fix (11:51)
+186 price events in 150 s, reconnects 2, max gap 32 s
+
+=== Requirement 8 rolling update, AFTER the fix (local-ssefix1, 11:56)
+153 price events, reconnects 2, max gap 3 s
+terminated api containers (pod reason exitCode startedAt finishedAt):
+backend-api-6945c588f5-nhzf4 Error 143 2026-10-01T11:55:22Z 2026-10-01T11:56:07Z
+backend-api-6945c588f5-8v9tj Error 143 2026-10-01T11:55:28Z 2026-10-01T11:56:13Z
+
+=== K2 worker terminated during start-up (deleted 9 s after container start)
+backend-worker-0 Error 143 2026-10-01T11:55:24Z 2026-10-01T12:02:48Z
+backend-worker-0 Error 143 2026-10-01T12:02:50Z 2026-10-01T12:03:10Z

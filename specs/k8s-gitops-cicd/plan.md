@@ -320,7 +320,7 @@ host :80 ──► k3d LoadBalancer ──► Traefik (Gateway "cube", namespace
 
 | AC | 驗證 |
 |---|---|
-| 30 分鐘內建好、兩個 Application Synced/Healthy | `scripts/cluster-up.sh --prepull` 先下載所有 image 並記錄下載時間，再計時建置（QA C8）＋ `argocd app list`；**QA 獨立從零重建一次**（C6） |
+| 30 分鐘內建好、兩個 Application Synced/Healthy | `scripts/cluster-up.sh` 計時，**包含下載所有 image 的時間**（比 AC 的「不含下載」更嚴格；task 7 確認 `--prepull` 在 Docker Desktop 上不可行而移除，QA C8 / K6）＋ `argocd app list`；**QA 獨立從零重建一次**（C6） |
 | 兩個網址有即時價格、dev 新增幣別不影響 prod | 瀏覽器（headless Chrome 截圖）＋ `curl` 兩個網址的 `/api/currencies` 比對 |
 | 刪 Kafka / PG Pod 後資料仍在 | 記錄幣別、警示、`price_tick` 筆數 → `kubectl delete pod` → Ready 後再比對 |
 | api 擴到 3 副本不重複、只有一個 WebSocket | **解讀**：AC 的「backend 擴到 3 個副本」對應到可擴展的 `backend-api`；worker 依需求 6 固定 1，且有 ValidatingAdmissionPolicy 擋住擴容（另驗證 `kubectl scale sts/backend-worker --replicas=2` 被拒）。**量測重複要看 Kafka，不能看 DB**（QA M1：eventId 是決定性的、DB 用 `ON CONFLICT` 去重，重複寫入在 DB 看不出來）：擴到 3 副本（暫時把 HPA min 設 3）後，用 Strimzi image 內的 `kafka-console-consumer` 讀 `btc.price.ticks` 的一段固定時間窗，斷言 **record 數 == 不重複 eventId 數**，且 `source` 只有目前的 active 來源；DB 只用來佐證資料完整；`cube_feed_ingest_active` 只有 1 個 Pod 為 1；api Pod 的 log 無 WebSocket 連線 |
@@ -375,7 +375,7 @@ cube-qa 審查 DRAFT（2026-10-01，verdict：**CONCERN**，無 scope drift）�
 | C5 | 同意 Kafka 4.3，附條件 | random ×3、compose 回歸冒煙、不改應用程式碼，寫入 Testing Strategy |
 | C6 | 共用叢集協議、AC1 由 QA 獨立重建 | 寫入 R10 |
 | C7 | 授權邊界恰當；測試 PR 要防誤合併、控制成本 | 測試 PR 一律 draft + `test-only` label，驗證後關閉並刪分支，記錄 Console 用量 |
-| C8 | AC15 時間型判定、`workflow_run` 不執行 PR 程式碼、AC1 分開計下載時間、prod 刪除資源不會自動補回 | 全部寫入對應段落 |
+| C8 | AC15 時間型判定、`workflow_run` 不執行 PR 程式碼、AC1 分開計下載時間（task 7 改為計入下載的總時間，更嚴格）、prod 刪除資源不會自動補回 | 全部寫入對應段落 |
 
 ## Non-Goals Reaffirmed
 

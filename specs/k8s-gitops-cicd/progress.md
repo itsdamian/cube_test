@@ -232,3 +232,31 @@
   - kube-prometheus-stack 0.76（plan 1.15；其中 Grafana 0.48 vs 0.15，**超過 30%**）；
   - Argo CD 0.17（plan 0.6，尚無 Application）；Strimzi 0.18（0.35）；CNPG 0.03（0.1）；Sealed Secrets 0.02（0.03）；Traefik 0.02（0.1）。
   - 結論：總量符合；Grafana 的估算偏低，Argo CD 與 Prometheus 載入應用後會再增加，task 8 / 9 再量一次。
+
+## 2026-10-01 20:20 — task 7 QA PASS；implement task 8（部署 dev / prod 兩套應用）
+- **Task 7 QA PASS**（`e23c19d`）：QA 同意 gateway 的 -f / -k 做法、Grafana 加大記憶體、改用含下載的總時間。→ 勾選。
+  - **K5**：Grafana 已用到 limit 的 94%，調為 request 512Mi / limit 768Mi，已套用。
+  - **K6**：plan / tasks 中的 `--prepull` 字樣已改掉。
+- **部署方式**：本機建置 `ghcr.io/itsdamian/cube-{backend,frontend}:local-*`（單一平台，`k3d image import` 正常），渲染 overlay 後以 sed 暫時把 `unset` 換成本機 tag，再 `kubectl apply --server-side`，不 commit 本機 tag。
+- **原始證據**：`specs/k8s-gitops-cicd/evidence/task8.txt`（照 QA 要求：AC3 前後計數、AC4 時間窗與原始輸出、VAP 錯誤訊息、NP 四條連線、exit code）。
+- **結果**：
+  - **AC2 ✅**：兩個網址頁面 200；各 70 秒的 SSE 有 85 / 88 筆價格，最大間隔 2 秒（R12）；headless Chrome 截圖兩個環境都顯示即時價格。在 dev 新增 CHF 後，prod 的 `/api/currencies` 沒有 CHF；prod 新增 KRW 也不出現在 dev。
+  - **AC3 ✅**：刪除兩個環境的 Kafka 與 PostgreSQL Pod，Ready 後資料都在：幣別 6 / 6、警示 1 / 0；`event_time <= 刪除前最後一筆` 的 ticks 仍是 717 / 723；最早的一筆 tick 不變；K 線持續增加；SSE 恢復。
+  - **AC4 ✅**：prod HPA min 暫時改為 3（3 個 api 副本）。`btc.price.ticks` partition 0 的時間窗 11:48:07–11:49:08，offset 2000..2196 → **records 196 = distinct eventId 196**，source 全部是 coinbase。3 個 api Pod 的 `cube_feed_ingest_active` = 0，worker = 1；api Pod 的 log 中 `WebSocketPriceFeedClient` / `FeedManager` 0 行，worker 5 行。HPA 已還原為 2–4。
+  - **M1 ✅**：`kubectl scale sts/backend-worker --replicas=2`（scale subresource）與 `kubectl patch … replicas: 3` 都被 `ValidatingAdmissionPolicy 'cube-single-ingest-worker'` 拒絕，訊息完整記錄在證據檔；replicas 仍為 1；scale 到 1 允許。
+  - **M5 ✅（先發現漏洞再修正）**：
+    - 第一次測試時 **dev → prod 的 Kafka 9092 是 OPEN**。原因：Strimzi 為每個 listener 產生的 NetworkPolicy 在沒有 `networkPolicyPeers` 時 `from` 為空（允許所有來源），NetworkPolicy 是聯集，等於抵銷了我們的 default-deny。
+    - 修正：plain listener 加 `networkPolicyPeers: [{podSelector: {}}]`（只允許同 namespace）。
+    - 重測：dev → prod 9092 BLOCKED（1 秒）、dev → prod 5432 BLOCKED（1 秒）；dev → dev 9092 / 5432 OPEN。Kafka / Cluster CR 都是 Ready；暫時的 Pod 已刪除。
+  - **需求 8 ✅（先發現問題再修正）**：
+    - 第一次 `rollout restart deploy/backend-api` 時，會自動重連的 SSE 用戶端**最多 32 秒沒有價格**，前端 15 秒就會顯示「資料延遲」。
+    - 原因：Spring 先停 Kafka listener，web server 的 graceful shutdown 再等待進行中的請求最多 30 秒；SSE 不會自己結束，所以舊 Pod 上的連線開著卻沒有資料。
+    - 修正（部署所需的最小調整，業務邏輯不變）：`SseBroadcaster` 在 `ContextClosedEvent`（任何元件停止前發布）時結束所有串流，關閉期間才進來的新連線也立即結束，讓瀏覽器重連到其他 Pod。新增 `SseBroadcasterShutdownTest`（2 個測試）。
+    - 重測：120 秒內 153 筆、重連 2 次、**最大間隔 3 秒**。
+  - **K2 ✅（K8s 上不發生）**：api 滾動更新與 worker 刪除都是 **exit 143**。worker 在**啟動後 9 秒**（Streams 啟動中）刪除，也是 143，約 11 秒結束，沒有 137。推測 compose 的 137 來自 `docker stop` 預設 10 秒後送 SIGKILL；K8s 的 terminationGracePeriodSeconds 是 45 秒。
+  - **K3 ✅**：worker 327–387Mi（上限 640 / 800，51–60%）、api 約 320Mi（上限 560，57%）、PG 約 100Mi；沒有 OOMKilled，重啟次數為 0。**dev Kafka 796Mi，是上限 960Mi 的 83%** → base 調為 request 896Mi / limit 1152Mi（prod 的 overlay 維持 1280Mi），已套用並確認 Kafka Ready。
+- **其他修改**：
+  - Kafka / KafkaNodePool / CNPG Cluster 加上 `argocd.argoproj.io/sync-wave: "-1"`。第一次部署時 backend 比 PostgreSQL 早啟動，Flyway 連不上而 exit 1、重啟 3 次（不是 OOM）；GitOps 模式下 Argo CD 會先等它們 Healthy 再部署 backend（task 15 驗證）。
+  - 工作中的工具教訓：macOS 沒有 `timeout`；zsh 不會對未加引號的變數斷詞。
+- **Verified**：`./mvnw clean verify` 168 tests 0 failures；`validate-manifests.sh` 63/63。
+- **狀態**：prod HPA 2–4、兩個 worker 都是 1、沒有殘留的除錯 Pod。
