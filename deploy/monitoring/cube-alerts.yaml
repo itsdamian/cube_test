@@ -18,9 +18,7 @@ spec:
       rules:
         - alert: PriceIngestStalled
           expr: |
-            max by (namespace) (kube_statefulset_created{statefulset="backend-worker"})
-              unless on (namespace)
-            (time() - max by (namespace) (cube_feed_last_tick_seconds) <= 60)
+            time() - max by (namespace) (cube_feed_last_tick_seconds) > 60
           for: 1m
           labels:
             severity: critical
