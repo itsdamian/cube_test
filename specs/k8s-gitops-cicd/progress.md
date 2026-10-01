@@ -48,3 +48,23 @@
 - 依 team lead 要求，在正文就近附上兩個 2026-03 事件的出處（kubernetes.io 官方部落格、Trivy 官方 advisory）；並寫明「改用 Gateway API」與「action 釘 SHA」本身就成立，不依賴這兩個事件。
 - **GitHub push / PR 授權（使用者清單第 1 項）**：team lead 已轉給使用者本人，**等待回覆；在使用者明確同意前不 push、不開 PR**。
 - compose stack 的停止時間點寫進 tasks（`currency` 由工程師停、`currency-qa` 由 QA 停）。Docker 記憶體調到 16 GB 由 team lead 請使用者處理。
+
+## 2026-10-01 15:20 — Stage: tasks.md 草稿（交 QA 審查）
+- 21 個 task，分五個 Phase：
+  - A：應用程式準備，task 1–3，第一個就是 Kafka 4.3 升級；
+  - B：manifests 與離線驗證，4–6；
+  - C：本機叢集，7–11，使用 `k3d image import` 的本機 image，**不依賴 GitHub**，等待 push 授權期間仍能前進；
+  - D：GitHub / CI/CD / GitOps，12–19，🔒 需要 push 授權；
+  - E：文件與總驗收，20–21。
+- 每個 task 都標出需要的使用者步驟（👤）與 QA 協調（🤝）；compose stack 的停止時間點寫在 Phase C 開頭。
+- tasks.md 最後附 AC1–AC15 → task 對照表；每個 AC 都有離線 / 自動驗證與實測兩層。
+
+## 2026-10-01 15:40 — Stage: tasks.md 依 QA 意見修訂
+- QA 判定 CONCERN：AC 15/15 都有對應。2 項必修與 5 項建議**全部採納**：
+  - **M1**：`workflow_run`、`issue_comment` 類事件只執行 main 上的 workflow 檔。新增 🏁 標記；task 16 與 19 的前提加上「使用者先把該 workflow 合併到 main」，證據必須由 main 上的版本觸發；並註明 `ci.yml`、`claude-review.yml`、`release.yml` 不受此限制。
+  - **M2**：task 21 寫明 AC2–4、10、12、13 必須在 GitOps 叢集上重跑，對照表同步更新。
+  - **C1**：task 7、8、11、16、17 補上 🤝。
+  - **C2**：task 1 一併更新離線 image 清單（前一份 spec 的 AC13 斷網測試要用）。
+  - **C3**：task 14 的 PR 說明要寫清楚。
+  - **C4**：task 9 dev / prod 都要觀察，task 21 檢查 24 小時告警歷史。
+  - **C5**：記錄每個 Claude run 的耗時與回合數。
