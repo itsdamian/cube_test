@@ -281,3 +281,19 @@
   - 新增 `closingTheSpringContextEndsTheStreamsBeforeAnythingIsStopped`：在真正的 Spring context 中加入一個 SmartLifecycle（代替 Kafka listener），在它被 stop 時記錄串流是否已經結束。
   - 為什麼不只檢查「關閉後串流已結束」：`destroy()` 在 bean 銷毀時也會結束串流，那樣的測試同樣抓不到。
   - **反向驗證**：拿掉 `@EventListener` 時，這個測試在「stream ended before lifecycle stop」失敗；還原後 3/3 通過。
+
+## 2026-10-01 23:50 — task 9 QA PASS；implement task 10（HPA 壓測）
+- **Task 9 QA PASS**（`f375b36`）：`for: 1m` 的反向驗證（30 秒 / 2 分鐘 FAIL）已由 QA 確認；QA 也在旁邊唯讀觀察 AC12 的 pending → firing → resolved。→ 勾選。
+- **What changed**：`deploy/loadtest/`（k6 2.3.0 Job + script ConfigMap，`kubectl apply -k deploy/loadtest -n cube-prod`）。在叢集內執行，同 namespace 的 NetworkPolicy 允許它連 backend-api，使用者不需安裝任何工具。
+- **第一輪（30 VUs、不限速）**：
+  - k6 自己在 256Mi 被 **OOMKilled**（約 7,400 req/s，統計資料累積），所以沒有 summary，Job 顯示 Failed。
+  - API 本身沒有問題（Prometheus）：history 與 converted 各約 68 萬次請求，**全部 200**；平均約 3 ms、最大 0.34 s；Hikari pending 0；api Pod 沒有 OOMKilled，峰值 402Mi / 560Mi（72%），restarts 0。
+  - HPA：12:20:13 擴到 4（CPU 1066%）→ 12:25:25 縮回 2。
+- **修正 k6**：改用 `ramping-arrival-rate`（最高 1,000 it/s，約 2,000 req/s；依 QA 提醒，600 req/s 只會落在 70% 門檻附近）、`discardResponseBodies`、記憶體 256 / 512Mi、門檻 `http_req_failed<1%` 與 `p(95)<500ms`。
+- **第二輪 ✅（AC13）**：
+  - 15:44:21 CPU 231%，**擴到 4**（prod 的 max）；15:49:13 **縮回 2**（scaleDown 穩定窗 120 秒）；CPU 峰值 275%。
+  - k6 summary：346,104 個請求、**http_req_failed 0.00%**（6 個）、p95 1.75 ms、p99 4.35 ms、max 153 ms；兩個 threshold 都通過；Job succeeded。
+  - SSE 在擴縮期間：1,758 筆、重連 1 次、最大間隔 1 秒。
+  - 6 個失敗全部發生在 15:43:22（k6 Pod 的第一秒），錯誤是連 backend-api 被拒。同一時間 `kube_pod_status_ready` 顯示有 2 個 Ready 的 api Pod，所以不是沒有 endpoint。研判是 kube-router 晚約 1 秒才把剛建立的 Pod 的 IP 加入同 namespace 的 NetworkPolicy，期間以 REJECT 拒絕（表現為 connection refused）。app Pod 啟動後要好幾秒才連資料庫，不受影響；記錄在 docs（task 20）。
+- **證據**：`evidence/task10.txt`（兩輪的數據與 k6 summary 原文）。
+- 「HTTP 平均延遲」面板在有流量時有值（壓測期間約 0.8–3 ms），補足 task 9 中無流量時為 NaN 的部分。
