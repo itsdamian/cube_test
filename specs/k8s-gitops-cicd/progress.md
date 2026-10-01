@@ -92,3 +92,8 @@
   - compose 回歸（沿用舊 volume 升級）：Kafka 4.3.1 healthy、readiness UP（db / kafka / kafkaStreams）、SSE 5 秒內 11 筆 price、升級後產生新的 1m K 線、Kafka log 無 ERROR。`metadata.version` 停在 3.9-IV0，文件中的升級指令實測可以升到 4.3-IV0，之後 SSE 仍正常。
   - 全新 volume（臨時 project `currency-k43fresh`）：readiness UP、SSE 有 price、1m K 線產生、`metadata.version` 4.3-IV0；驗證後已 `down -v` 刪除。
   - `check_md_links.py` 通過。
+
+## 2026-10-01 15:05 — 移除尚未 push 的 commit 中的 Claude trailer（team lead 指示）
+- 範圍 `origin/main..HEAD`，用 `git commit-tree` 逐一重建，沒有動到工作樹或 index；QA 尚未 commit 的 `qa-review.md` 保持原樣。
+- 新舊對照：`8ce0331 → 9a75e3f`（spec + plan）、`b9bb7cc → c24168a`（tasks）、`feb0003 → 7a95750`（task 1）。本檔較早段落提到的舊 hash 請依此對照。
+- 驗證：每個 commit 的 tree 與原本相同、作者 / 日期保留（itsdamian）、`git log origin/main..HEAD --format=%B | grep -c Claude` = 0、message 結尾只有一個換行。
