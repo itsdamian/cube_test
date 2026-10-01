@@ -54,13 +54,15 @@ else
   echo "(no Sealed Secrets key backup at $SEALED_KEY_BACKUP - a new key will be generated; see docs/kubernetes.md)"
 fi
 
-# Grafana reads its admin password from this Secret (values: grafana.admin.existingSecret), so it
-# must exist before kube-prometheus-stack starts. Generated once per cluster until it comes from
-# a SealedSecret (task 11).
-kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-if ! kubectl get secret grafana-admin -n monitoring >/dev/null 2>&1; then
+# Grafana reads its admin password from the Secret "grafana-admin" (values: grafana.admin.
+# existingSecret). It comes from the SealedSecret in deploy/platform/secrets, which only this
+# cluster's key can decrypt. Without a key backup that cannot work, so a random password is
+# generated instead (re-seal and commit to make it permanent: docs/kubernetes.md).
+if [[ ! -f "$SEALED_KEY_BACKUP" ]]; then
+  kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
   kubectl create secret generic grafana-admin -n monitoring \
     --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -base64 18)"
+  echo "(Grafana admin password generated for this cluster only - the committed SealedSecret needs the backed-up key)"
 fi
 
 # --- install ---------------------------------------------------------------------------------

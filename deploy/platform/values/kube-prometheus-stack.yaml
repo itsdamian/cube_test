@@ -26,7 +26,7 @@ alertmanager:
       limits: {memory: 64Mi}
 grafana:
   admin:
-    existingSecret: grafana-admin  # created by cluster-up.sh; a SealedSecret from task 11 on
+    existingSecret: grafana-admin  # SealedSecret in deploy/platform/secrets (sync wave -18, before this chart)
     userKey: admin-user
     passwordKey: admin-password
   # Grafana 13 was OOMKilled at 256Mi while starting up (task 7) and idles at ~480Mi; queries and

@@ -71,7 +71,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - Grafana「cube 概覽」可以並排顯示 dev / prod 的 JVM、HTTP、固定 group 的 Kafka lag、價格推送速率、SSE 連線數（截圖）。
   - **AC12**：dev worker scale 到 0（series 消失的情況）後約 2 分鐘內 `PriceIngestStalled` firing，恢復後 resolved。
   - 沒有開任何頁面時，dev 與 prod 都不會出現 `PricePushStalled`，觀察至少 10 分鐘；task 21 再檢查 24 小時（含冷清時段）的告警歷史（QA C4）
-- [ ] 10. **HPA 壓測**（`deploy/loadtest/` k6 Job）：🤝 事先通知 QA — done when: **AC13**：`kubectl get hpa -w` 的紀錄顯示 api 在設定範圍內擴展，負載停止後於 stabilization 時間後縮回；過程中 SSE 頁面持續更新
+- [x] 10. **HPA 壓測**（`deploy/loadtest/` k6 Job）：🤝 事先通知 QA — done when: **AC13**：`kubectl get hpa -w` 的紀錄顯示 api 在設定範圍內擴展，負載停止後於 stabilization 時間後縮回；過程中 SSE 頁面持續更新
 - [ ] 11. **Sealed Secrets 與 Grafana admin 密碼**：🤝（重建叢集）`seal-secret.sh`；Grafana admin 改由 SealedSecret 提供；私鑰備份與還原流程 — done when:
   - repo 中只有密文；
   - 按備份流程 `cluster-down` → `cluster-up` 後，Grafana 用同一組密碼登入成功；

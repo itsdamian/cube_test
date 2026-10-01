@@ -22,6 +22,7 @@ CNPG_VERSION=1.30.1
 GATEWAY_API_VERSION=v1.6.2
 PROMETHEUS_OPERATOR_VERSION=v0.94.1
 ARGOCD_VERSION=v3.5.3                 # app version of the argo-cd chart in components.tsv
+SEALED_SECRETS_VERSION=v0.40.0        # app version of the sealed-secrets chart
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CACHE="$ROOT/.cache/manifest-schemas"
@@ -32,13 +33,14 @@ crd_sources=(
   "strimzi-$STRIMZI_VERSION.yaml|https://github.com/strimzi/strimzi-kafka-operator/releases/download/$STRIMZI_VERSION/strimzi-crds-$STRIMZI_VERSION.yaml"
   "cnpg-$CNPG_VERSION.yaml|https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v$CNPG_VERSION/cnpg-$CNPG_VERSION.yaml"
   "gateway-api-$GATEWAY_API_VERSION.yaml|https://github.com/kubernetes-sigs/gateway-api/releases/download/$GATEWAY_API_VERSION/standard-install.yaml"
+  "sealed-secrets-$SEALED_SECRETS_VERSION.yaml|https://raw.githubusercontent.com/bitnami/sealed-secrets/$SEALED_SECRETS_VERSION/helm/sealed-secrets/crds/bitnami.com_sealedsecrets.yaml"
   "argocd-application-$ARGOCD_VERSION.yaml|https://raw.githubusercontent.com/argoproj/argo-cd/$ARGOCD_VERSION/manifests/crds/application-crd.yaml"
   "prometheus-operator-$PROMETHEUS_OPERATOR_VERSION.yaml|https://github.com/prometheus-operator/prometheus-operator/releases/download/$PROMETHEUS_OPERATOR_VERSION/stripped-down-crds.yaml"
 )
 
 # --- 1. CRD -> JSON schema (cached per pinned version) -------------------------------------
 stamp="$CACHE/schemas/.versions"
-wanted="fullgroup $STRIMZI_VERSION $CNPG_VERSION $GATEWAY_API_VERSION $PROMETHEUS_OPERATOR_VERSION $ARGOCD_VERSION"
+wanted="fullgroup $STRIMZI_VERSION $CNPG_VERSION $GATEWAY_API_VERSION $PROMETHEUS_OPERATOR_VERSION $ARGOCD_VERSION $SEALED_SECRETS_VERSION"
 if [[ ! -f "$stamp" || "$(cat "$stamp")" != "$wanted" ]]; then
   rm -rf "${CACHE:?}/schemas" "${CACHE:?}/crds" && mkdir -p "$CACHE/schemas" "$CACHE/crds"
   for entry in "${crd_sources[@]}"; do
@@ -59,6 +61,7 @@ render deploy/apps/cube/overlays/prod > "$RENDERED/cube-prod.yaml"
 render deploy/platform/policies       > "$RENDERED/policies.yaml"
 render deploy/monitoring              > "$RENDERED/monitoring.yaml"
 render deploy/platform/routes         > "$RENDERED/routes.yaml"
+render deploy/platform/secrets        > "$RENDERED/secrets.yaml"
 for f in "$ROOT"/deploy/argocd/apps/*.yaml "$ROOT/deploy/argocd/root.yaml"; do echo '---'; cat "$f"; done > "$RENDERED/argocd-apps.yaml"
 # The Argo CD Applications must match deploy/platform/components.tsv (single source of truth).
 python3 "$ROOT/scripts/gen-argocd-apps.py" --check
@@ -69,4 +72,4 @@ docker run --rm -v "$CACHE/schemas:/schemas:ro" -v "$RENDERED:/rendered:ro" "$KU
   -kubernetes-version "$K8S_VERSION" \
   -schema-location default \
   -schema-location '/schemas/{{.ResourceKind}}-{{.Group}}-{{.ResourceAPIVersion}}.json' \
-  /rendered/cube-dev.yaml /rendered/cube-prod.yaml /rendered/policies.yaml /rendered/monitoring.yaml /rendered/routes.yaml /rendered/argocd-apps.yaml
+  /rendered/cube-dev.yaml /rendered/cube-prod.yaml /rendered/policies.yaml /rendered/monitoring.yaml /rendered/routes.yaml /rendered/secrets.yaml /rendered/argocd-apps.yaml

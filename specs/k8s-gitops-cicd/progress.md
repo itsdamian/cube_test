@@ -297,3 +297,22 @@
   - 6 個失敗全部發生在 15:43:22（k6 Pod 的第一秒），錯誤是連 backend-api 被拒。同一時間 `kube_pod_status_ready` 顯示有 2 個 Ready 的 api Pod，所以不是沒有 endpoint。研判是 kube-router 晚約 1 秒才把剛建立的 Pod 的 IP 加入同 namespace 的 NetworkPolicy，期間以 REJECT 拒絕（表現為 connection refused）。app Pod 啟動後要好幾秒才連資料庫，不受影響；記錄在 docs（task 20）。
 - **證據**：`evidence/task10.txt`（兩輪的數據與 k6 summary 原文）。
 - 「HTTP 平均延遲」面板在有流量時有值（壓測期間約 0.8–3 ms），補足 task 9 中無流量時為 NaN 的部分。
+
+## 2026-10-02 00:15 — task 10 QA PASS；implement task 11（Sealed Secrets 與 Grafana admin 密碼）
+- **Task 10 QA PASS**（`96b2e88`）：QA 獨立觀察擴縮時間一致；6 個失敗的解釋判定為「合理但未證實」，寫進 task 20 的文件；K3 結案。→ 勾選。
+- **What changed**：
+  - `deploy/platform/secrets/`：
+    - `grafana-admin.sealed.yaml`（以 `scripts/seal-secret.sh` 加密，repo 中只有密文）；
+    - `namespaces.yaml`：宣告 `monitoring`，並加上 `argocd.argoproj.io/sync-options: Prune=false`；
+    - kustomization。
+  - `components.tsv`：新增 `platform-secrets`（wave -18），kube-prometheus-stack 改為 wave -15（GitOps 下 Secret 會比 Grafana 先存在）；重新產生 13 個 Argo CD Application。
+  - `cluster-up.sh`：**只有在沒有私鑰備份時**才產生隨機的 Grafana 密碼。有備份時若仍建立，這個非 SealedSecret 管理的 Secret 會擋住 SealedSecret 建立同名的 Secret。
+  - kube-prometheus-stack values 的註解更新；`validate-manifests.sh` 加入 SealedSecret CRD（v0.40.0）並納入 `deploy/platform/secrets`。
+- **過程中發現**：第一次以備份重建時，套用 `platform-secrets` 失敗（`namespaces "monitoring" not found`）。namespace 原本是在 cluster-up 的備援步驟中建立，有備份時就被跳過了。GitOps 模式下也會遇到同樣問題（`platform-secrets` 沒有目標 namespace 可供 CreateNamespace）。→ 由 `namespaces.yaml` 宣告。task 15 會依 QA 要求確認 Argo CD 沒有 SharedResourceWarning。
+- **Verified**（`evidence/task11.txt`）：
+  - **換成 SealedSecret**：Secret 的 owner 是 `SealedSecret/grafana-admin`，解密結果等於加密前的值；正確密碼 200、錯誤密碼 401。sha256 前綴 `532b649398c5`，QA 獨立算出一致。
+  - **有備份重建**：日誌有 `restoring the Sealed Secrets key`、232 秒；Synced=True、sha256 前綴相同（QA 在新叢集上獨立驗證一致）；同一組密碼 200 / 401。
+  - **無備份重建**：產生新私鑰，cluster-up 產生隨機密碼；SealedSecret 為 `Synced=False: no key could decrypt secret`；Grafana 3/3 Running；repo 中加密的那組密碼 401，新產生的密碼 200。
+  - **最後以備份重建**（260 秒），並重新部署 dev / prod（local-ssefix1），SSE 正常。
+  - repo 中搜尋不到明文密碼（`git grep` 0 筆）。
+- **私鑰備份**：目前在工程師的 scratchpad（chmod 600，位於 repo 外，`git check-ignore` 也確認），不在使用者的家目錄。repo 中的 SealedSecret 只有這把私鑰能解開。正式備份是使用者清單第 9 項：請使用者在叢集執行中時跑 `scripts/seal-secret.sh --backup-key`（預設寫到 `~/cube-secrets/`），之後即可刪除 scratchpad 的副本。

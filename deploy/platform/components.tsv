@@ -13,7 +13,8 @@ traefik	traefik	-20	helm	https://traefik.github.io/charts	41.6.1	traefik	traefik
 sealed-secrets	sealed-secrets	-20	helm	https://bitnami.github.io/sealed-secrets	2.20.0	sealed-secrets	sealed-secrets.yaml	-
 strimzi	strimzi	-20	helm	https://strimzi.io/charts/	1.2.0	strimzi-kafka-operator	strimzi.yaml	ssa
 cnpg	cnpg-system	-20	helm	https://cloudnative-pg.github.io/charts	0.29.1	cloudnative-pg	cnpg.yaml	ssa
-kube-prometheus-stack	monitoring	-20	helm	https://prometheus-community.github.io/helm-charts	91.8.2	kube-prometheus-stack	kube-prometheus-stack.yaml	ssa
+kube-prometheus-stack	monitoring	-15	helm	https://prometheus-community.github.io/helm-charts	91.8.2	kube-prometheus-stack	kube-prometheus-stack.yaml	ssa
+platform-secrets	-	-18	git	self	main	deploy/platform/secrets	-	-
 platform-policies	-	-10	git	self	main	deploy/platform/policies	-	-
 platform-routes	-	-10	git	self	main	deploy/platform/routes	-	-
 monitoring	monitoring	-10	git	self	main	deploy/monitoring	-	-
