@@ -331,3 +331,7 @@
 - **權限**：頂層 `permissions: {}`；PR 不使用任何 secret（Dependabot PR 也能跑完整 CI）；Dependabot 的 SARIF 上傳略過（它的 token 是唯讀）。
 - **`.gitleaks.toml`**：沿用預設規則，只允許 `*.sealed.yaml`（SealedSecret 的密文）。本機掃描 213 個 commit，原本只有這 1 筆 → 允許後 no leaks。反向驗證：在一般檔案中的假金鑰仍會被抓到。
 - 本機 actionlint exit 0。
+- **第一次 CI 執行（PR #2，run 36891456715）**：changes / secrets / manifests / frontend / backend / images(frontend) 都成功；**images(cube-backend) 失敗**，因為 Trivy 閘門找到 `tomcat-embed-core 10.1.55` 的 **3 個可修補 CRITICAL CVE**（CVE-2026-65182、CVE-2026-65905、CVE-2026-68525，10.1.58 修正）。`ci-ok` 正確地跟著失敗——需求 18 的閘門有效。
+  - 原因：Spring Boot 3.5.16 是最新的 3.5.x，但它管理的 Tomcat 仍是 10.1.55。
+  - 修正：pom 以 `<tomcat.version>10.1.60</tomcat.version>` 覆寫（Boot 官方支援的方式，附註解說明何時可移除）。本機 `clean verify` 169/0；打包後的 jar 中為 tomcat-embed-*-10.1.60。
+  - 時間：backend 3 分 41 秒（比 plan 估的 5–9 分鐘快）、frontend 24 秒、manifests 33 秒、secrets 56 秒、images 1.5–5 分鐘，整體約 5.5 分鐘。
