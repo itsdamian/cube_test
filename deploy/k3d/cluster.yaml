@@ -1,4 +1,4 @@
-# Local cluster: one k3s server node in Docker (plan: k3d).
+# Local cluster: one k3s server node in Docker (plan: k3d). [ci deploy-only test]
 #   scripts/cluster-up.sh creates it; scripts/cluster-down.sh deletes it (including all data).
 apiVersion: k3d.io/v1alpha5
 kind: Simple
