@@ -3,6 +3,7 @@ package com.currency.demo.stream;
 import com.currency.demo.pricing.FeedStatusTracker;
 import com.currency.demo.pricing.PriceTick;
 import com.currency.demo.stream.StreamEvents.Price;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
@@ -34,7 +35,8 @@ import static org.awaitility.Awaitility.await;
  */
 class SseBroadcasterResilienceTest {
 
-    private final SseBroadcaster broadcaster = new SseBroadcaster(new FeedStatusTracker(Clock.systemUTC()));
+    private final SseBroadcaster broadcaster =
+            new SseBroadcaster(new FeedStatusTracker(Clock.systemUTC()), new SimpleMeterRegistry(), Clock.systemUTC());
 
     @AfterEach
     void stop() {
@@ -94,7 +96,9 @@ class SseBroadcasterResilienceTest {
 
         pushAndExpect(good, "84000.01");
         // The broken connection is dropped, and the NEXT periods still push.
-        assertThat(broadcaster.connectionCount()).isEqualTo(1);
+        // It is removed in the same broadcast round, possibly just after the
+        // good one received the price - wait for it instead of asserting at that instant.
+        await().atMost(Duration.ofSeconds(3)).until(() -> broadcaster.connectionCount() == 1);
         pushAndExpect(good, "84000.02");
         pushAndExpect(good, "84000.03");
     }
@@ -106,7 +110,9 @@ class SseBroadcasterResilienceTest {
         broadcaster.register(good);
 
         pushAndExpect(good, "84000.11");
-        assertThat(broadcaster.connectionCount()).isEqualTo(1);
+        // The broken connection is removed in the same broadcast round, possibly just after the
+        // good one received the price - wait for it instead of asserting at that instant.
+        await().atMost(Duration.ofSeconds(3)).until(() -> broadcaster.connectionCount() == 1);
         pushAndExpect(good, "84000.12");
     }
 

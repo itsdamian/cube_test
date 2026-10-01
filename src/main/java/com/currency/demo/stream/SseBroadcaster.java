@@ -6,6 +6,9 @@ import com.currency.demo.feed.FeedStatus;
 import com.currency.demo.pricing.FeedStatusTracker;
 import com.currency.demo.pricing.PriceTick;
 import com.currency.demo.stream.StreamEvents.Price;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -42,6 +47,11 @@ import java.util.concurrent.atomic.AtomicReference;
  *       froze the price for every browser while status events (sent via {@code execute}) kept
  *       saying LIVE. So a failing emitter is dropped individually, and each periodic run is
  *       guarded and logged.</li>
+ *   <li><b>Metrics</b>: {@code cube_sse_last_push_seconds} is when the push loop last took a NEW
+ *       price, whether or not any browser is connected - so it only goes stale when the loop
+ *       itself freezes (the task 32 incident), never just because nobody has the page open.
+ *       {@code cube_sse_prices_pushed_total} counts price events actually written to browsers,
+ *       {@code cube_sse_connections} the open streams.</li>
  * </ul>
  */
 @Component
@@ -55,11 +65,25 @@ public class SseBroadcaster implements DisposableBean {
     private final AtomicReference<PriceTick> latestTick = new AtomicReference<>();
     private final AtomicReference<PriceTick> lastPushed = new AtomicReference<>();
     private final FeedStatusTracker statusTracker;
+    private final Clock clock;
+    private final Counter pricesPushed;
+    private volatile Instant lastPushAt;
     private final ScheduledExecutorService sender = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().name("sse-sender").daemon().factory());
 
-    public SseBroadcaster(FeedStatusTracker statusTracker) {
+    public SseBroadcaster(FeedStatusTracker statusTracker, MeterRegistry registry, Clock clock) {
         this.statusTracker = statusTracker;
+        this.clock = clock;
+        this.pricesPushed = Counter.builder("cube.sse.prices.pushed")
+                .description("Price events written to connected browsers")
+                .register(registry);
+        Gauge.builder("cube.sse.last.push.seconds", this,
+                        b -> b.lastPushAt == null ? Double.NaN : b.lastPushAt.toEpochMilli() / 1000.0)
+                .description("Epoch seconds when the push loop last took a new price (independent of connected clients)")
+                .register(registry);
+        Gauge.builder("cube.sse.connections", emitters, Set::size)
+                .description("Open SSE connections on this instance")
+                .register(registry);
         sender.scheduleAtFixedRate(guarded("price push", this::pushLatestPrice),
                 PRICE_INTERVAL_MS, PRICE_INTERVAL_MS, TimeUnit.MILLISECONDS);
         sender.scheduleAtFixedRate(guarded("heartbeat", this::heartbeat),
@@ -128,6 +152,7 @@ public class SseBroadcaster implements DisposableBean {
         PriceTick tick = latestTick.get();
         if (tick != null && tick != lastPushed.get()) {
             lastPushed.set(tick);
+            lastPushAt = clock.instant();
             broadcast(StreamEvents.PRICE, Price.of(tick));
         }
     }
@@ -152,6 +177,9 @@ public class SseBroadcaster implements DisposableBean {
     private void send(SseEmitter emitter, String name, Object data) {
         try {
             emitter.send(SseEmitter.event().name(name).data(data));
+            if (StreamEvents.PRICE.equals(name)) {
+                pricesPushed.increment();
+            }
         } catch (IOException | RuntimeException e) {
             log.debug("SSE client gone: {}", e.toString());
             emitters.remove(emitter);
