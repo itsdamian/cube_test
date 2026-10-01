@@ -4,6 +4,8 @@ import com.currency.demo.pricing.FeedStatusTracker;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Clock;
@@ -48,6 +50,40 @@ class SseBroadcasterShutdownTest {
         assertThat(a.completed).isTrue();
         assertThat(b.completed).isTrue();
         assertThat(broadcaster.connectionCount()).isZero();
+    }
+
+    /** Stands in for the Kafka listener containers: records what it sees when it is stopped. */
+    static class StopObserver implements SmartLifecycle {
+        CompletionRecordingEmitter watched;
+        volatile Boolean streamEndedWhenStopped;
+        private volatile boolean running;
+
+        @Override public void start() { running = true; }
+        @Override public void stop() { streamEndedWhenStopped = watched.completed; running = false; }
+        @Override public boolean isRunning() { return running; }
+    }
+
+    @Test
+    void closingTheSpringContextEndsTheStreamsBeforeAnythingIsStopped() {
+        // QA K7: test the @EventListener wiring, not just the method. Spring stops the Kafka
+        // listeners (a SmartLifecycle) and only destroys beans at the very end; the streams must
+        // already be ended when the first component stops, not merely at bean destruction.
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(FeedStatusTracker.class, Clock.systemUTC());
+            context.registerBean(SimpleMeterRegistry.class);
+            context.registerBean(Clock.class, Clock::systemUTC);
+            context.registerBean(SseBroadcaster.class);
+            context.registerBean(StopObserver.class);
+            context.refresh();
+            CompletionRecordingEmitter open = new CompletionRecordingEmitter();
+            context.getBean(SseBroadcaster.class).register(open);
+            StopObserver observer = context.getBean(StopObserver.class);
+            observer.watched = open;
+
+            context.close();
+
+            assertThat(observer.streamEndedWhenStopped).as("stream ended before lifecycle stop").isTrue();
+        }
     }
 
     @Test

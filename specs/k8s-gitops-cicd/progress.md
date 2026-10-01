@@ -274,3 +274,10 @@
   - 已套用到叢集，Prometheus 中 3 條規則的 `for` 都是 60 秒。
   - 另外兩次 `PriceIngestStalled` pending（11:37–11:38）是第一次部署時 worker 因 Flyway 而反覆重啟，屬於正確行為（未達 firing）。
 - 工具教訓：`{ …; T0=…; } | tee` 會在子 shell 中執行，變數取不到。
+
+## 2026-10-01 20:35 — task 8 QA PASS；K7
+- **Task 8 QA PASS**（`0c7884f`）：QA 獨立重測 M5（另從 default namespace 測試，dev / prod 全部 BLOCKED）；VAP 以 server dry-run 驗證：2 拒絕、1 與 0 允許；K2、K3、K5、K6 結案。→ 勾選。
+- **QA CONCERN-K7**：原本的 `SseBroadcasterShutdownTest` 直接呼叫 `closeConnectionsOnShutdown()`，拿掉 `@EventListener` 仍然通過，事件接線沒有被測到。
+  - 新增 `closingTheSpringContextEndsTheStreamsBeforeAnythingIsStopped`：在真正的 Spring context 中加入一個 SmartLifecycle（代替 Kafka listener），在它被 stop 時記錄串流是否已經結束。
+  - 為什麼不只檢查「關閉後串流已結束」：`destroy()` 在 bean 銷毀時也會結束串流，那樣的測試同樣抓不到。
+  - **反向驗證**：拿掉 `@EventListener` 時，這個測試在「stream ended before lifecycle stop」失敗；還原後 3/3 通過。

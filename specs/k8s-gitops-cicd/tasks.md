@@ -59,7 +59,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - `cluster-down` → `cluster-up` 從零重建成功，記錄總時間（包含下載）；
   - 所有平台 Pod Ready；`argocd.localhost`、`grafana.localhost` 可以從瀏覽器開啟；`kubectl top nodes` 可用（metrics-server）；
   - 記錄 `docker stats` 與 `kubectl top pods -A`，和 plan 的資源表對照（偏差超過 30% 要回報）
-- [ ] 8. **部署 dev / prod 兩套應用**：🤝（刪 Pod、擴容、rolling update 前通知 QA）本機 build image → `k3d image import`，用暫時的 image override 套用兩個 overlay（不 commit 本機 tag）— done when:
+- [x] 8. **部署 dev / prod 兩套應用**：🤝（刪 Pod、擴容、rolling update 前通知 QA）本機 build image → `k3d image import`，用暫時的 image override 套用兩個 overlay（不 commit 本機 tag）— done when:
   - **AC2**：兩個網址在 headless Chrome 截圖中都有跳動的價格，持續 60 秒以上沒有「資料延遲」（R12）；在 dev 新增幣別後，prod 的 `/api/currencies` 不受影響。
   - **AC3**：記錄幣別、警示、`price_tick` 筆數 → 刪除 Kafka 與 PostgreSQL Pod → Ready 後資料仍在。
   - **AC4**：api 擴到 3 副本時，從 Kafka 讀一段時間窗，**record 數 == 不重複 eventId 數**，且 source 只有 active 來源；`cube_feed_ingest_active` 只有一個 Pod 為 1。
