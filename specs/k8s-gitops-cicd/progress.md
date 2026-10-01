@@ -68,3 +68,27 @@
   - **C3**：task 14 的 PR 說明要寫清楚。
   - **C4**：task 9 dev / prod 都要觀察，task 21 檢查 24 小時告警歷史。
   - **C5**：記錄每個 Claude run 的耗時與回合數。
+
+## 2026-10-01 14:40 — 使用者授權與署名決定
+- **使用者本人在工程師分頁確認**：「同意 k8s-gitops-cicd 的 push 授權範圍（清單第 1 項）」。範圍：
+  - 可以 push `feat/k8s-gitops-cicd` 與 `test/*`，可以開 / 關測試 PR（draft + `test-only` label）；
+  - 合併到 main、推 tag、合併 prod PR 一律由使用者本人操作；
+  - 不得自動合併任何進 main 的 PR（plan 核准的 deploy-dev auto-merge 除外）。
+- **署名（使用者經 team lead 轉達）**：從此 commit 不加 `Co-Authored-By: Claude` trailer，PR 描述不加生成標記；改在 README〈開發方式〉署名（task 20）。尚未 push 的 `8ce0331`、`b9bb7cc` 會在第一次 push 前移除 trailer（team lead 指示）。
+
+## 2026-10-01 14:55 — Stage: implement task 1（Kafka 4.3.1）
+- **What changed**：
+  - `docker-compose.yml`、`IntegrationTest.KAFKA_IMAGE` 改為 `apache/kafka:4.3.1`（Strimzi 1.2 支援的穩定版，4.3.2 目前只有 rc）；
+  - `docs/testing.md` 的離線預載清單（前一份 spec AC13 會用到）、README 技術棧；
+  - `docs/configuration.md` 常見問題新增「從 3.9 的舊 volume 升級」。
+  - **應用程式碼未修改**。
+- **發現（給 QA）**：第一次 random 測試有 2 個 error（`CandlePipelineTest`、`EndToEndPipelineTest`）。
+  - 根因：Kafka 4（KIP-1030）把 broker 的 `log.message.timestamp.after.max.ms` 預設值從不限制改成 **1 小時**。這兩個測試刻意使用 2032 / 2035 年的成交時間，讓自己的 K 線和共用 broker 中其他測試的資料隔離，因此被拒絕（`InvalidTimestampException … out of range`）。
+  - 處理：**只在 Testcontainers 的 broker** 加 `KAFKA_LOG_MESSAGE_TIMESTAMP_AFTER_MAX_MS=Long.MAX_VALUE`，並在程式中註解原因。compose 與叢集保留 Kafka 的預設值，可以擋住時鐘偏差過大的寫入；真實成交時間就是現在，不受影響。
+  - 沒有改測試內容：改成過去的時間會撞到保留期清除與其他測試的「最新價格」判斷，牽動範圍更大。
+  - 反向驗證：沒有這行設定時兩個測試失敗，加上後通過。
+- **Verified**：
+  - `./mvnw clean verify -Dsurefire.runOrder=random` 連續 3 次通過（每次 155 tests，0 failures / 0 errors）。
+  - compose 回歸（沿用舊 volume 升級）：Kafka 4.3.1 healthy、readiness UP（db / kafka / kafkaStreams）、SSE 5 秒內 11 筆 price、升級後產生新的 1m K 線、Kafka log 無 ERROR。`metadata.version` 停在 3.9-IV0，文件中的升級指令實測可以升到 4.3-IV0，之後 SSE 仍正常。
+  - 全新 volume（臨時 project `currency-k43fresh`）：readiness UP、SSE 有 price、1m K 線產生、`metadata.version` 4.3-IV0；驗證後已 `down -v` 刪除。
+  - `check_md_links.py` 通過。

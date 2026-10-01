@@ -46,7 +46,7 @@ flowchart LR
 | 層 | 技術 |
 |---|---|
 | 後端 | Java 21、Spring Boot 3.5、Spring Kafka、Kafka Streams、JDK `java.net.http.WebSocket` |
-| 資料 | Apache Kafka 3.9（KRaft 單節點）、PostgreSQL 17 + Flyway |
+| 資料 | Apache Kafka 4.3（KRaft 單節點；client 3.9）、PostgreSQL 17 + Flyway |
 | 前端 | React 19 + TypeScript + Vite、[TradingView Lightweight Charts™](https://www.tradingview.com/)、純 CSS design tokens |
 | 測試 | JUnit 5、Testcontainers（Kafka / PostgreSQL）、Kafka Streams `TopologyTestDriver`、Vitest + Testing Library + MSW |
 | 部署 | Docker multi-arch（amd64 / arm64）、docker compose、nginx（unprivileged） |

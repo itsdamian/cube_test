@@ -61,3 +61,8 @@ open http://localhost:3000              # 30 秒內可看到跳動的 BTC-USD �
 - **`./mvnw` 顯示 SHA-256 驗證失敗**：安裝 `unzip`（見本頁〈需要的工具〉）。
 - **公司網路或 VPN 擋了交易所**：用 `APP_FEED_PRIMARY_URL` / `APP_FEED_BACKUP_URL` 指到可用的端點，或換一個網路。
 - **看 backend log**：`docker compose logs -f backend`。
+- **從 Kafka 3.9 的舊 volume 升級**：compose 的 Kafka 已升到 4.3（與 Kubernetes 叢集一致）。沿用舊的 `kafka-data` volume 可以直接啟動，資料都在，但 `metadata.version` 會停在 3.9（KRaft 的正常升級狀態）。若要啟用 4.x 的新功能，執行：
+  ```bash
+  docker compose exec kafka /opt/kafka/bin/kafka-features.sh --bootstrap-server localhost:9092 upgrade --release-version 4.3
+  ```
+  全新的 volume 一開始就是 4.3，不需要這一步。
