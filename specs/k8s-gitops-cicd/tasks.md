@@ -17,7 +17,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
 ## Phase A — 應用程式的部署準備（本機，不需叢集）
 
-- [ ] 1. **Kafka 升到 4.3.x，讓測試、compose、叢集版本一致**（plan R4；team lead 核准，附 QA C5 的條件）：`docker-compose.yml` 與 `IntegrationTest.KAFKA_IMAGE` 改為 `apache/kafka:4.3.x`，**不改應用程式碼** — done when: `./mvnw clean verify` 連續 3 次 `-Dsurefire.runOrder=random` 全部通過；compose 回歸冒煙（`docker compose up -d --build --wait` → SSE 有 price、1 分鐘後 `/api/candles?interval=1m` 有新 K 線、`/actuator/health/readiness` 為 UP）；`docs/testing.md`〈離線跑測試〉與 `docs/configuration.md` 中的 Kafka image 清單同步更新（前一份 spec 的 AC13 斷網測試會用到，QA C2）；如果有任何不相容，停下來回報 team lead，不修改應用程式碼
+- [x] 1. **Kafka 升到 4.3.x，讓測試、compose、叢集版本一致**（plan R4；team lead 核准，附 QA C5 的條件）：`docker-compose.yml` 與 `IntegrationTest.KAFKA_IMAGE` 改為 `apache/kafka:4.3.x`，**不改應用程式碼** — done when: `./mvnw clean verify` 連續 3 次 `-Dsurefire.runOrder=random` 全部通過；compose 回歸冒煙（`docker compose up -d --build --wait` → SSE 有 price、1 分鐘後 `/api/candles?interval=1m` 有新 K 線、`/actuator/health/readiness` 為 UP）；`docs/testing.md`〈離線跑測試〉與 `docs/configuration.md` 中的 Kafka image 清單同步更新（前一份 spec 的 AC13 斷網測試會用到，QA C2）；如果有任何不相容，停下來回報 team lead，不修改應用程式碼
 - [ ] 2. **Prometheus 指標與 graceful shutdown**：加 `micrometer-registry-prometheus`、暴露 `prometheus` 端點、`server.shutdown=graceful`；新增 plan 定義的指標，語意如下：
   - `cube_feed_last_tick_seconds`、`cube_feed_active_source{source}`、`cube_feed_ingest_active`
   - `cube_sse_last_push_seconds`：與 client 數無關

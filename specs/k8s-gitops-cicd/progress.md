@@ -116,3 +116,14 @@
   - `PrometheusEndpointTest`（1，`@AutoConfigureObservability`）：端點輸出 `cube_*` 與 JVM 指標；test profile（ingest 關閉）下 `cube_feed_ingest_active 0.0`，且沒有 ingest 專屬指標。
 - **既有測試的修正**：`SseBroadcasterResilienceTest` 中兩處 `connectionCount()==1` 的斷言有競態。同一輪廣播中，正常的 emitter 可能先收到價格，失敗的那個才被移除；原本在收到價格的當下立刻斷言，改為 await。測試意圖不變；修正後 5 次重跑全數通過。
 - **Verified**：`./mvnw clean verify` 163 tests 0 failures；compose 重建 backend 後，`:8080/actuator/prometheus` 有全部 7 個 `cube_*` 指標（ingest_active 1、coinbase 1 / kraken 0、last_tick 與 last_push 都是當下時間）；經 nginx 的 `:3001/actuator/prometheus` 只回前端 index.html（SPA fallback），**不含任何指標**。
+
+## 2026-10-01 15:55 — task 1 QA PASS；implement task 3（api 角色整合測試）
+- **Task 1 QA PASS**（`7a95750`）：random ×3 每次 155/0/0；QA 用自己的 `currency-qa` 舊 volume 實測 3.9.2→4.3.1 升級（K 線 1083 根、ticks 243700 筆都還在，readiness UP，ERROR 0），照文件執行 `upgrade --release-version 4.3` 後 `metadata.version` 變成 4.3-IV0，並持續產生新 K 線；反向驗證與根因一致。→ 勾選。
+- **Push 前署名閘門**：QA PASS（4 個 commit 都沒有 trailer、作者皆 itsdamian、改寫前後 tree 相同）。
+- **QA CONCERN-K1（低風險、不阻擋，待決定）**：Streams 寫 `btc.candles` 的 record timestamp 是交易所成交時間。若交易所時鐘超前 1 小時以上，Kafka 4 會拒絕寫入（InvalidTimestamp），接著 FAIL handler → REPLACE_THREAD 反覆循環。可能的處理：在叢集與 compose 的 Kafka topic 層放寬 `message.timestamp.after.max.ms`，或在 Streams 設 production exception handler。屬於範圍之外的強化，記錄待 team lead 決定。
+- **Task 3 — What changed**：新增 `ApiRoleTest`（3 個測試），以 Deployment 實際使用的開關組合（ingest / streams / persist / alerts / FX refresh 全關）啟動：
+  - 沒有任何背景角色的 bean（FeedManager、PriceFeedClient、TickPersister、CandlePersister、AlertEvaluator、FxRateRefresher、RetentionJob、Streams），listener 只剩 `sse-*` / `feed-status-*` 的個別 group，`cube_feed_ingest_active` = 0；
+  - readiness 為 UP（含 db、kafka，**沒有** kafkaStreams 也不報錯）、liveness 200、`/api/currencies` 200；
+  - SSE 收得到從 Kafka 讀到的價格。
+- **反向驗證**：把 `app.persist.enabled` 改為 true 時，`[TickPersister]` 斷言失敗；改回後通過。
+- **Verified**：`./mvnw clean verify` 166 tests 0 failures。
