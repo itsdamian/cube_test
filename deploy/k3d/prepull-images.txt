@@ -1,3 +1,0 @@
-# Images pre-pulled by `scripts/cluster-up.sh --prepull` (AC1: download time is measured
-# separately). Filled in from a running cluster in task 7:
-#   kubectl get pods -A -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u

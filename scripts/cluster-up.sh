@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 # Create the local Kubernetes cluster and install the platform (spec k8s-gitops-cicd).
 #
-#   scripts/cluster-up.sh [--mode=gitops|direct] [--prepull]
+#   scripts/cluster-up.sh [--mode=gitops|direct]
 #
 #   --mode=gitops  (default) install Argo CD, then let it deploy everything from the main branch
 #                  (deploy/argocd/root.yaml -> deploy/argocd/apps, generated from components.tsv).
 #   --mode=direct  install the platform components of deploy/platform/components.tsv directly with
 #                  helm / kubectl - same versions and values, no GitHub needed (local verification
 #                  before the repository is pushed). The cube-* applications are not installed.
-#   --prepull      download the images in deploy/k3d/prepull-images.txt first and import them into
-#                  the cluster, so "download time" and "build time" are measured separately (AC1).
+#
+# The reported time INCLUDES downloading every image (stricter than AC1, which excludes downloads).
+# Pre-pulling into the host and importing was dropped (task 7): Docker Desktop's containerd image
+# store keeps only the host platform of multi-platform images, which k3s cannot import.
 #
 # Requires: docker, k3d, kubectl, helm (v4). Delete everything again: scripts/cluster-down.sh
 # Written for macOS' bash 3.2 (no mapfile; empty arrays are never expanded under set -u).
 set -euo pipefail
 
 MODE=gitops
-PREPULL=false
 for arg in "$@"; do
   case "$arg" in
     --mode=gitops|--mode=direct) MODE="${arg#--mode=}" ;;
-    --prepull) PREPULL=true ;;
-    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -42,29 +42,9 @@ if k3d cluster list "$CLUSTER" >/dev/null 2>&1; then
   exit 1
 fi
 
-# --- optional: download images first (not counted as build time) ----------------------------
-images=()
-if [[ "$PREPULL" == true ]]; then
-  while IFS= read -r line; do
-    [[ -z "$line" || "$line" == \#* ]] || images+=("$line")
-  done < "$ROOT/deploy/k3d/prepull-images.txt"
-  if (( ${#images[@]} == 0 )); then
-    echo "deploy/k3d/prepull-images.txt lists no images" >&2; exit 1
-  fi
-  log "pre-pulling ${#images[@]} images"
-  pull_start=$(seconds)
-  for image in "${images[@]}"; do docker pull -q "$image" >/dev/null; done
-  echo "download time: $(( $(seconds) - pull_start )) s"
-fi
-
 build_start=$(seconds)
 log "creating k3d cluster '$CLUSTER'"
 k3d cluster create --config "$ROOT/deploy/k3d/cluster.yaml"
-if (( ${#images[@]} > 0 )); then
-  log "importing pre-pulled images into the cluster"
-  k3d image import --cluster "$CLUSTER" "${images[@]}"
-fi
-
 # --- Sealed Secrets key: reuse the backed-up key so committed SealedSecrets still decrypt -------
 if [[ -f "$SEALED_KEY_BACKUP" ]]; then
   log "restoring the Sealed Secrets key from $SEALED_KEY_BACKUP"
@@ -117,10 +97,19 @@ else
     case "$type" in
       helm) helm_install "$name" "$ns" "$source" "$ref" "$path" "$values" ;;
       git)
+        # Same as Argo CD: a directory with a kustomization is built with kustomize, any other
+        # directory is applied as plain manifests (e.g. gateway-api's config/crd/standard).
         if [[ "$source" == self ]]; then
-          kubectl apply --server-side -k "$ROOT/$path"
+          dir="$ROOT/$path"
         else
-          kubectl apply --server-side -k "${source%.git}/$path?ref=$ref"
+          checkout="$(mktemp -d)"
+          git clone --quiet --depth 1 --branch "$ref" "$source" "$checkout"
+          dir="$checkout/$path"
+        fi
+        if [[ -f "$dir/kustomization.yaml" ]]; then
+          kubectl apply --server-side -k "$dir"
+        else
+          kubectl apply --server-side -f "$dir"
         fi ;;
     esac
   done < <(grep -v '^#' "$COMPONENTS" | sort -t$'\t' -k3,3n -s)

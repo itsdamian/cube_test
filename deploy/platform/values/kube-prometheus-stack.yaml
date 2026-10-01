@@ -29,9 +29,10 @@ grafana:
     existingSecret: grafana-admin  # created by cluster-up.sh; a SealedSecret from task 11 on
     userKey: admin-user
     passwordKey: admin-password
+  # Grafana 13 was OOMKilled at 256Mi while starting up (task 7); measured steady state below.
   resources:
-    requests: {memory: 128Mi, cpu: 50m}
-    limits: {memory: 256Mi}
+    requests: {memory: 256Mi, cpu: 50m}
+    limits: {memory: 512Mi}
   sidecar:
     dashboards:
       enabled: true

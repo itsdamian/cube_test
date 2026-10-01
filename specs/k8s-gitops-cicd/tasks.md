@@ -43,7 +43,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - Grafana 儀表板「cube 概覽」JSON：`namespace` 變數，lag 面板只顯示固定的 group。
 
   — done when: `promtool test rules`（docker 執行）通過以下案例：指標新鮮→不告警、指標變舊→告警、**series 消失**→告警、推送凍結但擷取正常→只觸發 `PricePushStalled`、兩個 ingest→`IngestDuplicated`；**反向驗證**：把規則改回 `time() - max(...) > 60` 時，「series 消失」案例會失敗；儀表板 JSON 能被 Grafana schema 解析（在 task 9 實際載入）
-- [ ] 6. **平台元件與叢集腳本**（`deploy/k3d/cluster.yaml`、`deploy/bootstrap/`、`deploy/platform/`、`scripts/cluster-up.sh`、`cluster-down.sh`、`seal-secret.sh`）：
+- [x] 6. **平台元件與叢集腳本**（`deploy/k3d/cluster.yaml`、`deploy/bootstrap/`、`deploy/platform/`、`scripts/cluster-up.sh`、`cluster-down.sh`、`seal-secret.sh`）：
   - k3d 叢集設定（停用內建 Traefik、80 port 對到 LB）；
   - 各元件的 Application + values：Argo CD（非 HA、無 Dex / notifications、reconciliation 60s）、Traefik + Gateway、Sealed Secrets、Strimzi、CNPG、kube-prometheus-stack（retention 3 天）；
   - `cluster-up.sh --prepull`，下載時間與建置時間分開記錄；有備份就先還原 Sealed Secrets 私鑰；
