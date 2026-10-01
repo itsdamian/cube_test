@@ -103,6 +103,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - 反向驗證：在一個沒有通過 CI 的 sha 上打 tag 時，release 失敗並說明原因
 - [ ] 18. **安全掃描**：`dependabot.yml`（maven / npm / github-actions / docker，分組）；👤 清單 8（Dependabot、secret scanning、push protection）— done when:
   - **AC11**：draft 測試 PR 引入已知 CRITICAL 漏洞的版本 → `images` job 失敗、Security 分頁顯示報告，驗證後關閉；
+  - **Tomcat 覆寫（team lead 條件）**：確認 Dependabot（maven）看得到 `tomcat.version` 覆寫的 tomcat-embed-*；若看不到（屬性只被 Boot BOM 使用），改用 Dependabot 能追蹤的寫法並驗證；
   - **AC14**：gitleaks 綠燈 + secret scanning 沒有警示 + `git grep` 常見模式沒有命中；
   - **AC15**：依 plan 的判定方式，Dependabot 第一批 PR 中有一個跑完完整 CI；若當下沒有 PR，記錄後延後判定
 - [ ] 19. **Claude Code 整合**（`claude-review.yml`、`claude.yml`、`claude-ci-failure.yml`）：👤 清單 10（安裝 Claude GitHub App、設定 API key / OAuth token secret、設定 Console 用量上限）；🏁 👤 使用者先把 `claude.yml` 與 `claude-ci-failure.yml` 合併到 main（`claude-review.yml` 可以直接在 PR 上驗證）

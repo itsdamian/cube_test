@@ -29,7 +29,8 @@
         <java-websocket.version>1.6.0</java-websocket.version>
         <!-- Overrides the Boot-managed 10.1.55 (Spring Boot 3.5.16, the latest 3.5.x): CI's Trivy
              gate found three fixable CRITICAL CVEs in it (CVE-2026-65182, -65905, -68525; fixed in
-             10.1.58). Remove once a Spring Boot release manages a fixed Tomcat. -->
+             10.1.58). Remove this override as soon as the Tomcat version managed by Spring Boot
+             3.5.x is >= 10.1.60. Dependabot (maven) is expected to propose updates for it (task 18). -->
         <tomcat.version>10.1.60</tomcat.version>
         <!-- Empty default so @{argLine} resolves even when no other plugin sets it. -->
         <argLine></argLine>

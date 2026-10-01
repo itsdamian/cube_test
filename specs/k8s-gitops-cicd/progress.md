@@ -342,3 +342,7 @@
   - actionlint 在 CI 中通過。
   - 三個測試 PR 都已關閉並刪除分支。
 - **待使用者**（清單第 4 項）：Actions workflow permissions 設為 Read、開啟 Allow auto-merge——已請 team lead 轉達。CI 不依賴這兩項，但 task 16 的 auto-merge 需要。
+- **Team lead 核准 Tomcat 覆寫**：屬於需求 18 要求的修補、不改應用行為，算部署所需的最小調整。三個條件：
+  1. pom 註解已寫明 CVE 編號、覆寫原因，並把移除條件改為「Spring Boot 3.5.x 管理的 Tomcat ≥ 10.1.60 時移除」；
+  2. task 18 的完成條件加上「確認 Dependabot（maven）看得到這個覆寫」（屬性只被 Boot BOM 使用，可能偵測不到）；
+  3. 沒有回歸：本機 `clean verify` 169/0，CI run 36892744494 全綠（https://github.com/itsdamian/cube_test/actions/runs/36892744494）。
