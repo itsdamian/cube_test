@@ -393,3 +393,10 @@
 - prod 先用同一個 digest：第一個版本 `v0.1.0` 要到 task 17 才會發布，屆時由 release workflow 開出的 PR 改成 `v0.1.0@digest`。prod 從頭到尾都以 digest 釘住。
 - 用 `kustomize edit set image` 修改，**一次性**把兩個 kustomization 改寫成 kustomize 的標準格式；開頭的註解保留。這樣之後 CI（deploy-dev / release）用同一個指令產生的 bump PR，diff 就只會有 image 那幾行。已確認兩個 overlay 渲染結果的差異只有 image 行；`validate-manifests.sh` 66/66。
 - **使用者本人在工程師分頁授權**：「同意你之後依 task 需要開 feat/k8s-gitops-cicd → main 的正式 PR，每個都由我審核合併」。範圍：feat → main 的正式 PR，由使用者本人審核合併；工程師不合併、不開 auto-merge。
+
+## 2026-10-02 16:45 — task 15 進行中：發現 Argo CD controller OOM
+- 第一次 `cluster-up --mode=gitops` 在 25 分鐘時逾時（10/14 Synced/Healthy）。原因有兩個：
+  1. **`argocd-application-controller` 在 512Mi 被 OOMKilled**，CrashLoopBackOff 重啟了 8 次。它要快取所有被管理的資源（kube-prometheus-stack、Strimzi / CNPG 的 CRD、兩個環境），512Mi 不夠。→ values 改為 request 512Mi / limit 1Gi。已用 helm 直接套用到叢集；StatefulSet 的 Pod 卡在 CrashLoop 時不會自動換新，因此手動刪除 Pod，新 Pod 已 Ready。Git 必須盡快跟上，否則 Argo CD 的 selfHeal 會改回 512Mi → **需要合併到 main 的 PR**。
+  2. **下載很慢**：PostgreSQL image 下載了 12 分鐘、GHCR 的 app image 也要數分鐘（主機的 image 快取在 prune 事故中被清掉，叢集內的 containerd 又是全新的）。AC1 的計時要扣除下載時間，task 15 / 21 會分開記錄。
+- sync wave 運作正確：cube-dev / cube-prod 先等 `Cluster/cube-db`（wave -1）Healthy，才部署 backend（wave 0）。
+- 另外在調查：Strimzi 的 `kafkas.kafka.strimzi.io` CRD 顯示 OutOfSync。
