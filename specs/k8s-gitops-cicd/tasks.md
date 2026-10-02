@@ -89,7 +89,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - actionlint 無錯誤；
   - **反向驗證**：故意弄壞告警規則，`manifests` job 失敗
 - [x] 13. **Branch protection 與 AC5 的「無法合併」部分**：👤 清單 5（main ruleset：必要 PR + `ci-ok`、禁止 force push）— done when: 故意讓一個後端測試失敗的 draft 測試 PR → `ci-ok` 紅燈、合併按鈕不可用（截圖）；驗證後關閉 PR 並刪除分支。Claude 的分析部分在 task 19 補上
-- [ ] 14. **main 推送 image 到 GHCR**：👤 使用者合併 Phase A–D 目前為止的 PR 到 main（PR 說明要寫清楚：此時 main 已包含 `deploy/`，但 root Application 尚未指向 main，所以叢集不會有任何變化，QA C3）；👤 清單 7（GHCR package 設為 Public）— done when: main 上的 CI 推出 `ghcr.io/itsdamian/cube-backend:sha-<7>` 與 `cube-frontend:sha-<7>`，manifest list 包含 amd64 與 arm64；匿名 `docker pull` 成功；Trivy 報告出現在 Security 分頁
+- [x] 14. **main 推送 image 到 GHCR**：👤 使用者合併 Phase A–D 目前為止的 PR 到 main（PR 說明要寫清楚：此時 main 已包含 `deploy/`，但 root Application 尚未指向 main，所以叢集不會有任何變化，QA C3）；👤 清單 7（GHCR package 設為 Public）— done when: main 上的 CI 推出 `ghcr.io/itsdamian/cube-backend:sha-<7>` 與 `cube-frontend:sha-<7>`，manifest list 包含 amd64 與 arm64；匿名 `docker pull` 成功；Trivy 報告出現在 Security 分頁
 - [ ] 15. **切換為 GitOps**：root Application 指向 `main`（dev / prod overlay 改用 GHCR 的 `sha-*`）；🤝 由 QA 獨立執行一次 AC1 — done when:
   - **AC1**：`cluster-down` → `cluster-up` 從零建置 30 分鐘內完成（計時包含下載，比 AC 更嚴格），Argo CD 顯示所有 Application Synced / Healthy；**QA 獨立重建一次**。
   - **AC10**：`kubectl scale deploy/frontend -n cube-dev --replicas=3` 被 Argo CD 改回；prod 的同樣操作只顯示 OutOfSync（selfHeal 關閉）

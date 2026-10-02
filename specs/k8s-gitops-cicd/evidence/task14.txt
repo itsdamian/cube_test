@@ -1,0 +1,27 @@
+# task 14 evidence (main pushes images to GHCR)
+PR #6 https://github.com/itsdamian/cube_test/pull/6 merged by itsdamian 2026-10-02T07:09:09Z, merge commit d04f3f1
+main CI run 36977076346 https://github.com/itsdamian/cube_test/actions/runs/36977076346 success 5m59s (backend 3m07s, images(backend) 5m40s, images(frontend) 1m32s)
+
+$ docker buildx imagetools inspect ghcr.io/itsdamian/cube-backend:sha-d04f3f1
+  Name:      ghcr.io/itsdamian/cube-backend:sha-d04f3f1
+  Digest:    sha256:3db3e4bb90bd27224c971857c3abbe967fe8173c9bcbf0adb99dd7160566e59d
+    Platform:    linux/amd64
+    Platform:    linux/arm64
+    Platform:    unknown/unknown
+    Platform:    unknown/unknown
+$ docker buildx imagetools inspect ghcr.io/itsdamian/cube-frontend:sha-d04f3f1
+  Name:      ghcr.io/itsdamian/cube-frontend:sha-d04f3f1
+  Digest:    sha256:6b5ab954c86e0b81c5af9bef062ab314119f1e626e30969e2cd065159cc7c89c
+    Platform:    linux/amd64
+    Platform:    linux/arm64
+    Platform:    unknown/unknown
+    Platform:    unknown/unknown
+  (unknown/unknown = buildx provenance attestation manifests)
+
+anonymous access: token without credentials -> manifest HTTP 200 for both; DOCKER_CONFIG=<empty dir> docker pull --platform linux/arm64 succeeded for both
+labels: org.opencontainers.image.source=https://github.com/itsdamian/cube_test revision=d04f3f1175d8b27c043e8f30ca3e7f96ff34ec9b
+package visibility: observed public right after the first push (checklist item 7 needed no action; the reason - e.g. inheriting the public repo via the source label - was not verified) - docs will say: if private, Package settings -> Change visibility -> Public
+
+$ gh api repos/itsdamian/cube_test/code-scanning/analyses (Trivy on main)
+  2026-10-02T07:14:12Z Trivy trivy-cube-backend results=14
+  2026-10-02T07:10:26Z Trivy trivy-cube-frontend results=3

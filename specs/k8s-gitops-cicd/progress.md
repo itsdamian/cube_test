@@ -376,3 +376,20 @@
 - 開出 **PR #6** https://github.com/itsdamian/cube_test/pull/6（非 draft、沒有 test-only label、**沒有開 auto-merge**、PR 描述沒有生成標記），22 個 commit。
 - PR 描述寫明：這次的內容；合併後 main 會有 `deploy/`，但 root Application 尚未指向 main，所以叢集不會變化（QA C3）；合併後第一次把 image 推到 GHCR；使用者接著要把兩個 package 設為 Public（清單第 7 項）。
 - 由使用者本人審核並合併；工程師不會合併。
+
+## 2026-10-02 15:35 — Stage: task 14（main 推送 image 到 GHCR）
+- 使用者本人合併 PR #6（merge commit `d04f3f1`，07:09:09Z）。main 的 CI run 36977076346 全綠（5 分 59 秒）。
+- **Verified**（`evidence/task14.txt`）：
+  - `cube-backend` / `cube-frontend:sha-d04f3f1` 的 manifest list 都包含 linux/amd64 + linux/arm64（另外兩個 unknown/unknown 是 buildx provenance）；
+  - 不帶憑證取得 manifest 為 HTTP 200，以空的 `DOCKER_CONFIG` 匿名 `docker pull` 兩個 image 都成功；
+  - OCI label 的 source 與 revision 對得上 merge commit；
+  - Security 分頁（code scanning）有 main 的 Trivy 分析：backend 14 筆、frontend 3 筆，CRITICAL 的 Tomcat 已消失。
+- **清單第 7 項不需要操作**：兩個 package 在第一次 push 後就已是 public（team lead 也驗證過），原因未證實。docs（task 20）會寫明：「如果是 private，到 Package settings → Change visibility 改為 Public」。
+- 本 session 曾因用量上限暫停後接續（不是新 session），scratchpad 目錄被重設；其中只有暫存檔，私鑰副本已在 task 13 刪除。
+- **Task 14 QA PASS**：main 上 open 的 critical 為 0。→ 勾選 14。
+
+## 2026-10-02 15:50 — task 15 準備：overlay 釘到第一批 GHCR image
+- dev 與 prod 的 overlay 都改為 `sha-d04f3f1@sha256:…`（tag + digest），取代 placeholder `unset`。Argo CD 是從 main 部署，所以這個變更必須先進 main，root Application 才能部署成功。
+- prod 先用同一個 digest：第一個版本 `v0.1.0` 要到 task 17 才會發布，屆時由 release workflow 開出的 PR 改成 `v0.1.0@digest`。prod 從頭到尾都以 digest 釘住。
+- 用 `kustomize edit set image` 修改，**一次性**把兩個 kustomization 改寫成 kustomize 的標準格式；開頭的註解保留。這樣之後 CI（deploy-dev / release）用同一個指令產生的 bump PR，diff 就只會有 image 那幾行。已確認兩個 overlay 渲染結果的差異只有 image 行；`validate-manifests.sh` 66/66。
+- **使用者本人在工程師分頁授權**：「同意你之後依 task 需要開 feat/k8s-gitops-cicd → main 的正式 PR，每個都由我審核合併」。範圍：feat → main 的正式 PR，由使用者本人審核合併；工程師不合併、不開 auto-merge。
