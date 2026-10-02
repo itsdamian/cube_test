@@ -4,28 +4,43 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: cube-prod
 resources:
-  - namespace.yaml
-  - ../../base
+- namespace.yaml
+- ../../base
 patches:
-  - target: {kind: HorizontalPodAutoscaler, name: backend-api}
-    patch: |-
-      - {op: replace, path: /spec/minReplicas, value: 2}
-      - {op: replace, path: /spec/maxReplicas, value: 4}
-  - target: {kind: Deployment, name: frontend}
-    patch: |-
-      - {op: replace, path: /spec/replicas, value: 2}
-  - target: {kind: StatefulSet, name: backend-worker}
-    patch: |-
-      - {op: replace, path: /spec/template/spec/containers/0/resources, value: {requests: {memory: 640Mi, cpu: 200m}, limits: {memory: 800Mi}}}
-  - target: {kind: KafkaNodePool, name: dual-role}
-    patch: |-
-      - {op: replace, path: /spec/storage/volumes/0/size, value: 5Gi}
-      - {op: replace, path: /spec/resources, value: {requests: {memory: 1Gi, cpu: 250m}, limits: {memory: 1280Mi}}}
-      - {op: replace, path: /spec/jvmOptions, value: {"-Xms": 768m, "-Xmx": 768m}}
-  - target: {kind: Cluster, name: cube-db}
-    patch: |-
-      - {op: replace, path: /spec/storage/size, value: 2Gi}
-      - {op: replace, path: /spec/resources, value: {requests: {memory: 320Mi, cpu: 100m}, limits: {memory: 400Mi}}}
+- patch: |-
+    - {op: replace, path: /spec/minReplicas, value: 2}
+    - {op: replace, path: /spec/maxReplicas, value: 4}
+  target:
+    kind: HorizontalPodAutoscaler
+    name: backend-api
+- patch: '- {op: replace, path: /spec/replicas, value: 2}'
+  target:
+    kind: Deployment
+    name: frontend
+- patch: '- {op: replace, path: /spec/template/spec/containers/0/resources, value:
+    {requests: {memory: 640Mi, cpu: 200m}, limits: {memory: 800Mi}}}'
+  target:
+    kind: StatefulSet
+    name: backend-worker
+- patch: |-
+    - {op: replace, path: /spec/storage/volumes/0/size, value: 5Gi}
+    - {op: replace, path: /spec/resources, value: {requests: {memory: 1Gi, cpu: 250m}, limits: {memory: 1280Mi}}}
+    - {op: replace, path: /spec/jvmOptions, value: {"-Xms": 768m, "-Xmx": 768m}}
+  target:
+    kind: KafkaNodePool
+    name: dual-role
+- patch: |-
+    - {op: replace, path: /spec/storage/size, value: 2Gi}
+    - {op: replace, path: /spec/resources, value: {requests: {memory: 320Mi, cpu: 100m}, limits: {memory: 400Mi}}}
+  target:
+    kind: Cluster
+    name: cube-db
 images:
-  - {name: ghcr.io/itsdamian/cube-backend, newTag: unset}
-  - {name: ghcr.io/itsdamian/cube-frontend, newTag: unset}
+- digest: sha256:3db3e4bb90bd27224c971857c3abbe967fe8173c9bcbf0adb99dd7160566e59d
+  name: ghcr.io/itsdamian/cube-backend
+  newName: ghcr.io/itsdamian/cube-backend
+  newTag: sha-d04f3f1
+- digest: sha256:6b5ab954c86e0b81c5af9bef062ab314119f1e626e30969e2cd065159cc7c89c
+  name: ghcr.io/itsdamian/cube-frontend
+  newName: ghcr.io/itsdamian/cube-frontend
+  newTag: sha-d04f3f1

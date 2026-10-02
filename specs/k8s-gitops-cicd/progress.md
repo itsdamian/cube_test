@@ -386,3 +386,9 @@
   - Security 分頁（code scanning）有 main 的 Trivy 分析：backend 14 筆、frontend 3 筆，CRITICAL 的 Tomcat 已消失。
 - **清單第 7 項不需要操作**：兩個 package 在第一次 push 後就已是 public（team lead 也驗證過），原因未證實。docs（task 20）會寫明：「如果是 private，到 Package settings → Change visibility 改為 Public」。
 - 本 session 曾因用量上限暫停後接續（不是新 session），scratchpad 目錄被重設；其中只有暫存檔，私鑰副本已在 task 13 刪除。
+- **Task 14 QA PASS**：main 上 open 的 critical 為 0。→ 勾選 14。
+
+## 2026-10-02 15:50 — task 15 準備：overlay 釘到第一批 GHCR image
+- dev 與 prod 的 overlay 都改為 `sha-d04f3f1@sha256:…`（tag + digest），取代 placeholder `unset`。Argo CD 是從 main 部署，所以這個變更必須先進 main，root Application 才能部署成功。
+- prod 先用同一個 digest：第一個版本 `v0.1.0` 要到 task 17 才會發布，屆時由 release workflow 開出的 PR 改成 `v0.1.0@digest`。prod 從頭到尾都以 digest 釘住。
+- 用 `kustomize edit set image` 修改，**一次性**把兩個 kustomization 改寫成 kustomize 的標準格式；開頭的註解保留。這樣之後 CI（deploy-dev / release）用同一個指令產生的 bump PR，diff 就只會有 image 那幾行。已確認兩個 overlay 渲染結果的差異只有 image 行；`validate-manifests.sh` 66/66。
