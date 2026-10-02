@@ -392,3 +392,4 @@
 - dev 與 prod 的 overlay 都改為 `sha-d04f3f1@sha256:…`（tag + digest），取代 placeholder `unset`。Argo CD 是從 main 部署，所以這個變更必須先進 main，root Application 才能部署成功。
 - prod 先用同一個 digest：第一個版本 `v0.1.0` 要到 task 17 才會發布，屆時由 release workflow 開出的 PR 改成 `v0.1.0@digest`。prod 從頭到尾都以 digest 釘住。
 - 用 `kustomize edit set image` 修改，**一次性**把兩個 kustomization 改寫成 kustomize 的標準格式；開頭的註解保留。這樣之後 CI（deploy-dev / release）用同一個指令產生的 bump PR，diff 就只會有 image 那幾行。已確認兩個 overlay 渲染結果的差異只有 image 行；`validate-manifests.sh` 66/66。
+- **使用者本人在工程師分頁授權**：「同意你之後依 task 需要開 feat/k8s-gitops-cicd → main 的正式 PR，每個都由我審核合併」。範圍：feat → main 的正式 PR，由使用者本人審核合併；工程師不合併、不開 auto-merge。
