@@ -370,3 +370,9 @@
 - **下一步（task 14）**：開 feat → main 的正式 PR，必須等使用者在工程師分頁親自確認（team lead 已提醒）。
 - **Task 13 QA PASS**：ruleset 綁定 integration 15368（無法用同名 status 偽造）。→ 勾選 13。
 - **QA CONCERN-K8** → 寫進 task 19：AC5 的失敗 PR 改用非 draft，並記錄 mergeStateStatus；不實際執行 merge。非 draft 的測試 PR 需要使用者另外同意。
+
+## 2026-10-02 15:05 — task 14：正式 PR
+- **使用者本人在工程師分頁確認**：「同意由你開 feat/k8s-gitops-cicd → main 的正式 PR，我自己審核合併」。
+- 開出 **PR #6** https://github.com/itsdamian/cube_test/pull/6（非 draft、沒有 test-only label、**沒有開 auto-merge**、PR 描述沒有生成標記），22 個 commit。
+- PR 描述寫明：這次的內容；合併後 main 會有 `deploy/`，但 root Application 尚未指向 main，所以叢集不會變化（QA C3）；合併後第一次把 image 推到 GHCR；使用者接著要把兩個 package 設為 Public（清單第 7 項）。
+- 由使用者本人審核並合併；工程師不會合併。
