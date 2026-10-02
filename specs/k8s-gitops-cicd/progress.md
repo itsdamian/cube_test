@@ -368,3 +368,5 @@
   - 證據：`evidence/task13.txt`。
 - **AC5 的 Claude 分析部分**在 task 19 補上。
 - **下一步（task 14）**：開 feat → main 的正式 PR，必須等使用者在工程師分頁親自確認（team lead 已提醒）。
+- **Task 13 QA PASS**：ruleset 綁定 integration 15368（無法用同名 status 偽造）。→ 勾選 13。
+- **QA CONCERN-K8** → 寫進 task 19：AC5 的失敗 PR 改用非 draft，並記錄 mergeStateStatus；不實際執行 merge。非 draft 的測試 PR 需要使用者另外同意。
