@@ -1,0 +1,26 @@
+# PostgreSQL for one environment, managed by CloudNativePG. The operator generates the
+# application user's password and stores it in the Secret "cube-db-app" (username, password,
+# jdbc-uri ...), so no database password is ever written to Git (requirement 5).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cube-db
+  annotations:
+    # Argo CD syncs this wave first and waits until it is Healthy before deploying the backend
+    # (wave 0); otherwise the backend starts before Kafka / PostgreSQL and crash-loops (task 8).
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: 1
+  # Same major/minor as the tests (postgres:17.11); an immutable, dated tag.
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-202609281634-minimal-trixie
+  bootstrap:
+    initdb:
+      database: currency
+      owner: currency
+  storage:
+    size: 1Gi                      # overlay sets the size per environment
+  resources:
+    requests: {memory: 256Mi, cpu: 100m}
+    limits: {memory: 320Mi}
+  monitoring:
+    enablePodMonitor: false        # the PodMonitor is defined with the other monitors (task 5)

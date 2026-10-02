@@ -1,0 +1,55 @@
+# Alerts for both environments, evaluated once (per namespace) by the shared Prometheus.
+# Unit-tested with promtool: deploy/monitoring/cube-alerts.test.yaml (scripts/test-alert-rules.sh).
+#
+# Why "unless" instead of "time() - max(...) > 60" (plan, QA M2): when the worker is scaled to 0
+# the metric series disappears, "time() - max(<nothing>)" is empty and such an alert would never
+# fire. Here the left side says "this environment should have a worker / an API" (kube-state-
+# metrics keeps reporting the object even at 0 replicas) and the alert fires UNLESS a fresh
+# metric exists - so a stale value and a missing series both alert.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cube-alerts
+  labels:
+    app.kubernetes.io/part-of: cube
+spec:
+  groups:
+    - name: cube.prices
+      rules:
+        - alert: PriceIngestStalled
+          expr: |
+            max by (namespace) (kube_statefulset_created{statefulset="backend-worker"})
+              unless on (namespace)
+            (time() - max by (namespace) (cube_feed_last_tick_seconds) <= 60)
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}：超過 60 秒沒有擷取到新的成交價格"
+            description: "backend-worker 沒有從交易所收到並發布新的成交（指標變舊或不存在）。檢查 worker Pod、交易所連線與 Kafka。"
+        - alert: PricePushStalled
+          expr: |
+            (
+              max by (namespace) (kube_deployment_created{deployment="backend-api"})
+                unless on (namespace)
+              (time() - max by (namespace) (cube_sse_last_push_seconds) <= 60)
+            )
+              and on (namespace)
+            (time() - max by (namespace) (cube_feed_last_tick_seconds) <= 60)
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}：價格擷取正常，但 SSE 超過 60 秒沒有推送新價格"
+            description: "backend-api 的推送迴圈沒有取到新價格（前一份 spec task 32 的事故型態：畫面顯示即時、價格卻凍結）。只在擷取正常時觸發，不與 PriceIngestStalled 重複。"
+        - alert: IngestDuplicated
+          expr: count by (namespace) (cube_feed_ingest_active == 1) > 1
+          # A worker restart briefly shows the old and the new pod's series together (the old
+          # one only goes stale at the next scrape) - task 9 saw a 15 s false alarm with for: 0m.
+          # A real second ingest does not go away by itself.
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}：有 {{ $value }} 個行程同時在擷取價格"
+            description: "交易所連線必須只有一個（需求 6）。檢查 backend-worker 是否被擴容，或 api 是否誤開 ingest。"

@@ -13,7 +13,7 @@ name: currency
 
 services:
   kafka:
-    image: apache/kafka:3.9.2
+    image: apache/kafka:4.3.1
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller          # single KRaft node, no ZooKeeper
@@ -26,6 +26,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Kafka 4 (KIP-1030) rejects records stamped > 1 hour in the future. Kafka Streams writes
+      # btc.candles with the exchange's trade time; an exchange clock an hour fast would silently
+      # stop the candles while prices keep flowing. Allow 1 day (same as the cluster).
+      KAFKA_LOG_MESSAGE_TIMESTAMP_AFTER_MAX_MS: 86400000
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka-data:/var/lib/kafka/data

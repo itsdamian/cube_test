@@ -1,0 +1,5 @@
+# Strimzi cluster operator, watching the cube-* namespaces' Kafka resources.
+watchAnyNamespace: true
+resources:
+  requests: {memory: 384Mi, cpu: 100m}
+  limits: {memory: 384Mi}

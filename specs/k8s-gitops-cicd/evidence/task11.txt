@@ -1,0 +1,58 @@
+# task 11 evidence (Sealed Secrets, Grafana admin password)
+Plaintext password never written to the repo; key backup kept OUTSIDE the repo (scratchpad, chmod 600).
+=== step 1: switch the running cluster to the SealedSecret 2026-10-01T15:56:30Z
+secret "grafana-admin" deleted from monitoring namespace
+sealedsecret.bitnami.com/grafana-admin serverside-applied
+owner of grafana-admin: SealedSecret/grafana-admin
+deployment.apps/kube-prometheus-stack-grafana restarted
+deployment "kube-prometheus-stack-grafana" successfully rolled out
+decrypted == sealed input: yes
+sha256 prefix of the cluster's grafana-admin password: 532b649398c5
+login with sealed password: 200
+login with wrong password: 502
+right=200 wrong=401
+right=200 wrong=401
+right=200 wrong=401
+
+=== step 2: cluster-down -> cluster-up WITH key backup 2026-10-01T16:00:32Z
+==> creating k3d cluster 'cube'
+==> restoring the Sealed Secrets key from /private/tmp/claude-501/-Users-damian-personal-workplace-cube-test/fc2da3c4-3920-4fbe-b036-4c2c517237fa/scratchpad/sealed-secrets-key.yaml
+==> installing gateway-api-crds
+==> installing argocd
+==> installing traefik
+==> installing sealed-secrets
+==> installing strimzi
+==> installing cnpg
+==> installing platform-secrets
+Error from server (NotFound): namespaces "monitoring" not found
+real 177.07
+grafana-admin owner: 
+sha256 prefix after rebuild: e3b0c44298fc
+sealedsecret status: 
+login same password: 404 wrong: 404
+not ready pods:        0
+
+(first attempt failed: namespace monitoring did not exist when the SealedSecret was applied -> Namespace added to deploy/platform/secrets with Prune=false)
+=== step 2 retry: cluster-down -> cluster-up WITH key backup 2026-10-01T16:04:51Z
+==> restoring the Sealed Secrets key from /private/tmp/claude-501/-Users-damian-personal-workplace-cube-test/fc2da3c4-3920-4fbe-b036-4c2c517237fa/scratchpad/sealed-secrets-key.yaml
+==> cluster ready in 232 s (mode: direct)
+grafana-admin owner: SealedSecret/grafana-admin
+sha256 prefix after rebuild: 532b649398c5 (before: 532b649398c5)
+sealedsecret synced: True
+login same password: 200 wrong: 401
+not ready pods:        0
+
+=== no-backup path: cluster-down -> cluster-up WITHOUT key backup 2026-10-01T16:09:25Z, exit=0
+(no Sealed Secrets key backup at /private/tmp/claude-501/-Users-damian-personal-workplace-cube-test/fc2da3c4-3920-4fbe-b036-4c2c517237fa/scratchpad/no-such-backup.yaml - a new key will be generated; see docs/kubernetes.md)
+(Grafana admin password generated for this cluster only - the committed SealedSecret needs the backed-up key)
+==> cluster ready in 229 s (mode: direct)
+grafana-admin owner: '' (empty = created by cluster-up, not by the SealedSecret)
+sha256 prefix: e9bc8c641f82 (sealed one: 532b649398c5)
+sealedsecret condition: Synced=False: no key could decrypt secret (admin-password, admin-user)
+grafana pod: 3/3 Running
+login with the sealed password: 404 (expected 401: different password on this cluster)
+login with the generated password: 404
+not ready pods:        0
+retry 16:09:34: sealed password -> 401, generated password -> 200
+
+=== final rebuild WITH backup + dev/prod redeployed 2026-10-01T16:16:40Z: restoring key, cluster ready in 260 s; grafana sealed password -> 200; dev/prod SSE OK

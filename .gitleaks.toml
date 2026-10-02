@@ -1,0 +1,9 @@
+# gitleaks (CI "secrets" job, spec k8s-gitops-cicd AC14): the default rules, plus one allowlist.
+# SealedSecrets contain ciphertext that only the cluster's controller can decrypt - safe to
+# commit by design (requirement 5), but high-entropy enough to look like an API key.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Sealed Secrets ciphertext (deploy/platform/secrets/*.sealed.yaml)"
+paths = ['''(^|/)[^/]+\.sealed\.yaml$''']

@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -54,6 +55,7 @@ public class FeedManager implements SmartLifecycle, TickListener {
 
     private volatile PriceFeedClient active;
     private volatile FeedStatus lastStatus;
+    private volatile Instant lastTickPublishedAt;
     private Instant lastStatusPublishedAt;
     private Instant primaryHealthySince;
     private ScheduledExecutorService scheduler;
@@ -79,7 +81,16 @@ public class FeedManager implements SmartLifecycle, TickListener {
     public void onTick(String source, PriceTick tick) {
         if (source.equals(active.sourceName())) {
             tickPublisher.publish(tick);
+            lastTickPublishedAt = clock.instant();
         }
+    }
+
+    /**
+     * When this process last received a trade from the active source and handed it to Kafka
+     * (this machine's clock, so an exchange with a skewed clock cannot hide a stall).
+     */
+    public Optional<Instant> lastTickPublishedAt() {
+        return Optional.ofNullable(lastTickPublishedAt);
     }
 
     /** Evaluate health and switch sources if needed. Safe to call from tests at any time. */

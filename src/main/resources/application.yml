@@ -46,12 +46,16 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Finish in-flight requests before stopping (Kubernetes rolling updates). Open SSE streams are
+  # closed when the shutdown phase times out (30 s) and the browser reconnects to another pod.
+  shutdown: graceful
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus: scraped inside the cluster only - nginx forwards /api/ and never /actuator.
+        include: health,info,prometheus
   endpoint:
     health:
       # /actuator/health/liveness and /actuator/health/readiness (Kubernetes probes).

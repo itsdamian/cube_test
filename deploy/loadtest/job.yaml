@@ -1,0 +1,29 @@
+# One-off load test (docs/kubernetes.md): kubectl apply -k deploy/loadtest -n cube-prod
+# Runs inside the namespace, so the NetworkPolicy "allow-same-namespace" lets it reach backend-api.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-load
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: api-load}
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345
+      containers:
+        - name: k6
+          image: grafana/k6:2.3.0
+          args: [run, /scripts/script.js]
+          resources:
+            requests: {memory: 256Mi, cpu: 200m}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: scripts, mountPath: /scripts}
+      volumes:
+        - name: scripts
+          configMap: {name: api-load-script}

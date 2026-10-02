@@ -1,0 +1,45 @@
+# task 13 evidence (AC5 - failing PR is blocked by the main ruleset)
+PR #5 https://github.com/itsdamian/cube_test/pull/5 (draft, test-only), run 36975176429 https://github.com/itsdamian/cube_test/actions/runs/36975176429
+
+$ gh run view (jobs)
+  manifests: success
+  changes: success
+  secrets: success
+  frontend: success
+  images (cube-backend): success
+  backend: failure
+  images (cube-frontend): success
+  ci-ok: failure
+
+$ failing test (from the backend job log)
+  [ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.015 s <<< FAILURE! -- in com.currency.demo.feed.FeedMetricsTest
+  [ERROR] com.currency.demo.feed.FeedMetricsTest.whereIngestIsDisabledOnlyIngestActiveExistsAndIsZero -- Time elapsed: 0.007 s <<< FAILURE!
+  expected: 1.0
+   but was: 0.0
+  [ERROR] Tests run: 169, Failures: 1, Errors: 0, Skipped: 0
+  [INFO] BUILD FAILURE
+
+$ gh pr checks 5
+  backend: fail
+  ci-ok: fail
+  Trivy: pass
+  changes: pass
+  frontend: pass
+  images (cube-backend): pass
+  images (cube-frontend): pass
+  manifests: pass
+  secrets: pass
+
+$ gh pr view 5 --json isDraft,mergeable,mergeStateStatus,reviewDecision
+{"isDraft":true,"mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","reviewDecision":""}
+
+$ gh api repos/itsdamian/cube_test/rules/branches/main (effective rules on main)
+  deletion 
+  non_fast_forward 
+  pull_request 
+  required_status_checks [{"context":"ci-ok","integration_id":15368}]
+
+$ gh api repos/itsdamian/cube_test/commits/5af0022/check-runs?check_name=ci-ok
+  ci-ok=failure (app 15368)
+
+Why it cannot be merged: the ruleset requires the status check ci-ok (integration 15368 = GitHub Actions), and ci-ok on the PR head commit concluded failure; GitHub reports mergeStateStatus BLOCKED. (The PR is also a draft, which by itself prevents merging - the required-check failure above is the ruleset's reason, recorded independently of that.)

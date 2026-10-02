@@ -1,0 +1,26 @@
+# task 9 evidence (cluster cube, direct mode)
+K4: /api/v1/rules -> PriceIngestStalled, PricePushStalled, IngestDuplicated (health ok); /api/v1/targets cube-* all up: dev backend 2, prod backend 3, kafka-exporter 1+1, postgres 1+1; no target down in the cluster
+Alert history before AC12 (ALERTS, 4000 s): PriceIngestStalled pending dev/prod 11:37:51-11:38:36 (first deploy, worker crash-looping on Flyway); IngestDuplicated firing prod 11:55:51-11:56:06 (worker rollout overlap -> rule changed to for: 1m); PricePushStalled never, although SSE connections were 0 most of the time
+=== AC12 2026-10-01T12:13:17Z
+before: []
+statefulset.apps/backend-worker scaled
+scaled dev worker to 0 at 12:13:17
+12:13:17 +1790856797s []
+12:13:26 +9s []
+12:13:41 +24s []
+12:13:56 +39s []
+12:14:12 +55s []
+12:14:27 +70s [('PriceIngestStalled', 'cube-dev', 'pending', '12:14:15')]
+12:14:42 +85s [('PriceIngestStalled', 'cube-dev', 'pending', '12:14:15')]
+12:14:57 +100s [('PriceIngestStalled', 'cube-dev', 'pending', '12:14:15')]
+12:15:12 +115s [('PriceIngestStalled', 'cube-dev', 'pending', '12:14:15')]
+12:15:27 +130s [('PriceIngestStalled', 'cube-dev', 'firing', '12:14:15')]
+alertmanager: [('PriceIngestStalled', 'cube-dev', 'active', 'cube-dev：超過 60 秒沒有擷取到新的成交價格')]
+statefulset.apps/backend-worker scaled
+worker back to 1 at 12:15:38
+worker Ready at 12:15:44
+12:15:44 [('PriceIngestStalled', 'cube-dev', 'firing')]
+12:16:00 [('PriceIngestStalled', 'cube-dev', 'firing')]
+12:16:15 [('PriceIngestStalled', 'cube-dev', 'firing')]
+12:16:30 []
+dev sse 5s: 10

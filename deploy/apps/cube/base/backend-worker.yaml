@@ -1,0 +1,81 @@
+# The single "worker": exchange connections (ingest) + Kafka Streams candles + persisters +
+# alert evaluation + FX refresh + retention. A StatefulSet with ONE replica: Kubernetes never
+# runs two pods with the same ordinal at the same time (the old one must be gone before the new
+# one starts), so there is never more than one WebSocket per exchange (requirement 6). Scaling
+# it up is also rejected by the ValidatingAdmissionPolicy in deploy/platform/policies.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: backend-worker
+  labels: {app.kubernetes.io/component: worker}
+spec:
+  replicas: 1
+  serviceName: backend-worker
+  selector:
+    matchLabels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001              # the Streams state volume must be writable by the app user
+      containers:
+        - name: backend
+          image: ghcr.io/itsdamian/cube-backend
+          ports: [{name: http, containerPort: 8080}]
+          envFrom:
+            - configMapRef: {name: backend-common}
+          env:
+            - {name: APP_INGEST_ENABLED, value: "true"}
+            - {name: APP_STREAMS_ENABLED, value: "true"}
+            - {name: APP_PERSIST_ENABLED, value: "true"}
+            - {name: APP_ALERTS_ENABLED, value: "true"}
+            - {name: APP_FX_REFRESH_ENABLED, value: "true"}
+            - {name: APP_STREAMS_STATE_DIR, value: /var/lib/currency/streams}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom: {secretKeyRef: {name: cube-db-app, key: username}}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom: {secretKeyRef: {name: cube-db-app, key: password}}
+          resources:
+            requests: {memory: 512Mi, cpu: 200m}
+            limits: {memory: 640Mi}
+          # Liveness never depends on Kafka / the database (an outage must not restart healthy
+          # pods); readiness does (requirement 7). Startup gives the JVM time to boot.
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - {name: streams-state, mountPath: /var/lib/currency/streams}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+  volumeClaimTemplates:
+    - metadata:
+        name: streams-state
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 1Gi}
+---
+# Headless service required by the StatefulSet; also the Prometheus scrape target.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-worker
+  labels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}
+spec:
+  clusterIP: None
+  selector: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}
+  ports: [{name: http, port: 8080, targetPort: http}]

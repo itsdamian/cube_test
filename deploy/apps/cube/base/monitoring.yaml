@@ -1,0 +1,37 @@
+# What the shared Prometheus (namespace monitoring) scrapes in this environment. The namespace
+# becomes the "namespace" label, which the dashboard and the alerts use to tell dev from prod.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: backend}   # both the worker and the api Service
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+---
+# Consumer lag per group / partition (Strimzi Kafka Exporter).
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-exporter
+spec:
+  selector:
+    matchLabels: {strimzi.io/name: cube-kafka-kafka-exporter}
+  podMetricsEndpoints:
+    - port: tcp-prometheus
+      interval: 30s
+---
+# PostgreSQL metrics from CloudNativePG's built-in exporter.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels: {cnpg.io/cluster: cube-db}
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s

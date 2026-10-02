@@ -1,0 +1,25 @@
+# task 12 evidence (CI on GitHub-hosted runners) - PR / run links for `gh` checks
+
+PR #2 (draft, test-only)  https://github.com/itsdamian/cube_test/pull/2   test/ci-smoke = feat/k8s-gitops-cicd
+  run 36891456715  https://github.com/itsdamian/cube_test/actions/runs/36891456715  FAILURE (5m30s)
+    images (cube-backend): Trivy gate - tomcat-embed-core 10.1.55, 3 fixable CRITICAL
+    (CVE-2026-65182, CVE-2026-65905, CVE-2026-68525; fixed in 10.1.58) -> ci-ok failure (requirement 18 works)
+    other jobs: changes 6s, secrets 56s, manifests 33s, frontend 24s, backend 3m41s, images(frontend) 1m34s
+  -> fix ff963c7: tomcat.version 10.1.60
+  run 36892744494  https://github.com/itsdamian/cube_test/actions/runs/36892744494  SUCCESS (5m37s)
+    changes 6s, secrets 47s, manifests 30s, frontend 20s, backend 3m15s, images(frontend) 59s, images(backend) 5m18s, ci-ok 3s
+
+PR #4 (draft, test-only)  https://github.com/itsdamian/cube_test/pull/4   naive PriceIngestStalled rule (reverse check)
+  run 36893540468  https://github.com/itsdamian/cube_test/actions/runs/36893540468  FAILURE (5m15s)
+    manifests failure: promtool "FAILED: alertname: PriceIngestStalled, time: 20m, exp [cube-dev] got []" -> ci-ok failure
+
+PR #3 (draft, test-only)  https://github.com/itsdamian/cube_test/pull/3   only deploy/k3d/cluster.yaml changed
+  run 36893532862  base main -> code=true is CORRECT (diff vs main contains the whole feature branch); full pipeline 4m30s
+  base changed to feat/k8s-gitops-cicd, closed + reopened (editing the base does not trigger pull_request)
+  run 36894346178  https://github.com/itsdamian/cube_test/actions/runs/36894346178  SUCCESS (1m04s)
+    changes 5s, secrets 56s, manifests 37s, backend/frontend/images SKIPPED, ci-ok success 2s
+
+All three test PRs closed and their branches deleted after verification.
+
+Timing vs plan estimate (plan: PR ~6-9 min first / ~6 min cached; deploy-only ~1 min):
+  full PR 5m30s-5m37s, backend job 3m15s-3m41s (plan 5-9 min), deploy-only 1m04s.

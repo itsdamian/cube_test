@@ -19,7 +19,7 @@ cd frontend && npm run dev            # 前端開發伺服器 :5173，/api 代�
 ```bash
 ./mvnw clean verify                                # 下載所有 Maven 依賴與外掛（dependency:go-offline 抓不全測試外掛）
 docker pull postgres:17.11-alpine
-docker pull apache/kafka:3.9.2
+docker pull apache/kafka:4.3.1
 docker pull testcontainers/ryuk:0.12.0
 (cd frontend && npm ci)
 ```

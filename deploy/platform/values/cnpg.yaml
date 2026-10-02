@@ -1,0 +1,4 @@
+# CloudNativePG operator (cluster-wide by default).
+resources:
+  requests: {memory: 64Mi, cpu: 20m}
+  limits: {memory: 192Mi}

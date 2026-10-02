@@ -1,0 +1,35 @@
+# The cube worker runs the exchange WebSocket connections: more than one replica would ingest
+# every trade twice (spec requirement 6). prod has no Argo CD selfHeal, so a manual
+# `kubectl scale sts/backend-worker --replicas=2` would otherwise stick (plan, QA M1).
+# This policy rejects it - including the scale subresource that `kubectl scale` uses.
+# Cluster-scoped, so it lives here once instead of in each environment's overlay.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: cube-single-ingest-worker
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [statefulsets, statefulsets/scale]
+  matchConditions:
+    - name: is-cube-worker
+      expression: "object.metadata.name == 'backend-worker'"
+  validations:
+    - expression: "!has(object.spec.replicas) || object.spec.replicas <= 1"
+      message: "backend-worker runs the exchange connections and must have at most 1 replica (spec k8s-gitops-cicd, requirement 6)"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: cube-single-ingest-worker
+spec:
+  policyName: cube-single-ingest-worker
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - {key: cube.io/environment, operator: Exists}

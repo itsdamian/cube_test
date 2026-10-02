@@ -61,3 +61,9 @@ open http://localhost:3000              # 30 秒內可看到跳動的 BTC-USD �
 - **`./mvnw` 顯示 SHA-256 驗證失敗**：安裝 `unzip`（見本頁〈需要的工具〉）。
 - **公司網路或 VPN 擋了交易所**：用 `APP_FEED_PRIMARY_URL` / `APP_FEED_BACKUP_URL` 指到可用的端點，或換一個網路。
 - **看 backend log**：`docker compose logs -f backend`。
+- **從 Kafka 3.9 的舊 volume 升級**：compose 的 Kafka 已升到 4.3（與 Kubernetes 叢集一致）。沿用舊的 `kafka-data` volume 可以直接啟動，資料都在，但 `metadata.version` 會停在 3.9（KRaft 的正常升級狀態）。若要啟用 4.x 的新功能，執行：
+  ```bash
+  docker compose exec kafka /opt/kafka/bin/kafka-features.sh --bootstrap-server localhost:9092 upgrade --release-version 4.3
+  ```
+  全新的 volume 一開始就是 4.3，不需要這一步。
+- **Kafka 的 `log.message.timestamp.after.max.ms=86400000`（1 天）**：Kafka 4 預設拒絕時間戳比 broker 時間晚超過 1 小時的訊息（KIP-1030）。Kafka Streams 寫 `btc.candles` 時用的是交易所的成交時間（事件時間）；若交易所時鐘快了 1 小時以上，K 線會**靜默停止**，而價格與告警都看起來正常。因此 compose 與 Kubernetes（Strimzi `Kafka.spec.kafka.config`）都在 broker 層級放寬為 1 天。topic 由應用程式的 KafkaAdmin 建立，設在 broker 層級可以不動程式碼。

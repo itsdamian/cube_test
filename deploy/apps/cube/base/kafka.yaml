@@ -1,0 +1,71 @@
+# Kafka for one environment: a single KRaft node (controller + broker) managed by Strimzi.
+# Topics are created by the application's KafkaAdmin, so the Entity Operator (Topic / User
+# Operator, ~0.5 GB per environment) is not enabled (plan, QA C1).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  labels:
+    strimzi.io/cluster: cube-kafka
+  annotations:
+    # Argo CD syncs this wave first and waits until it is Healthy before deploying the backend
+    # (wave 0); otherwise the backend starts before Kafka / PostgreSQL and crash-loops (task 8).
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  replicas: 1
+  roles: [controller, broker]
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 2Gi                   # overlay sets the size per environment
+        deleteClaim: false
+        kraftMetadata: shared
+  # 512m heap + off-heap/page cache measured ~800Mi in dev (task 8, 83% of the old 960Mi limit).
+  resources:
+    requests: {memory: 896Mi, cpu: 200m}
+    limits: {memory: 1152Mi}
+  jvmOptions:
+    "-Xms": 512m
+    "-Xmx": 512m
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: cube-kafka
+  annotations:
+    # Argo CD syncs this wave first and waits until it is Healthy before deploying the backend
+    # (wave 0); otherwise the backend starts before Kafka / PostgreSQL and crash-loops (task 8).
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  kafka:
+    version: 4.3.1                 # same broker as tests and docker compose (task 1)
+    metadataVersion: 4.3-IV0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false                 # in-cluster only
+        # Strimzi generates a NetworkPolicy per listener; without peers it allows EVERY source on
+        # 9092 and, NetworkPolicies being additive, would undo our default-deny: task 8 measured
+        # dev -> prod Kafka as open. Only this environment's own pods may connect.
+        networkPolicyPeers:
+          - podSelector: {}
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+      # Kafka 4 (KIP-1030) rejects records stamped more than 1 hour in the future. Kafka Streams
+      # writes btc.candles with the exchange's trade time (event time); an exchange clock running
+      # an hour fast would silently stop the candles while prices keep flowing (no alert, no UI
+      # warning). Allow 1 day. Broker-level because the app's KafkaAdmin creates the topics.
+      log.message.timestamp.after.max.ms: 86400000
+  kafkaExporter:                   # consumer lag for Prometheus (requirement 20)
+    groupRegex: ".*"
+    topicRegex: ".*"
+    resources:
+      requests: {memory: 48Mi, cpu: 20m}
+      limits: {memory: 96Mi}

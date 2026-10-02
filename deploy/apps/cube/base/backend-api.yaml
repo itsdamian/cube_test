@@ -1,0 +1,88 @@
+# The scalable "api": REST + SSE only, every background role off (verified by ApiRoleTest).
+# Each replica reads prices with its own consumer group, so scaling out never duplicates work.
+# No "replicas" here: the HPA owns the replica count.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  labels: {app.kubernetes.io/component: api}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: api}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: api}
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: backend
+          image: ghcr.io/itsdamian/cube-backend
+          ports: [{name: http, containerPort: 8080}]
+          envFrom:
+            - configMapRef: {name: backend-common}
+          env:
+            - {name: APP_INGEST_ENABLED, value: "false"}
+            - {name: APP_STREAMS_ENABLED, value: "false"}
+            - {name: APP_PERSIST_ENABLED, value: "false"}
+            - {name: APP_ALERTS_ENABLED, value: "false"}
+            - {name: APP_FX_REFRESH_ENABLED, value: "false"}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom: {secretKeyRef: {name: cube-db-app, key: username}}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom: {secretKeyRef: {name: cube-db-app, key: password}}
+          resources:
+            requests: {memory: 448Mi, cpu: 200m}
+            limits: {memory: 560Mi}
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            # Give the endpoint controller time to take the pod out of the Service before the
+            # app starts its graceful shutdown (requirement 8).
+            preStop:
+              sleep: {seconds: 5}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api
+  labels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: api}
+spec:
+  selector: {app.kubernetes.io/name: backend, app.kubernetes.io/component: api}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-api
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: backend-api}
+  minReplicas: 1                   # overlay sets min / max per environment
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+  behavior:
+    scaleDown:
+      # SSE connections on a removed pod are dropped (the browser reconnects): don't flap.
+      stabilizationWindowSeconds: 120

@@ -1,0 +1,56 @@
+# task 10 evidence (HPA load test, cube-prod)
+
+## Run 1 (12:19, 30 VUs unlimited rate) - k6 OOMKilled at 256Mi, no summary
+HPA: 12:20:13 2->4 (CPU 1066%), 12:25:25 4->2
+Prometheus 12:19-12:23: history and converted ~680k requests each, all status 200 (no 5xx); avg latency ~3 ms, max 0.34 s; hikari pending max 0
+api pods: no OOMKilled (kube_pod_container_status_last_terminated_reason, 15m); peak working set 396-402Mi / limit 560Mi (72%); restarts 0
+SSE: 1259 price events in 12 min, reconnects 1, max gap 4 s
+
+## Run 2 (15:43, ramping-arrival-rate up to 1000 it/s ~ 2000 req/s, k6 512Mi)
+HPA timeline (changes only, sampled every 10 s):
+  15:43:01 replicas=2 desired=2 cpu=5%
+  15:44:21 replicas=4 desired=4 cpu=231%
+  15:49:13 replicas=2 desired=2 cpu=6%
+  peak cpu: 275%
+SSE during run 2: 1758 price events, reconnects 1, max gap 1 s
+6 'connection refused' at 15:43:22 only (first second of the k6 pod); kube_pod_status_ready shows 2 ready api pods throughout 15:43:00-15:43:35 -> not missing endpoints; consistent with kube-router admitting the brand-new client pod's IP to the same-namespace NetworkPolicy ~1 s late
+
+## k6 summary (verbatim)
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+     execution: local
+        script: /scripts/script.js
+        output: -
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 3m45s max duration (incl. graceful stop):
+              * api: Up to 1000.00 iterations/s for 3m15s over 3 stages (maxVUs: 20-100, gracefulStop: 30s)
+  █ THRESHOLDS 
+    http_req_duration
+    ✓ 'p(95)<500' p(95)=1.75ms
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+  █ TOTAL RESULTS 
+    checks_total.......: 346104 1774.826354/s
+    checks_succeeded...: 99.99% 346098 out of 346104
+    checks_failed......: 0.00%  6 out of 346104
+    ✗ history 200
+      ↳  99% — ✓ 173049 / ✗ 3
+    ✗ converted 200
+      ↳  99% — ✓ 173049 / ✗ 3
+    HTTP
+    http_req_duration..............: avg=828.48µs med=688.79µs p(95)=1.75ms p(99)=4.35ms max=152.96ms
+      { expected_response:true }...: avg=828.49µs med=688.79µs p(95)=1.75ms p(99)=4.35ms max=152.96ms
+    http_req_failed................: 0.00%  6 out of 346104
+    http_reqs......................: 346104 1774.826354/s
+    EXECUTION
+    dropped_iterations.............: 198    1.015347/s
+    iteration_duration.............: avg=1.85ms   med=1.26ms   p(95)=3.13ms p(99)=8.72ms max=1.08s   
+    iterations.....................: 173052 887.413177/s
+    vus............................: 0      min=0           max=25
+    vus_max........................: 33     min=26          max=33
+    NETWORK
+    data_received..................: 16 GB  81 MB/s
+    data_sent......................: 33 MB  170 kB/s
+api  ✓ [ 100% ] 000/033 VUs  3m15s  0005.77 iters/s
