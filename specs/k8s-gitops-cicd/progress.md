@@ -376,3 +376,13 @@
 - 開出 **PR #6** https://github.com/itsdamian/cube_test/pull/6（非 draft、沒有 test-only label、**沒有開 auto-merge**、PR 描述沒有生成標記），22 個 commit。
 - PR 描述寫明：這次的內容；合併後 main 會有 `deploy/`，但 root Application 尚未指向 main，所以叢集不會變化（QA C3）；合併後第一次把 image 推到 GHCR；使用者接著要把兩個 package 設為 Public（清單第 7 項）。
 - 由使用者本人審核並合併；工程師不會合併。
+
+## 2026-10-02 15:35 — Stage: task 14（main 推送 image 到 GHCR）
+- 使用者本人合併 PR #6（merge commit `d04f3f1`，07:09:09Z）。main 的 CI run 36977076346 全綠（5 分 59 秒）。
+- **Verified**（`evidence/task14.txt`）：
+  - `cube-backend` / `cube-frontend:sha-d04f3f1` 的 manifest list 都包含 linux/amd64 + linux/arm64（另外兩個 unknown/unknown 是 buildx provenance）；
+  - 不帶憑證取得 manifest 為 HTTP 200，以空的 `DOCKER_CONFIG` 匿名 `docker pull` 兩個 image 都成功；
+  - OCI label 的 source 與 revision 對得上 merge commit；
+  - Security 分頁（code scanning）有 main 的 Trivy 分析：backend 14 筆、frontend 3 筆，CRITICAL 的 Tomcat 已消失。
+- **清單第 7 項不需要操作**：兩個 package 在第一次 push 後就已是 public（team lead 也驗證過），原因未證實。docs（task 20）會寫明：「如果是 private，到 Package settings → Change visibility 改為 Public」。
+- 本 session 曾因用量上限暫停後接續（不是新 session），scratchpad 目錄被重設；其中只有暫存檔，私鑰副本已在 task 13 刪除。
