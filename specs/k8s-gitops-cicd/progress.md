@@ -351,3 +351,20 @@
 - QA 用 `gh` 查證全部 run（Trivy 表格、全綠、deploy-only skipped、壞規則 fail）、PR #2–#4 已關閉、遠端沒有 `test/*` 分支、沒有 trailer；ci.yml 的 `permissions: {}`、SHA pin、只在 main push 時登入 GHCR、`persist-credentials: false` 都 OK；判定 Tomcat 覆寫在範圍內。→ 勾選 12。
 - 提醒：Dependabot 若追不到這個覆寫，要在文件中列為人工追蹤項目（已寫進 task 18）。
 - **下一步**：task 13 起需要使用者先完成設定：清單第 4、5 項，以及功能 PR 由誰開。
+
+## 2026-10-02 14:55 — Stage: implement task 13（branch protection 與 AC5 的「無法合併」部分）
+- **使用者已完成清單第 4、5、9 項**（team lead 以 `gh api` 驗證）：
+  - 第 4 項：`default_workflow_permissions=read`、`allow_auto_merge=true`。
+  - 第 5 項：ruleset `main-protection`（id 24349377）active，目標 `~DEFAULT_BRANCH`、沒有 bypass；規則為 deletion、non_fast_forward、pull_request（approvals 0）、required_status_checks `ci-ok`（integration 15368）。
+  - 第 9 項：`~/cube-secrets/sealed-secrets-key.yaml` 存在，檔案 600、目錄 700。
+- **私鑰備份核對**：使用者的備份、工程師 scratchpad 的副本、叢集中唯一的一把私鑰，三者的 `tls.key` sha256 相同（只比對雜湊）。工程師的 scratchpad 副本與 Grafana 密碼暫存檔都**已刪除**（QA 要求）。
+  - 一開始比對出不同，是因為 `awk` 輸出多了換行；改用 `printf %s` 去掉換行後一致。
+- **PR #5**（draft、test-only，base 為 main）：故意把 `FeedMetricsTest` 的一個斷言改錯。run 36975176429：
+  - `backend` failure（`whereIngestIsDisabledOnlyIngestActiveExistsAndIsZero`：expected 1.0 but was 0.0），`ci-ok` failure；
+  - head commit 上的 `ci-ok` check run 為 failure（app 15368）；`mergeStateStatus: BLOCKED`；
+  - main 的有效規則中有 `required_status_checks [ci-ok]`；
+  - PR 同時也是 draft，本身就無法合併——證據中把「ruleset 因 ci-ok 失敗而擋下」獨立記錄。
+  - 驗證後已關閉並刪除分支。
+  - 證據：`evidence/task13.txt`。
+- **AC5 的 Claude 分析部分**在 task 19 補上。
+- **下一步（task 14）**：開 feat → main 的正式 PR，必須等使用者在工程師分頁親自確認（team lead 已提醒）。
