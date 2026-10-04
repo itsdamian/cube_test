@@ -5,7 +5,7 @@
 #   name  namespace  wave  type  source  ref  path_or_chart  values  options
 #   type helm: source = chart repo URL, ref = chart version, path_or_chart = chart name, values = file in deploy/platform/values
 #   type git : source = git repo URL (or "self" = this repo), ref = tag/branch, path_or_chart = directory
-#   options: comma list - ssa (server-side apply), noprune, noselfheal, manual,
+#   options: comma list - ssa (server-side apply and server-side diff), noprune, noselfheal, manual,
 #            nofinalizer (deleting the Application must not delete what it runs - Argo CD itself)
 gateway-api-crds	-	-30	git	https://github.com/kubernetes-sigs/gateway-api.git	v1.6.2	config/crd/standard	-	ssa,noprune
 argocd	argocd	-20	helm	https://argoproj.github.io/argo-helm	10.9.5	argo-cd	argocd.yaml	noprune,nofinalizer

@@ -400,3 +400,14 @@
   2. **下載很慢**：PostgreSQL image 下載了 12 分鐘、GHCR 的 app image 也要數分鐘（主機的 image 快取在 prune 事故中被清掉，叢集內的 containerd 又是全新的）。AC1 的計時要扣除下載時間，task 15 / 21 會分開記錄。
 - sync wave 運作正確：cube-dev / cube-prod 先等 `Cluster/cube-db`（wave -1）Healthy，才部署 backend（wave 0）。
 - 另外在調查：Strimzi 的 `kafkas.kafka.strimzi.io` CRD 顯示 OutOfSync。
+
+## 2026-10-04 07:00 — task 15：controller 恢復；Strimzi OutOfSync 的原因與修正
+- 使用者合併 PR #8（`4ad95a8`）。在合併之前，Argo CD 的 selfHeal 一直把 controller 改回 512Mi（team lead 觀察到 71 次重啟）——正是 PR 描述中預期的狀況。合併後 StatefulSet 已是 1Gi，但舊 Pod 仍卡在 CrashLoop。
+- **我的疏失**：刪除 Pod 前沒有先確認它的狀態。那個 Pod 在 06:50:09 已經自行換成 1Gi、restarts 0；我在 06:50:56 又把這個健康的 Pod 刪掉，它約 1 分鐘後重建（1Gi、Ready、restarts 0），沒有其他影響。
+- **Strimzi OutOfSync**：`argocd app diff strimzi --core` 顯示 `kafkas.kafka.strimzi.io` CRD 只差一行 `properties: {}`，位於 `status.clusterSecurity` 的 schema。chart 中是空物件，API server 儲存時會去掉，所以 client 端的比對永遠是 OutOfSync。實際部署的 CRD 沒有問題（`v1` served / storage）。
+  - 修正：使用 server-side apply 的元件（`ssa` 選項：strimzi、cnpg、gateway-api-crds、kube-prometheus-stack）同時開啟 **`argocd.argoproj.io/compare-options: ServerSideDiff=true`**，由 API server 以 dry-run 計算差異。**沒有用 ignoreDifferences 忽略任何欄位**，因此真正的變更不會被漏掉。
+  - 驗證：`argocd app diff strimzi --core --server-side-diff` 沒有差異。
+- **team lead 建議寫進 docs/kubernetes.md「維運注意事項」（task 20）**：
+  1. 用 helm / kubectl 手動修的東西，若沒有同時進 main，會被 Argo CD 的 selfHeal 改回去；
+  2. StatefulSet 的 Pod 卡在 CrashLoop 時，新的 spec 不會自動套用，要先確認 Pod 的狀態再刪除。
+- **資源（QA 備註）**：Argo CD controller 單一元件就超過 512Mi，Grafana 也比 plan 估得高；task 21 會重新記錄 `kubectl top` / `docker stats`，並與 16 GB 對照。
