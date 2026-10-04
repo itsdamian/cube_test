@@ -88,7 +88,22 @@ def application(c):
     sync_options = ["CreateNamespace=true"]
     if "ssa" in opts:
         sync_options.append("ServerSideApply=true")
+    if c["type"] == "git":
+        # A custom resource whose CRD another component installs (ServiceMonitor, Kafka, ...)
+        # must not fail the dry run before that CRD exists.
+        sync_options.append("SkipDryRunOnMissingResource=true")
     lines += ["    syncOptions:"] + [f"      - {o}" for o in sync_options]
+    if "manual" not in opts:
+        # Keep retrying a failed sync (e.g. a CRD that is still being installed) instead of
+        # giving up after five attempts on the same revision (QA, task 15).
+        lines += [
+            "    retry:",
+            "      limit: -1",
+            "      backoff:",
+            "        duration: 10s",
+            "        factor: 2",
+            "        maxDuration: 5m",
+        ]
     return "\n".join(lines) + "\n"
 
 

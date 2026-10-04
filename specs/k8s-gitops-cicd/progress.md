@@ -422,3 +422,14 @@
 - 兩個網址的頁面都是 200、SSE 有價格；兩個環境都在跑 GHCR 的 `sha-d04f3f1@sha256…`。
 - 證據：`evidence/task15.txt`。
 - **剩下**：QA 獨立從零重建一次（AC1，`cluster-down` → `cluster-up --mode=gitops`，下載時間另外記錄）。工程師在 QA 完成前不操作叢集。
+
+## 2026-10-04 08:40 — task 15：QA AC1 FAIL → 跨 Application 的順序修正
+- **QA 獨立重建 FAIL**：1681 秒逾時，11/14。cube-dev、cube-prod、monitoring 為 OutOfSync/Missing：`failed to discover server resources for group version monitoring.coreos.com/v1`（重試 5 次後放棄，同一個 revision 不會再自動重試）。CRD 到 07:41 才建立。
+- **根因（QA 判斷正確）**：Argo CD 自 1.8 起不再評估 `argoproj.io/Application` 的健康狀態，所以 root 上子 Application 的 sync wave **只決定建立順序，不會等前一個 wave Healthy**。我在 task 15 驗證的是 Application **內部**的 wave（Cluster 先於 backend），那部分成立；跨 Application 沒有保證，我的那次成功是時序剛好。下載特別慢時，競態就被放大了。
+- **回答 QA 的問題**：我那次沒有對 cube-* 手動 sync。我做過的是：root 的 normal refresh、strimzi 的 hard refresh，以及 AC10 中對 prod frontend 的 `argocd app sync`（在全部 Healthy 之後）。
+- **修正**：
+  1. argocd values 加上官方文件的 `resource.customizations.health.argoproj.io_Application` Lua（helm template 確認已寫入 argocd-cm），root 會等每個子 Application Healthy 才進下一個 wave；
+  2. 所有自動同步的 Application 與 root 都加上 `retry: limit -1`，backoff 10 秒 ×2、最長 5 分鐘；
+  3. git 類型的元件加上 `SkipDryRunOnMissingResource=true`。
+  - `validate-manifests.sh` 66/66。
+- **完成條件（QA）**：QA 從零重建一次，完全不手動 sync，必須 14/14，且 dev / prod 都有 SSE。
