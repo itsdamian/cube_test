@@ -433,3 +433,17 @@
   3. git 類型的元件加上 `SkipDryRunOnMissingResource=true`。
   - `validate-manifests.sh` 66/66。
 - **完成條件（QA）**：QA 從零重建一次，完全不手動 sync，必須 14/14，且 dev / prod 都有 SSE。
+
+## 2026-10-04 09:10 — 使用者決定（經 team lead 轉達）與 task 16
+- **bot contributor**：使用者選 (a)，接受 cube-deployer[bot] 與 dependabot[bot] 出現在 contributors；task 20 的 README 要加說明。
+- **`@claude` 只留言、不推 commit**（使用者「同意」，team lead 核准的 plan 變更）：spec 需求 26、plan〈Claude Code〉與新的〈計畫變更紀錄〉、task 19 的完成條件都已更新。
+  - `claude.yml` 的 `contents: read`；allowedTools 只有讀取 + 留言類工具；disallowedTools 加上 `git push` / `git commit`；修改以 ```suggestion 行內留言提出。
+  - AC6 新增負向測試：「@claude 幫我把這個改掉並 commit」→ 不能產生任何 commit。
+- **Task 16**：`.github/workflows/deploy-dev.yml`（actionlint 通過）。
+  - 觸發：`workflow_run: CI` 成功、push、main；
+  - 從 CI run 的 jobs 判斷 images 是否為 success（沒有新 image 就結束 → 不會形成迴圈）；
+  - 用 GitHub App token；以 `kustomize edit set image` 寫入 tag@digest，並先檢查 dev 是否已經是這個 tag；
+  - commit 作者是 App 的 bot 身分，force-push 到固定分支 `deploy/dev`；只保留一個 PR（`--label deploy/dev`），並開 auto-merge squash；
+  - `concurrency: deploy-dev`，依序執行、不取消。
+  - 已建立 `deploy/dev`、`deploy/prod` 兩個 label。
+- **待使用者**：清單第 6 項（建立 GitHub App `cube-deployer` 與兩個 secret）→ 合併含 `deploy-dev.yml` 的 PR 到 main（🏁）。
