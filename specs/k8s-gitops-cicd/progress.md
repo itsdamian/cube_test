@@ -411,3 +411,25 @@
   1. 用 helm / kubectl 手動修的東西，若沒有同時進 main，會被 Argo CD 的 selfHeal 改回去；
   2. StatefulSet 的 Pod 卡在 CrashLoop 時，新的 spec 不會自動套用，要先確認 Pod 的狀態再刪除。
 - **資源（QA 備註）**：Argo CD controller 單一元件就超過 512Mi，Grafana 也比 plan 估得高；task 21 會重新記錄 `kubectl top` / `docker stats`，並與 16 GB 對照。
+
+## 2026-10-04 07:30 — task 15：GitOps 運作驗證（等 QA 獨立跑 AC1）
+- 使用者合併 PR #9（`e3ad69f`）。strimzi 用 hard refresh 重新比對後為 Synced。**14 個 Application 全部 Synced / Healthy**。
+- **沒有 SharedResourceWarning**：所有 Application 都沒有任何 condition；`monitoring` namespace 的 tracking-id 屬於 `platform-secrets`（QA 要求確認的項目）。
+- **sync wave**：第一次同步時，cube-* 先回報「waiting for healthy state of Cluster/cube-db」，backend 等 PG 就緒後才建立，這次沒有因 Flyway 而反覆重啟。
+- **AC10**：
+  - dev：`kubectl scale deploy/frontend --replicas=3` → **2 秒**內被 selfHeal 改回 1。
+  - prod：第一次測試時也被改回 2。查 managedFields 與 operationState，發現那是**剛好同時發生的自動同步**——main 從 4b457ee 前進到 e3ad69f，由 `initiatedBy automated` 觸發，不是 selfHeal。在 prod 已同步到 e3ad69f 之後重測：30 / 90 / 180 秒後仍是 3、Application 為 **OutOfSync**（selfHeal 關閉，只回報、不修正）；`argocd app sync` 後恢復為 2 / Synced。
+- 兩個網址的頁面都是 200、SSE 有價格；兩個環境都在跑 GHCR 的 `sha-d04f3f1@sha256…`。
+- 證據：`evidence/task15.txt`。
+- **剩下**：QA 獨立從零重建一次（AC1，`cluster-down` → `cluster-up --mode=gitops`，下載時間另外記錄）。工程師在 QA 完成前不操作叢集。
+
+## 2026-10-04 08:40 — task 15：QA AC1 FAIL → 跨 Application 的順序修正
+- **QA 獨立重建 FAIL**：1681 秒逾時，11/14。cube-dev、cube-prod、monitoring 為 OutOfSync/Missing：`failed to discover server resources for group version monitoring.coreos.com/v1`（重試 5 次後放棄，同一個 revision 不會再自動重試）。CRD 到 07:41 才建立。
+- **根因（QA 判斷正確）**：Argo CD 自 1.8 起不再評估 `argoproj.io/Application` 的健康狀態，所以 root 上子 Application 的 sync wave **只決定建立順序，不會等前一個 wave Healthy**。我在 task 15 驗證的是 Application **內部**的 wave（Cluster 先於 backend），那部分成立；跨 Application 沒有保證，我的那次成功是時序剛好。下載特別慢時，競態就被放大了。
+- **回答 QA 的問題**：我那次沒有對 cube-* 手動 sync。我做過的是：root 的 normal refresh、strimzi 的 hard refresh，以及 AC10 中對 prod frontend 的 `argocd app sync`（在全部 Healthy 之後）。
+- **修正**：
+  1. argocd values 加上官方文件的 `resource.customizations.health.argoproj.io_Application` Lua（helm template 確認已寫入 argocd-cm），root 會等每個子 Application Healthy 才進下一個 wave；
+  2. 所有自動同步的 Application 與 root 都加上 `retry: limit -1`，backoff 10 秒 ×2、最長 5 分鐘；
+  3. git 類型的元件加上 `SkipDryRunOnMissingResource=true`。
+  - `validate-manifests.sh` 66/66。
+- **完成條件（QA）**：QA 從零重建一次，完全不手動 sync，必須 14/14，且 dev / prod 都有 SSE。

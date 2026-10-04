@@ -12,6 +12,23 @@ configs:
     # of the acceptance criteria (plan: CI time budget).
     timeout.reconciliation: 60s
     timeout.reconciliation.jitter: 0s
+    # App of apps: let the root Application wait for each child to be Healthy before moving to
+    # the next sync wave (Argo CD dropped Application health in 1.8; this is the documented
+    # snippet). Without it waves only order the CREATION: on a slow first build the cube apps
+    # synced before kube-prometheus-stack had created its CRDs and failed for good (QA, task 15).
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+      end
+      return hs
 controller:
   # Caches every resource it manages (kube-prometheus-stack, Strimzi and CNPG CRDs, both
   # environments): OOMKilled at 512Mi during the first GitOps sync (task 15).
