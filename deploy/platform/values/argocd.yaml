@@ -13,9 +13,11 @@ configs:
     timeout.reconciliation: 60s
     timeout.reconciliation.jitter: 0s
 controller:
+  # Caches every resource it manages (kube-prometheus-stack, Strimzi and CNPG CRDs, both
+  # environments): OOMKilled at 512Mi during the first GitOps sync (task 15).
   resources:
-    requests: {memory: 256Mi, cpu: 100m}
-    limits: {memory: 512Mi}
+    requests: {memory: 512Mi, cpu: 100m}
+    limits: {memory: 1Gi}
 repoServer:
   resources:
     requests: {memory: 128Mi, cpu: 50m}
