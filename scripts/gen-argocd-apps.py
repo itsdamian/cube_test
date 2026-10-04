@@ -41,6 +41,12 @@ def application(c):
         "  annotations:",
         f'    argocd.argoproj.io/sync-wave: "{c["wave"]}"',
     ]
+    if "ssa" in opts:
+        # Compare like the API server applies (server-side dry run) instead of a client-side
+        # diff: fields the API server normalises away no longer show up as drift. Task 15:
+        # Strimzi's Kafka CRD has an empty "properties: {}" the API server drops, so the
+        # client-side diff reported the strimzi app OutOfSync forever.
+        lines += ["    argocd.argoproj.io/compare-options: ServerSideDiff=true"]
     if "nofinalizer" not in opts:
         # Deleting the Application also deletes what it deployed.
         lines += ["  finalizers:", "    - resources-finalizer.argocd.argoproj.io"]
