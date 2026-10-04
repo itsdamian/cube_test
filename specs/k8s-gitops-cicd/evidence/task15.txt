@@ -1,0 +1,47 @@
+# task 15 evidence (GitOps on main)
+main = e3ad69f; all Applications:
+  argocd                  Synced   Healthy
+  cnpg                    Synced   Healthy
+  cube-dev                Synced   Healthy
+  cube-prod               Synced   Healthy
+  gateway-api-crds        Synced   Healthy
+  kube-prometheus-stack   Synced   Healthy
+  monitoring              Synced   Healthy
+  platform-policies       Synced   Healthy
+  platform-routes         Synced   Healthy
+  platform-secrets        Synced   Healthy
+  root                    Synced   Healthy
+  sealed-secrets          Synced   Healthy
+  strimzi                 Synced   Healthy
+  traefik                 Synced   Healthy
+
+SharedResourceWarning / other conditions on any Application:
+  none
+namespace monitoring tracked by: platform-secrets:/Namespace:/monitoring
+
+=== AC10 dev (selfHeal) 07:20:49
+$ kubectl scale deploy/frontend -n cube-dev --replicas=3
+deployment.apps/frontend scaled
+  spec.replicas back to 1 after 2 s
+
+=== AC10 prod (selfHeal off) 07:20:51
+$ kubectl scale deploy/frontend -n cube-prod --replicas=3
+deployment.apps/frontend scaled
+  after 40 s: spec.replicas=2 app=Synced
+  NOTE: that revert was an automated sync to a NEW revision (cube-prod history: 4b457ee -> e3ad69f, op started 07:20:57 initiatedBy automated) that happened to start right after the scale - not selfHeal. Retest now that prod is on e3ad69f:
+=== AC10 prod retest 07:21:57
+deployment.apps/frontend scaled
+  +30s: spec.replicas=3 app sync=OutOfSync health=Healthy
+  +90s: spec.replicas=3 app sync=OutOfSync health=Healthy
+  +180s: spec.replicas=3 app sync=OutOfSync health=Healthy
+  -> prod is NOT healed automatically; Argo CD shows OutOfSync. Restore by syncing (as documented):
+  after argocd app sync: spec.replicas=2 sync=Synced
+
+=== sync waves (GitOps mode)
+  during the first sync cube-dev/cube-prod reported: op Running 'waiting for healthy state of postgresql.cnpg.io/Cluster/cube-db' (Cluster/Kafka are wave -1); backend pods were created only after cube-db was healthy -> no Flyway crash-loop this time (backend restarts: dev worker 1 = image-pull era, all others 0)
+
+=== both sites
+  dev.cube.localhost page 200 SSE prices in 5 s: 5 image=ghcr.io/itsdamian/cube-backend:sha-d04f3f1@sha256:3db3e4bb90
+  cube.localhost page 200 SSE prices in 5 s: 6 image=ghcr.io/itsdamian/cube-backend:sha-d04f3f1@sha256:3db3e4bb90
+
+=== GitOps build timing (first run, cluster-up --mode=gitops): timed out at 25 min - controller OOM (fixed PR #8) + very slow image downloads (postgres 12 min, cube-frontend 23 MB in 4 min). AC1 timing is QA's independent rebuild.
