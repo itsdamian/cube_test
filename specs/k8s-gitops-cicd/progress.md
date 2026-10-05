@@ -627,3 +627,8 @@
   - 12/12 通過；舊的 Lua 有 6 個案例失敗（測試能分辨新舊）。
   - 叢集上 14 個 live Application 用新 Lua 評估全部 Healthy。
 - 接下來：feat PR → 使用者合併 → QA 再照文件重建（用 operationState 時間確認 wave 順序）→ 24 小時觀察 → v0.1.1 → 重跑 AC。
+
+## 2026-10-05 14:15 — 分支做法調整：每次 PR 合併後重設 feat（team lead 決定）
+- 問題（QA）：使用者用 squash 合併，feat 上已經被 squash 的舊 commit 不會成為 main 的祖先，所以每個新 PR 的 commit 列表都會重複出現這些舊 commit。diff 是對的，只是列表很雜。
+- 做法：每次 PR 合併後，先確認 `git diff origin/main feat` 只剩還沒開 PR 的新變更，再把 feat/k8s-gitops-cicd 重設到 origin/main，用 `--force-with-lease` 推送。還沒合併的變更會在重設後重新套用，不會丟掉。仍在原本的授權範圍內（feat 分支）。另開短分支（fix/*、docs/*）的提議撤回。
+- 第一次重設：#40 合併之後（main 48fcc38），重新套用的只有這筆紀錄。
