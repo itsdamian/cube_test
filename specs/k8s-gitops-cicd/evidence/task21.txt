@@ -171,3 +171,22 @@
 
 ## Still open
   - 24 h alert history: window from 2026-10-05 06:46Z; capture after 2026-10-06 06:46Z (rules in progress.md).
+
+## Alert history (QA C4) - window shortened by the user's decision (relayed by the team lead)
+  Window 2026-10-05 06:46:00-09:23:00Z = 157 min (instead of 24 h). pmset: no Sleep 14:00-17:59 +0800.
+  Data: Prometheus query_range ALERTS{alertname=~"PriceIngestStalled|PricePushStalled|IngestDuplicated"}
+  step 15 s; count by (alertname, namespace)(ALERTS{alertstate="firing"}) (QA).
+  Test windows: 8, together ~33 min; with 5 min buffer each ~73 min; outside them ~84 min.
+  cube alerts:
+    IngestDuplicated  cube-dev  pending 06:46:00-06:46:15, never firing - overlap of old and new worker at
+                      the end of the #43 dev rollout (06:45:52); outside the test windows, explained.
+    PriceIngestStalled cube-dev pending 07:53:30, firing 07:54:30-07:55:15 - inside AC12 (expected).
+    PricePushStalled  never.
+    => no firing outside the test windows: no false alarm.
+  Expected but not fired: none. AC3's Kafka outage (25 s) and the dev api deletions are shorter than the
+    60 s + for: 1m threshold; ingest freshness does not depend on the database.
+  Restarts 0. FX refresh: prod 06:56, 07:54, 08:24, 08:54 ok; dev 07:16, 07:46 ok, 07:47-07:55 8x
+    ResourceAccessException (AC12's NetworkPolicy). Retention job: dev 07:47, prod 08:25 ok (lower bound -
+    counters reset when pods are replaced).
+  Platform alerts: Watchdog (heartbeat, expected); NodeClockNotSynchronising firing the whole window - a
+    permanent false positive of node-exporter inside k3d (QA N1, decision with the team lead).
