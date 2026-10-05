@@ -503,3 +503,17 @@
   - `claude-code-review.yml` 會和我們的 `claude-review.yml` 重複 review。
 - 處理：把 main 合併回 feat（`8a462c3`），衝突的 `claude.yml` **採用我們只能留言的版本**，並**刪除** `claude-code-review.yml`。等 PR #14 合併後，main 就恢復成只能留言的設定。
 - 提醒使用者：在 PR #14 合併之前，不要在 issue / PR 留言 `@claude`。
+
+## 2026-10-05 11:40 — task 19 驗證（PR #14 合併後，用 main 上的 workflow）→ 交給 QA
+- 證據：`evidence/task19.txt`（run ID、PR #24 head、每個 run 的回合數 / 耗時 / 費用）。
+- AC6：
+  - PR #14 自動 review 正常（sticky 摘要加 2 則 inline suggestion，已在 d9ef2e3 套用）。
+  - 「請合併」被拒絕；「直接 commit」只給 suggestion；issue #25 沒有 commit、遠端沒有任何 `claude/*` 分支。
+  - Dependabot PR 與 deploy/dev bump PR 都沒有觸發 review。
+- AC5：PR #24 上的失敗分析留言正確（run 37259242453）。
+- 發現：Dependabot 觸發的 claude-ci-failure 失敗（action 拒絕 bot 發起的 run）。修正：job 條件排除 `dependabot[bot]`，合併到 main 後生效。
+- 費用：整個測試約 0.56 USD。claude-ci-failure 用滿 10 回合但成功結束，先不調整。
+- 尚未完成：
+  - QA K8 的非 draft 失敗 PR，需要使用者同意；
+  - main 失敗時寫入單一 issue；
+  - 測試完關閉 PR #24、刪除 test/claude-negative。
