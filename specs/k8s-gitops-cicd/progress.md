@@ -551,3 +551,68 @@
   - team lead 判斷不需要 `force_images` input，因為手動執行時 `changes` 本來就判定 code=true。
 - deploy-dev.yml：觸發條件接受 `workflow_dispatch` 的 run，仍限定 head_branch == main，防降版檢查照舊。
 - docs/cicd.md：新增「歷史改寫後的恢復步驟」（QA G2 的順序）。task 20 會補齊其他內容。
+
+## 2026-10-05 14:05 — QA K8 完成、PR #24 關閉；PR #29 已合併
+- 使用者同意「K8 非 draft 測試 PR」。PR #24 已經是非 draft（timeline：itsdamian 在 03:36:29Z 標成 ready for review）。
+  - mergeStateStatus=BLOCKED、mergeable_state=blocked，ci-ok=FAILURE。ruleset 要求 0 個 review，所以只有 ci-ok 在擋。
+  - 沒有嘗試合併。之後已關閉 PR #24，並刪除 test/claude-negative。
+- QA PR #29 審查 PASS，使用者已合併。P1 寫進 docs/cicd.md：同一個 commit 再次手動執行 CI 會覆寫 sha-<7>，digest 會改變。
+- 更正：Re-run 會用原本那次 run 當時的 workflow 檔案。防降版檢查加入之前建立的 Deploy dev run 沒有這道檢查，不能 Re-run。docs/cicd.md 已寫明；實測只用之後建立的 run。
+- 稽核補記：PR #24 在 03:36:29Z 被改成 ready_for_review（actor itsdamian），**不是我做的**。
+  - 我的 session 紀錄在 03:33–03:37:11 之間沒有任何工具呼叫。整個 session 只有一次 `gh pr ready 24`，是 04:01 做 K8 時，當時回報「already ready for review」。
+  - 這個事件觸發了 claude-review run 37260112716（03:36:31Z，success，triggering actor itsdamian）。所以 PR #24 也意外驗證了「非 draft 時會有自動 review」。
+  - 使用者、team lead、QA 用的都是同一個 itsdamian 帳號，無法從 GitHub 端分辨是誰。
+  - 補記：PR #24 的 ready_for_review 是使用者本人在 GitHub UI 按的。使用者在主 session 確認，由 team lead 轉達。
+- 防降版實測 (b)：Re-run 37261627710（attempt 2，04:05Z），結果 success。log 為 `CI built sha-443d5d8, compared with sha-da515fd: skip: 443d5d8 is older than da515fd`，commit 步驟 skipped，沒有新的 PR，main 不變。
+- 手動執行 CI 實測 (a)：`gh workflow run ci.yml --ref main` → run 37262054235（HEAD 9a1b6e4），進行中。
+- 使用者決定（team lead 轉達）：守衛加入前的 33 個 Deploy dev run 不刪除，只在文件警告。docs/cicd.md 新增〈不要 Re-run 舊的 Deploy dev run〉。
+
+## 2026-10-05 14:20 — #26、#29 都是 squash 合併：舊 hash 的對照方式
+- main 上的 443d5d8（#26）和 da515fd（#29）都只有一個 parent。feat 上的原始 commit 不在 main 的歷史中：
+  - #26：d9ef2e3…0752fd3 共 9 個；
+  - #29：714bf9a。
+  - 之前的 #6、#8、#9、#10、#14 是 merge commit。
+- 對照方式：
+  - evidence 或 progress 裡的 feat hash，到 feat 分支上找（`git log origin/feat/k8s-gitops-cicd`）；
+  - main 上的對應內容，看 squash commit 標題裡的 PR 編號（`git log origin/main --grep '(#26)'`）。
+  - 文件辨識時間點時，一律用「PR 編號＋合併時間」，不用 hash。
+- feat 和 main 對齊的方式：把 origin/main 合併進 feat（不 rebase、不 force push）。PR 的 diff 只會剩新的變更，已確認。之後的 PR 描述會請使用者用「Create a merge commit」合併。
+- 手動執行 CI 實測 (a) PASS：CI 37262054235 → Deploy dev 37262301114 → PR #33 → dev 換成 sha-9a1b6e4（04:12:03）。詳見 evidence/task16.txt。
+
+## 2026-10-05 14:25 — task 17：v0.1.0 發布、release 檢查重構（team lead 核准方案 A）
+- v0.1.0：使用者推送 tag（annotated → 073faf4）。release run 37262771582 成功；GHCR v0.1.0 = 0.1 = sha-9a1b6e4（同 digest）；prod PR #34 沒有 auto-merge，只改 prod overlay。使用者在 04:19:22 合併（squash）。
+- 負向測試：把 release.yml 的三個檢查（tag 在 main、讀 dev overlay、ci-ok）抽成 `scripts/release-preflight.sh`。release.yml 改成呼叫它，行為不變，錯誤訊息保留原文。
+  - `CI_STATUS_CMD` 可以換成 stub。`scripts/test-release-preflight.sh` 有 11 個案例（含 overlay 不存在、格式錯誤），加入 CI manifests job。shellcheck 通過。
+  - 用真實 GitHub 資料跑 4 個案例：不在 main → 拒絕；ci-ok failure → 拒絕；commit 不存在 → 拒絕；v0.1.0 → 通過。輸出在 evidence/task17.txt。
+  - 下一次正式 release（v0.1.1）要記錄「重構後的 release.yml 實際跑通」。
+- AC9：使用者對 #34 按 Revert，開出 PR #35，04:37:19 合併。04:39:05 prod 回到 sha-d04f3f1（digest 和 v0.1.0 之前相同），04:39:15 Healthy，SSE 正常。
+- task 17 QA PASS，已勾選（AC8、AC9、preflight 負向測試）。依 team lead 核准，「重構後的 release.yml 實際跑通」移到 task 21：v0.1.1 要在 task 20 的 feat PR 合併後發布，prod 最終版本 = v0.1.1。prod 暫時維持 sha-d04f3f1（使用者的最終決定由 team lead 轉達）。
+
+## 2026-10-05 14:50 — task 18：AC11、AC14 驗證
+- AC11：draft PR #37 加入 log4j-core 2.14.1。images (cube-backend) 在「Fail on fixable CRITICAL」步驟失敗（CVE-2021-44228/45046），Security 分頁出現 code scanning alert #35。PR 已關閉、分支已刪除。Claude CI 失敗分析的留言正確。
+- AC14：gitleaks 綠燈、secret scanning 0 個警示（push protection 開啟）、git grep 沒有命中金鑰格式。
+- AC15 和 Tomcat 覆寫的處理寫在 evidence/task18.txt。Tomcat 的人工追蹤項目會在 task 20 寫進 docs/cicd.md。交給 QA。
+- 更正（QA AC14 CONCERN）：「唯一命中是 sha256 前綴」不正確。我的 pattern 要求值至少 12 個字元，漏掉了本機開發用的預設 DB 密碼 currency（docker-compose.yml、application.yml、docs/configuration.md）。evidence 已修正，(a) 接受並寫進文件或 (b) 改用 .env，等 team lead 決定。
+- team lead 決定 AC14 選 (a)：本機預設值 currency 不改，task 20 的文件加註說明（已寫進 tasks.md）。compose 的 postgres 沒有開 host port、只在 internal 網路，已確認。
+- task 18 QA PASS，已勾選（AC11、AC15 PASS；AC14 (a)，QA 已在叢集確認 secretKeyRef 注入、CNPG 密碼不是 currency）。
+
+## 2026-10-05 15:30 — task 20 文件整併 → 交給 QA
+- 新增 `docs/kubernetes.md`：
+  - 叢集架構圖、需要的環境、從零建立（cluster-up.sh）、網址與登入方式、`/etc/hosts` 備案；
+  - Sealed Secrets 私鑰的備份與還原；DB 密碼說明（AC14 (a)）；
+  - 日常操作、禁止的操作（擴 worker、prod 手動刪除不會補回、selfHeal 會改回手動修改、明文 Secret）；
+  - 疑難排解（GHCR 必須 public、StatefulSet CrashLoop 要確認後才刪 Pod、kube-router 第一秒的現象標為「合理但未證實」、記憶體）。
+- `docs/cicd.md` 補齊：
+  - 流程圖、workflow 一覽、CI job；
+  - GitHub 設定逐步說明（Actions 權限、auto-merge、ruleset、cube-developer App、labels、GHCR、Code security、Claude）；
+  - 發布與 prod 升級（AC8 步驟）、回滾；
+  - Dependabot 不開大版本、Claude Code 只留言與成本、Tomcat 人工追蹤、已知限制（`gh pr edit` 路徑未實測）；
+  - 原有的歷史改寫恢復步驟和 Re-run 警告。
+- README：
+  - 功能亮點、K8s / CI/CD 架構圖、技術棧、快速開始加上叢集版本、文件連結；
+  - 開發方式：Claude Code 署名、兩份 spec 的文件對照、cube-developer[bot] 與 Dependabot 的說明；
+  - Roadmap、專案結構。
+- 其他：`docs/testing.md` 加〈CI〉、`docs/configuration.md` 的 DB 密碼註記；各文件導覽列加入 Kubernetes 和 CI/CD。
+- 驗證：check_md_links 通過（82 個連結）。文件中沒有寫死 commit hash，只用 PR 編號和時間。實際數字（記憶體約 10 GB、儀表板名稱「cube 概覽」、policy 名稱、DB 名稱）已在叢集上查證。
+- QA task 20 CONCERN 的處理：D20-1 已修正（cicd.md：不需要 Claude GitHub App，只需要 token secret）。README 指向 k8s qa-review.md 的連結先改成「spec 結案時加入」，因為那個檔案沒有被追蹤。team lead 建議由我 commit QA 檔案的快照，但被權限檢查擋下，交給使用者決定。
+- task 20 QA 複查 PASS，已勾選。只照文件重建 AC1 併入 task 21。

@@ -1,0 +1,44 @@
+# task 18 evidence (security scanning: AC11, AC14, AC15, Tomcat override)
+
+## AC11 - a known CRITICAL vulnerability fails the images job (2026-10-05, UTC)
+  Draft PR #37 (label test-only, branch test/trivy-critical): pom.xml + log4j-core 2.14.1 (runtime).
+  CI run 37264576447: conclusion failure
+    images (cube-backend)   failure  at "Fail on fixable CRITICAL vulnerabilities (requirement 18)"
+      app/BOOT-INF/lib/log4j-core-2.14.1.jar  CVE-2021-44228, CVE-2021-45046  -> Total: 2 (CRITICAL: 2)
+    images (cube-frontend), backend, frontend, manifests, secrets, changes: success; ci-ok: failure
+  Security tab: code scanning alert #35, CVE-2021-44228, severity critical,
+    app/BOOT-INF/lib/log4j-core-2.14.1.jar (ref refs/pull/37/merge), from the Trivy SARIF upload.
+  Bonus: Claude CI failure analysis run 37264892020 (7 turns, 22.6 s, 0.091 USD) commented the right
+    job/step, cause (log4j-core 2.14.1) and fix.
+  PR #37 closed without merging, branch deleted (ls-remote: 0).
+
+## AC14 - no secrets
+  - gitleaks (CI job "secrets", whole history, .gitleaks.toml allows only *.sealed.yaml ciphertext):
+    success on main, e.g. CI run 37264322724 (bfd73ff).
+  - GitHub secret scanning: 0 alerts (open or closed). Settings: secret_scanning enabled,
+    secret_scanning_push_protection enabled, dependabot_security_updates enabled.
+  - git grep on origin/main (excluding *.sealed.yaml) for AWS keys, private key headers, ghp_/github_pat_,
+    sk-ant-, Slack xox?-, Google AIza keys: no match.
+  - Plain-text passwords (CORRECTED after QA: my first pattern required a 12+ character value and missed
+    short ones). `git grep -i password` finds the local-development default database password "currency"
+    (spec 1, Docker Compose / local run, not used by Kubernetes):
+      docker-compose.yml:50  POSTGRES_PASSWORD: currency
+      docker-compose.yml:67  SPRING_DATASOURCE_PASSWORD: currency
+      src/main/resources/application.yml  default of SPRING_DATASOURCE_PASSWORD
+      docs/configuration.md:40  documents that default
+    Kubernetes takes the DB password from the CNPG-generated Secret cube-db-app (secretKeyRef), Grafana from a
+    SealedSecret, Argo CD from its generated initial secret - none in plain text.
+    Also: evidence/task11.txt:10 holds a 12-character sha256 prefix of the grafana password (a fingerprint).
+    Decision pending (team lead): (a) accept the local defaults and document them, or (b) read them from .env.
+
+## AC15 - Dependabot PRs run the full CI
+  First batch #17-#23 (2026-10-05): every PR ran the full CI (no secrets needed); e.g. #23 all green;
+  Claude review skipped for all of them. #17 and #19 merged, #30 merged (team lead, user authorised);
+  majors (#18, #20-#23) closed with "@dependabot ignore this major version"; dependabot.yml now ignores
+  semver-major in every ecosystem (security updates unaffected).
+
+## Tomcat override (team lead condition)
+  pom.xml overrides tomcat.version (CVE fix). Dependabot cannot track it (the property is only used by the
+  Spring Boot BOM). Handled as a manual-tracking item: the CI backend job step "Is the Tomcat override still
+  needed?" warns once the Boot release in use manages the same or a newer Tomcat, and warns when the BOM
+  cannot be read; docs/cicd.md (task 20) lists it as a manual item.

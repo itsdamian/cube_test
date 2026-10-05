@@ -1,6 +1,6 @@
 # 開發與測試
 
-[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [驗收步驟](acceptance.md)
+[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [Kubernetes](kubernetes.md) · [CI/CD](cicd.md) · [驗收步驟](acceptance.md)
 
 
 ```bash
@@ -11,6 +11,17 @@ cd frontend && npm run dev            # 前端開發伺服器 :5173，/api 代�
 
 - 測試**不會**連到任何真實的價格或匯率來源：`test` profile 把所有外部網址指向 `127.0.0.1:1`，並有守門測試（`NoExternalCallsGuardTest`）檢查。
 - 修改 API 回應格式後，更新契約樣本：`./mvnw test -Dtest=ContractSamplesTest -Dcontracts.update=true`。
+
+## CI（GitHub Actions）
+
+每個 PR 與每次合併到 main 都會跑 `.github/workflows/ci.yml`，內容和本機相同：
+
+- **backend**：`./mvnw -B verify`（runner 上的 Docker 跑 Testcontainers），測試同樣不連外部來源。
+- **frontend**：`npm ci`、`npm test`、`npm run lint`、`npm run build`。
+- **manifests**：Kubernetes manifests 的 kustomize + kubeconform 驗證、告警規則的 `promtool` 測試（`scripts/test-alert-rules.sh`）、部署與發布檢查腳本的測試（`scripts/test-dev-bump-decision.sh`、`scripts/test-release-preflight.sh`）、actionlint。這些在本機也可以直接執行。
+- **secrets**、**images**：gitleaks 與 Trivy 掃描、多架構 image 建置。
+
+`ci-ok` 彙總所有結果，是合併到 main 唯一的必要 check。只改文件或 `deploy/` 的 PR 會跳過建置與測試。完整說明見 [cicd.md](cicd.md)。
 
 ## 離線跑測試（AC13）
 

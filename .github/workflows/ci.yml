@@ -4,7 +4,7 @@
 #   backend   -> ./mvnw verify (Testcontainers: Kafka + PostgreSQL on the runner's Docker)
 #   frontend  -> npm ci, test, lint, build
 #   manifests -> kustomize + kubeconform, Argo CD apps up to date, promtool rule tests, deploy-dev
-#                decision tests, actionlint
+#                decision and release preflight tests, actionlint
 #   secrets   -> gitleaks over the whole history
 #   images    -> backend / frontend for linux/amd64 + linux/arm64, Trivy scan, in parallel with the
 #                tests; pushed to GHCR only from main (a push, or a manual run - e.g. to rebuild
@@ -144,6 +144,8 @@ jobs:
         run: scripts/test-alert-rules.sh
       - name: Deploy dev never downgrades (decision script tests)
         run: scripts/test-dev-bump-decision.sh
+      - name: Release checks (preflight script tests)
+        run: scripts/test-release-preflight.sh
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
 
