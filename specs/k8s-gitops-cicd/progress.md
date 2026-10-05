@@ -527,3 +527,4 @@
   - 文件不寫死 commit hash；
   - App 名稱統一用 cube-developer。
 - 建議 team lead 在同一次改寫中，把 init commit `e0ac72a` 的作者改成 itsdamian，這樣 contributors 就不會出現 DamianAstralweb（需使用者決定）。
+- 使用者決定（team lead 轉達）：DamianAstralweb 的處理是由使用者把 damian@astralwebinc.com 移到 itsdamian 帳號並驗證，不改寫 e0ac72a 的作者。之後改寫 main 時只拿掉 Claude trailer。
