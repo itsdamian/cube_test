@@ -533,3 +533,4 @@
 - team lead 依使用者授權合併了 #17、#19，並關閉 #18、#20–#23（「@dependabot ignore this major version」）。
 - `.github/dependabot.yml` 四個 ecosystem 都加上 `ignore: '*' semver-major`。GitHub 文件明寫：「`update-types` only affects version updates, not security updates」，所以安全更新仍然會開。
 - task 20：docs/cicd.md 要寫一句說明。這個修改加進 PR #26。
+- task 16 補充證據（連續兩次合併）：#17、#19 → bump PR #27（sha-4b84cc4）、#28（sha-89ca79a）依序自動合併，dev 最後是比較新的版本，prod 不變。詳見 evidence/task16.txt。
