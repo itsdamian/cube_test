@@ -543,3 +543,11 @@
 - 用真實歷史模擬：4b84cc4 和 0d65315 → skip（比較舊）；89ca79a → skip（相同）。
 - 加進 PR #26。合併後要實測：Re-run 一個舊的 Deploy dev run，應該 skip，dev 不變。
 - QA：0051652 設計 PASS（9/9、shellcheck 0）。G1：在註解寫明 backend 和 frontend 一定一起 bump；G2 轉給 team lead。
+
+## 2026-10-05 13:20 — 在 main 上手動執行 CI 可重建並推送 image（team lead 要求，先留在本機，#26 合併後再推送）
+- ci.yml：
+  - 在 main 上手動執行（workflow_dispatch）時，也會推送 image。在其他分支手動執行時不推送。
+  - images job 維持與測試並行（team lead 要求改回）。原因：deploy-dev 和 release 都要求 ci-ok，未通過測試的 image 不會被部署；改成串行會讓 main → dev 的時間逼近 15 分鐘。docs/cicd.md 註明「GHCR 上的 sha-* 不代表通過 CI」。
+  - team lead 判斷不需要 `force_images` input，因為手動執行時 `changes` 本來就判定 code=true。
+- deploy-dev.yml：觸發條件接受 `workflow_dispatch` 的 run，仍限定 head_branch == main，防降版檢查照舊。
+- docs/cicd.md：新增「歷史改寫後的恢復步驟」（QA G2 的順序）。task 20 會補齊其他內容。
