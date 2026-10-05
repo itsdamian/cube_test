@@ -496,3 +496,10 @@
   - task 19 的完成條件加入 issue 上的負向測試。
 - **D1（Tomcat 覆寫不會被 Dependabot 追蹤）**：CI 的 backend job 新增一個步驟，比較 Spring Boot（parent 版本）所管理的 Tomcat 與 pom 的覆寫值。一旦 Boot 管理的版本 ≥ 覆寫值，就發出 `::warning` 提醒移除覆寫，避免靜默釘住舊版。本機試跑：Boot 3.5.16 管理 10.1.55、覆寫 10.1.60 → 不警告；反向（覆寫 10.1.50）→ 會警告。
 - actionlint 通過。
+
+## 2026-10-05 04:15 — `/install-github-app` 的 PR #13 已合併進 main → 以 PR #14 修正
+- 使用者執行 `/install-github-app` 時，它自動開出 **PR #13「Add Claude Code GitHub Workflow」**，已合併（`69d1e66`，03:04:29Z）。內容是官方預設的 `claude.yml` 與 `claude-code-review.yml`：
+  - 使用 OIDC 換來的 Claude App token（有寫入權限），而且沒有工具限制——正是 QA 在 task 19 找到的「Claude 可以產生 commit」的情況，違反 2026-10-04「只留言」的決定。目前只有對 repo 有寫入權限的人（使用者本人）能觸發。
+  - `claude-code-review.yml` 會和我們的 `claude-review.yml` 重複 review。
+- 處理：把 main 合併回 feat（`8a462c3`），衝突的 `claude.yml` **採用我們只能留言的版本**，並**刪除** `claude-code-review.yml`。等 PR #14 合併後，main 就恢復成只能留言的設定。
+- 提醒使用者：在 PR #14 合併之前，不要在 issue / PR 留言 `@claude`。
