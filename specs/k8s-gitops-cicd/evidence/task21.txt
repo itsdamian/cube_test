@@ -1,0 +1,173 @@
+# task 21 evidence (final acceptance on the GitOps cluster)
+
+## AC1 - rebuild from zero following only docs/kubernetes.md (QA)
+  #1 2026-10-05 05:19:41Z-05:30:43Z, main 3028179: 10 m 59 s, 14/14 Synced/Healthy, no gaps in the docs.
+     QA W1: kube-prometheus-stack reported Healthy for a moment while still syncing; the next sync wave
+     started ~5 min 40 s early. Fixed in PR #40 (Application health Lua + scripts/test-argocd-health.sh).
+  #2 2026-10-05 06:12:35Z start, main a619bec (with the fix): 18 m 40 s, 14/14, restarts 0.
+     kube-prometheus-stack "Healthy but Running" at 06:18:16 and 06:19:05 -> Progressing, root waited;
+     kps really done 06:19:36, wave -10 created 06:21:15. prod drift (frontend 3 replicas): cube-prod
+     Healthy/OutOfSync, root Healthy/Synced - no deadlock; restored to 2.
+
+## v0.1.1 with the refactored release.yml (task 21 condition)
+  Tag v0.1.1 pushed by the user (annotated, tagger itsdamian) -> 77f6eea "deploy(dev): sha-433598f (#43)".
+  Prerequisites (06:47Z): dev overlay sha-433598f, ci-ok on 433598f success, GHCR digests = overlay.
+  07:19:23-07:19:49  Release run 37277094630 success; step "Tag on main, images dev runs at this commit,
+            and those images passed CI" runs scripts/release-preflight.sh "$GITHUB_SHA":
+              cube-backend: sha-433598f@sha256:21c671d1...   cube-frontend: sha-433598f@sha256:d591f9a3...
+              sha-433598f (433598fdc272...): ci-ok success
+            -> the refactored release.yml ran end to end.
+  GHCR: cube-backend v0.1.1 = 0.1 = sha256:21c671d1d26106bba93d7713b355de1a14afe984fcff45f3784575435e6322d2
+        cube-frontend v0.1.1 = 0.1 = sha256:d591f9a3c87b11ca7c52b664fd751a4da81078c340b1c6e15ad83fa20fa2c786
+        (0.1 moved from v0.1.0's digests to v0.1.1's, as designed)
+  Release v0.1.1 (not draft). Prod PR #44 by app/cube-developer, auto-merge off, only overlays/prod
+  (sha-d04f3f1 -> v0.1.1 with digests).
+  07:21:29  PR #44 merged by the user -> main 3bea556
+  07:24:02  all prod app pods on v0.1.1 and Ready (api x2, worker-0, frontend x2), restarts 0
+  07:24:17  cube-prod Healthy (briefly Degraded during the rollout); prod SSE 13 events in 6 s
+  => 2 m 33 s to pods / 2 m 48 s to Healthy. prod final version = v0.1.1.
+
+## Open bump PR updated in place (step 5) - see evidence/task16.txt (PR #41); body fix PR #42.
+
+## AC2 - both environments live, data separated (07:26:12-07:27:22 UTC)
+  http://dev.cube.localhost/ 200, http://cube.localhost/ 200
+  SSE 60 s each (same time): dev 127 price events, max gap 1.2 s; prod 132, max gap 1.2 s
+  prod currencies before: [EUR, GBP, JPY, TWD, USD]
+  POST dev /api/currencies {"code":"CHF","name":"瑞士法郎"} -> id 6
+  dev after: [CHF, EUR, GBP, JPY, TWD, USD]    prod after: [EUR, GBP, JPY, TWD, USD]  (unaffected)
+  cleanup: DELETE dev /api/currencies/6 -> dev back to [EUR, GBP, JPY, TWD, USD]
+
+## AC10 - a manual change in dev is reverted by Argo CD (07:28:39-07:28:45 UTC)
+  before: cube-dev deploy/frontend spec.replicas=1
+  07:28:39.2  kubectl -n cube-dev scale deploy/frontend --replicas=3
+  07:28:40    spec.replicas back to 1 after 1.2 s (selfHeal); 5 s later spec=1 ready=1
+  cube-dev Synced / Healthy; operationState initiatedBy automated, Succeeded 07:28:40Z
+  (prod has no selfHeal by design: a manual change there stays OutOfSync until the next sync - shown in the
+   AC1 #2 drift test, frontend 3 replicas: cube-prod Healthy/OutOfSync, root not blocked.)
+
+## AC4 - 3 api replicas, no duplicate prices, one exchange connection (prod, 07:31:50-07:34:52 UTC)
+  07:31:50  kubectl -n cube-prod patch hpa backend-api minReplicas 2 -> 3 (prod has no selfHeal)
+  07:32:08  3 backend-api pods Ready (57hmw, kd7d4, t7fx9) + backend-worker-0
+  Kafka btc.price.ticks partition 0 (all ticks; key = pair), window 07:33:28..07:34:29, api replicas=3:
+    offsets 19607..19855 -> records 248 = distinct eventId 248; sources {coinbase: 248}
+    (QA independently: 19353..19598, 07:32:25-07:33:26 -> 245 = 245, all coinbase)
+  cube_feed_ingest_active: backend-api x3 = 0.0, backend-worker-0 = 1.0
+  WebSocketPriceFeedClient / FeedManager log lines in the 3 api pods (10 min): 0
+  kubectl -n cube-prod scale sts/backend-worker --replicas=2 --dry-run=server ->
+    ValidatingAdmissionPolicy 'cube-single-ingest-worker' ... denied request
+  07:34:49  HPA minReplicas back to 2; 07:34:52 cube-prod Synced (the 3rd api pod goes after the HPA
+            scale-down stabilisation window)
+
+## AC3 - deleting the Kafka and PostgreSQL pods keeps the data (prod, 07:35:47-07:39:22 UTC)
+  07:35:47  test alert in prod (none existed): POST /api/alerts {BTC-USD ABOVE 1000000} -> id 1 (kept: it can
+            never fire at today's prices and documents the test)
+  BEFORE 07:35:47: currency=5 price_alert=1 alert_event=0 candle=84 ticks=20113
+                   earliest=06:25:33.80576 latest=07:35:46.739457
+            ticks with event_time <= 07:35:47.410621: 20114
+  07:35:47  kubectl -n cube-prod delete pod cube-kafka-dual-role-0 cube-db-1
+  07:36:12  Kafka pod Ready again. CORRECTION (QA): my `kubectl wait` matched the OLD cube-db-1, which was
+            still stopping - CloudNativePG smart shutdown, smartShutdownTimeout 180 s: readiness 500 from
+            07:35:57 to 07:38:47, new cube-db-1 created 07:38:49. The database could not be written for ~3 min;
+            no data was lost - the ticks were in Kafka and the persister wrote them afterwards (QA: 419 rows at
+            07:38). Documented in docs/kubernetes.md (troubleshooting).
+  AFTER 07:39:22: currency=5 price_alert=1 alert_event=0 candle=88 ticks=21003
+                  earliest=06:25:33.80576 (unchanged) latest=07:39:21.645505
+            ticks with event_time <= 07:35:47.410621: 20114 (unchanged)
+  /api/alerts still returns alert id 1; currencies [EUR, GBP, JPY, TWD, USD]; SSE 24 price events in 10 s
+  Kafka cube-kafka Ready True; CNPG cube-db "Cluster in healthy state"; backend pods restarts 0
+
+## AC12 - Grafana for both environments; dev ingest stopped >= 60 s -> alert firing, then resolved
+  Method (GitOps cluster: dev has selfHeal, so scaling the worker to 0 is reverted within seconds): a
+  temporary NetworkPolicy outside Git cuts the dev worker off from the exchanges (simulated outage).
+  ---- ac12-block-feed-egress (applied with kubectl, deleted afterwards; never in Git) ----
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: {name: ac12-block-feed-egress, namespace: cube-dev}
+  spec:
+    podSelector: {matchLabels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}}
+    policyTypes: [Egress]
+    egress:
+      - to: [{podSelector: {}}]                                  # Kafka, PostgreSQL in cube-dev
+      - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}},
+              podSelector: {matchLabels: {k8s-app: kube-dns}}}]
+        ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+  -------------------------------------------------------------------------------------------
+  07:40:54  NP applied. From backend-worker-0: ws-feed.exchange.coinbase.com:443 BLOCKED, ws.kraken.com:443
+            BLOCKED, open.er-api.com:443 BLOCKED; cube-kafka-kafka-bootstrap:9092 OPEN, cube-db-rw:5432 OPEN;
+            DNS resolves.
+  07:40-07:52  ingest did NOT stop: tick age ~14 s, active source coinbase, no alert. kube-router applies
+            NetworkPolicy to NEW connections only; the established WebSocket kept running (conntrack).
+            Documented in docs/kubernetes.md. (My first 10 min of polling failed - the prometheus container
+            has no wget; switched to kubectl get --raw through the service proxy.)
+  07:52:50  kubectl -n cube-dev delete pod backend-worker-0 (with the NP still in place; QA agreed)
+            new pod: "[coinbase] connect failed: ClosedChannelException", same for kraken; Ready, restarts 0
+            cube_feed_last_tick_seconds of the new pod EXISTS with value NaN (no trade yet) -> the rule's
+            "time() - NaN <= 60" is false -> fires. A third case besides "stale" and "series missing";
+            promtool case 7 added (deploy/monitoring/cube-alerts.test.yaml; reverse check: expecting no alert
+            at 3 m fails).
+  07:53:31  PriceIngestStalled{namespace=cube-dev} pending     (QA: 07:53:37)
+  07:54:32  PriceIngestStalled{namespace=cube-dev} firing      (QA: 07:54:37)
+            only cube-dev; no PricePushStalled, no IngestDuplicated; prod unaffected
+  07:54:53  NP deleted; 07:55:01 "[coinbase] connected, subscribing", 07:55:04 kraken connected
+  07:55:34  ALERTS empty for cube-dev / cube-prod (resolved; QA: 07:55:28). Worker Ready, restarts 0 throughout.
+            cube-dev netpol back to the 8 from Git; cube-dev Synced / Healthy; dev SSE 21 events in 10 s.
+  Test window (for the 24 h alert history): 07:40:54-07:55:34.
+  Grafana (GitOps cluster, 3 h range, dashboard "cube 概覽"): evidence/task21-grafana-cube-dev.png and
+  task21-grafana-cube-prod.png - per environment: price freshness, source, ingest count (= 1; the dip at
+  15:54 local time is this test), Kafka writes/s, SSE pushes/s, SSE connections, Kafka consumer lag,
+  JVM heap, GC, HTTP rate and latency. Taken with a copy of scripts/screenshot.mjs that sends the Grafana
+  admin credentials as a Basic auth header (password read from the Secret into an env var, never printed).
+
+## AC13 - load on API / SSE: HPA scales out within its range and back (prod, 08:00:14-08:06:08 UTC)
+  08:00:14  kubectl apply -k deploy/loadtest -n cube-prod (k6 ramping-arrival-rate: 30 s to 1000 it/s,
+            2 m 30 s at 1000 it/s, 15 s down; two requests per iteration: history + converted)
+  HPA backend-api (2-4, CPU target 70%):
+    08:00:14  2/2 cpu 5%
+    08:00:44  2 -> desired 4, cpu 222%
+    08:00:55  4/4
+    08:05:58  desired 2 (cpu 6%; k6 finished 08:03:39, then the 120 s scale-down stabilisation of the HPA spec)
+    08:06:08  2/2
+  k6: 333,338 requests, 1709 req/s; p95 43.12 ms, p99 134 ms, max 595 ms; http_req_failed 0.00%
+      (6 of 333,338) - thresholds p(95)<500 ms and rate<1% passed. dropped_iterations 6581 (k6's 100 VUs
+      averaged 854 it/s of the 1000 target).
+      The 6 failures: all at 08:00:20, the k6 pod's first second, "dial tcp 10.43.91.240:8080: connect:
+      connection refused" - the same as in task 10 (kube-router applying NetworkPolicy to a new pod ~1 s
+      late; "plausible but unproven", docs/kubernetes.md).
+  After: 2 backend-api pods, restarts 0; job api-load Completed (removed 10 min later by its TTL);
+  cube-prod Synced / Healthy.
+
+## Resources (08:07 UTC, dev + prod + platform running; after AC13) vs plan (16 GB recommendation)
+  Docker Desktop memory 16.06 GiB; docker stats k3d-cube-server-0 9.685 GiB (60%); kubectl top node 9913Mi.
+  Pod working set per namespace (GB):   measured   plan (steady state)
+    cube-prod                             2.21       2.7   (HPA 2; max 4 ~3.6)
+    cube-dev                              1.69       1.9
+    monitoring (kube-prometheus-stack)    1.49       1.15  (+30%: Prometheus 817Mi, Grafana 539Mi)
+    argocd                                1.02       0.6   (+70%: application controller 799Mi, limit 1Gi)
+    strimzi / cnpg / sealed-secrets       0.27 / 0.05 / 0.02   0.35 / 0.1 / 0.03
+    traefik / kube-system pods            0.04 / 0.08  (plan's 0.8 for the k3s server also counts the
+                                                        k3s process itself, outside any pod)
+  Sum of pods ~6.9 GB (plan 7.7 incl. k3s); QA: pod peak in the last 2 h 7849Mi (during AC13). The node
+  (incl. k3s and page cache) stays at ~60% of 16 GB: the 16 GB recommendation holds; 12 GB would be tight.
+  Largest pods: prometheus 817Mi, argocd-application-controller 799Mi, Kafka prod 795Mi / dev 749Mi,
+  Grafana 539Mi, prod worker 430Mi, prod api 409/394Mi.
+
+## Contributors (GitHub API, 08:10 UTC)
+  itsdamian (User, 158), cube-developer[bot] (Bot, 14), dependabot[bot] (Bot, 3), DamianAstralweb (User, 1)
+  - the two bots are accepted (user decision (a), README 〈開發方式〉).
+  - DamianAstralweb = the init commit e0ac72a (the user's old work email); the user moves that email to the
+    itsdamian account (decision b) - pending, re-check after the user confirms.
+  - Claude is not a contributor. "Co-authored-by: Claude" trailers exist only on 98 commits of the first spec
+    (2026-09-29..30); none in this spec's commits; the team lead removes them in the planned history rewrite.
+
+## Exit code of a replaced api pod (QA saw "Error" during a rollout) - dev, 08:08:34-08:09:40 UTC
+  The next rollout would only come with a code change, so a dev api pod was deleted instead (same SIGTERM).
+  08:09:11  kubectl -n cube-dev delete pod backend-api-f7449966b-jn4hx (watched with kubectl get pod -w)
+  terminated: exitCode 143, reason "Error", finishedAt 08:09:16 (5 s after SIGTERM; terminationGracePeriodSeconds 45)
+  log: orderly Spring shutdown - Kafka admin client / metrics closed, "Closing JPA EntityManagerFactory",
+       "HikariPool-1 - Shutdown completed."
+  => 143 = 128 + SIGTERM: a JVM ended by the signal exits 143 and Kubernetes labels every non-zero exit
+     "Error". Expected, no fix; documented in docs/kubernetes.md (troubleshooting). (A first attempt at
+     08:08:34 deleted backend-api-f7449966b-tjjg9 but the 1 s polling missed the terminated state.)
+
+## Still open
+  - 24 h alert history: window from 2026-10-05 06:46Z; capture after 2026-10-06 06:46Z (rules in progress.md).
