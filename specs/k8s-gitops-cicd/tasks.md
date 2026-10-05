@@ -104,7 +104,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
     
     done when：`scripts/test-dev-bump-decision.sh` 的案例（新 > 舊、舊 < 新、相同、current 不存在、new 不在 main 等）在 CI manifests job 通過；合併到 main 後，Re-run 一個舊的 Deploy dev run 會 skip 並寫出原因，dev 不變。
   - bump PR 合併後**沒有**再產生新的 bump（無迴圈）
-- [ ] 17. **版本發布與 prod 升級（`release.yml`、`.github/release.yml`）**：👤 清單 11（推 tag、審核 prod PR）；🤝（會改變 prod 的版本）— done when:
+- [x] 17. **版本發布與 prod 升級（`release.yml`、`.github/release.yml`）**：👤 清單 11（推 tag、審核 prod PR）；🤝（會改變 prod 的版本）— done when:
   - **AC8**：**tag 打在 bump commit 上**的 `v0.1.0` → GitHub Release（自動變更說明）、GHCR 的 `v0.1.0` 與 dev 是同一個 digest、自動開出 prod PR（diff 只有 prod 的 image）；合併前 prod 不變，合併後 15 分鐘內升級。
   - **AC9**：revert 該 commit 後 prod 回到前一版。
   - 反向驗證：在一個沒有通過 CI 的 sha 上打 tag 時，release 失敗並說明原因
@@ -126,7 +126,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 ## Phase E — 文件與總驗收
 
 - [ ] 20. **文件整併**（README〈開發方式〉另加：dev 部署 PR 由 cube-developer[bot]（GitHub App 的實際名稱，文件一律用這個名稱）自動建立並合併，相依更新由 Dependabot 提出；本專案以 Claude Code 協助開發的署名）：`docs/kubernetes.md`（從零建立、日常操作、禁止操作：擴 worker；prod 手動刪除不會自動補回；Sealed Secrets 備份；`/etc/hosts` 備案）、`docs/cicd.md`（流程圖、GitHub 設定逐步說明、發布與回滾；說明「main 歷史改寫後，要等 CI 重建 image、dev bump 合併之後才能發布」——team lead 2026-10-05；Dependabot 不開大版本升級 PR，大版本改由另開 spec 處理，安全更新不受影響）；文件不寫死任何 commit hash、README（架構圖加 K8s / CI/CD、Roadmap 更新）、`docs/testing.md`（CI 說明）— done when: `python3 scripts/check_md_links.py` 通過；QA 只照文件能完成 AC1 的重建與 AC8 的發布步驟
-- [ ] 21. **總驗收**（另加：實際跑一次「已有 bump PR 開著時，第二次 bump 走 force-push `deploy/dev` + `gh pr edit`」的路徑，用低成本方式觸發，不改 ruleset 或 branch protection；做不到就在 docs/cicd.md 的已知限制寫明「未經實測」，team lead 2026-10-05）：**在 task 15 之後的 GitOps 叢集上**（GHCR image、Argo CD 管理）逐條執行 AC1–AC15；**AC2–AC4、AC10、AC12、AC13 必須在這個叢集上重跑，不沿用 Phase C 的證據**（Phase C 的證據保留作為早期驗證，QA M2）；檢查 24 小時的告警歷史，確認沒有誤報（QA C4）；證據（指令輸出、run / PR / Release 連結、截圖、時間軸）整理到 progress.md 的對照表 — done when: 15 條 AC 都有證據且通過（AC15 依 plan 的判定方式）；未通過的已修正並重新驗證；QA 對每條給出 PASS
+- [ ] 21. **總驗收**（另加：**以重構後的 release.yml（`scripts/release-preflight.sh`）完成一次真實發布 v0.1.1**：v0.1.1 必須在 task 20 的 feat PR（含 release-preflight 重構）合併之後發布；驗證重構後的 release.yml 實際跑通；prod 最終版本 = v0.1.1（team lead 與 QA 2026-10-05）；實際跑一次「已有 bump PR 開著時，第二次 bump 走 force-push `deploy/dev` + `gh pr edit`」的路徑，用低成本方式觸發，不改 ruleset 或 branch protection；做不到就在 docs/cicd.md 的已知限制寫明「未經實測」，team lead 2026-10-05）：**在 task 15 之後的 GitOps 叢集上**（GHCR image、Argo CD 管理）逐條執行 AC1–AC15；**AC2–AC4、AC10、AC12、AC13 必須在這個叢集上重跑，不沿用 Phase C 的證據**（Phase C 的證據保留作為早期驗證，QA M2）；檢查 24 小時的告警歷史，確認沒有誤報（QA C4）；證據（指令輸出、run / PR / Release 連結、截圖、時間軸）整理到 progress.md 的對照表 — done when: 15 條 AC 都有證據且通過（AC15 依 plan 的判定方式）；未通過的已修正並重新驗證；QA 對每條給出 PASS
 
 ## Acceptance Criteria 對照
 

@@ -586,3 +586,4 @@
   - 用真實 GitHub 資料跑 4 個案例：不在 main → 拒絕；ci-ok failure → 拒絕；commit 不存在 → 拒絕；v0.1.0 → 通過。輸出在 evidence/task17.txt。
   - 下一次正式 release（v0.1.1）要記錄「重構後的 release.yml 實際跑通」。
 - AC9：使用者對 #34 按 Revert，開出 PR #35，04:37:19 合併。04:39:05 prod 回到 sha-d04f3f1（digest 和 v0.1.0 之前相同），04:39:15 Healthy，SSE 正常。
+- task 17 QA PASS，已勾選（AC8、AC9、preflight 負向測試）。依 team lead 核准，「重構後的 release.yml 實際跑通」移到 task 21：v0.1.1 要在 task 20 的 feat PR 合併後發布，prod 最終版本 = v0.1.1。prod 暫時維持 sha-d04f3f1（使用者的最終決定由 team lead 轉達）。
