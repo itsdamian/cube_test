@@ -81,6 +81,13 @@ class SseBroadcasterMetricsTest {
             assertThat(a.prices).contains(new BigDecimal("84000.01"));
             assertThat(b.prices).contains(new BigDecimal("84000.01"));
         });
-        assertThat(registry.get("cube.sse.prices.pushed").counter().count()).isEqualTo(2);
+        // Exactly one count per price event written to a browser. Not simply "2": register()
+        // sends the latest known price to a new connection on the sender thread, and if that task
+        // runs after onTicks() stored the tick, a browser legitimately gets it twice (initial +
+        // broadcast) - CI hit this race on main (run 37185194261).
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                assertThat(registry.get("cube.sse.prices.pushed").counter().count())
+                        .isEqualTo(a.prices.size() + b.prices.size()));
+        assertThat(a.prices.size() + b.prices.size()).isBetween(2, 4);
     }
 }
