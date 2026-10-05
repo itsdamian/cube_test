@@ -117,7 +117,7 @@ jobs:
           branch="deploy/prod-$VERSION"
           git switch -C "$branch" origin/main
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" -w /repo/deploy/apps/cube/overlays/prod \
-            registry.k8s.io/kustomize/kustomize:v5.8.0 edit set image \
+            registry.k8s.io/kustomize/kustomize:v5.8.0@sha256:98424842862ed35fa666dbaac02159623567e1e9e184d91382fa665e89023258 edit set image \
             "$REGISTRY/cube-backend=$REGISTRY/cube-backend:$VERSION@$BACKEND_DIGEST" \
             "$REGISTRY/cube-frontend=$REGISTRY/cube-frontend:$VERSION@$FRONTEND_DIGEST"
           bot_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)

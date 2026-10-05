@@ -15,7 +15,7 @@ set -euo pipefail
 
 K8S_VERSION=1.35.0                    # rancher/k3s v1.35.5 (deploy/k3d/cluster.yaml)
 KUBECONFORM_IMAGE=ghcr.io/yannh/kubeconform:v0.8.0
-KUSTOMIZE_IMAGE=registry.k8s.io/kustomize/kustomize:v5.8.0
+KUSTOMIZE_IMAGE=registry.k8s.io/kustomize/kustomize:v5.8.0@sha256:98424842862ed35fa666dbaac02159623567e1e9e184d91382fa665e89023258
 PYTHON_IMAGE=python:3.13-slim
 STRIMZI_VERSION=1.2.0
 CNPG_VERSION=1.30.1

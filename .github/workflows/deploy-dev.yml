@@ -88,7 +88,7 @@ jobs:
             args+=("$REGISTRY/$image=$REGISTRY/$image:$tag@$digest")
           done
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" -w "/repo/$overlay" \
-            registry.k8s.io/kustomize/kustomize:v5.8.0 edit set image "${args[@]}"
+            registry.k8s.io/kustomize/kustomize:v5.8.0@sha256:98424842862ed35fa666dbaac02159623567e1e9e184d91382fa665e89023258 edit set image "${args[@]}"
           git diff --stat
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "changed=true" >> "$GITHUB_OUTPUT"

@@ -473,3 +473,15 @@
   - @claude：`--append-system-prompt` 要求只留言、用 ```suggestion 提修改；`--max-turns 20`。
   - CI 失敗分析：PR 留言，main 失敗寫進同一個「main CI 失敗」issue；只讀 log、不 checkout / 執行失敗的程式碼；`--max-turns 10`。
   - 同時支援 `ANTHROPIC_API_KEY` 與 `CLAUDE_CODE_OAUTH_TOKEN` 兩種 secret，擇一設定即可。本機 actionlint 通過。
+
+## 2026-10-05 03:20 — tasks 15、16 QA PASS
+- **AC1 PASS**（QA 獨立重建 #3，main 4536ab0）：從零開始 **14 分 55 秒**（cluster-up 自報 874 秒），完全沒有人工介入；14/14 Synced/Healthy、沒有 app condition、cube Pod 的 restarts 都是 0、dev / prod 都有 SSE。
+  - wave 等待正確：kube-prometheus-stack 轉為 Healthy 的同一秒才建立 wave -10，cube-* 的 retryCount 為 0。
+  - 下載最久的是 kube-state-metrics（425 秒）。
+  - 重建 #2 因 Mac 睡眠作廢。
+  - → 勾選 15。
+- **Task 16 QA PASS** → 勾選 16。「連續合併兩個 PR」的 concurrency 驗證，會在下一批 PR（測試修正 + task 17–19）連續合併時補上，證據寫進 task16.txt。
+- QA C1–C3 處理：
+  - C1：kustomize image 改以 tag + digest 釘住（deploy-dev、release、validate-manifests）。
+  - C2：App 名稱是 `cube-developer`，claude-review 已改用；task 21 的 contributor 檢查也會用這個名稱。
+  - C3：目前 ruleset 的 strict=false，不會發生；docs 會註明「若開啟 strict，PR 開著時 main 前進會讓 auto-merge 卡住，要等下一次 bump」。
