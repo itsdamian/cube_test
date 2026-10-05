@@ -18,11 +18,11 @@ patches:
     kind: HorizontalPodAutoscaler
     name: backend-api
 images:
-- digest: sha256:087d74ff57e617ef1fd88740623f637727293cb27d183112b34b5b90d82695ec
+- digest: sha256:d2a66abc597dae9100b6b00dceb9a58b4c6b67bddf6cc6cb28222eaa6934462d
   name: ghcr.io/itsdamian/cube-backend
   newName: ghcr.io/itsdamian/cube-backend
-  newTag: sha-69d1e66
-- digest: sha256:9562048a46332f41b1dcf8f4784bd7383e812e2284da750042782909f84b7f30
+  newTag: sha-0d65315
+- digest: sha256:f7964dd504b288f7ac70c4ea10a64dbf07ff80102b21cd39fe97c8b8191e5dfd
   name: ghcr.io/itsdamian/cube-frontend
   newName: ghcr.io/itsdamian/cube-frontend
-  newTag: sha-69d1e66
+  newTag: sha-0d65315
