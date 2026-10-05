@@ -119,6 +119,7 @@ flowchart TD
 ## 已知限制
 
 - 「已有 dev 部署 PR 開著時，第二次升級改為更新同一個 PR」：已實測（2026-10-05）。同一個 PR 被 force-push、標題與 diff 都換成新的 image，auto-merge 重新開啟，dev 最後是比較新的版本。實際上很少發生：main 的 CI 一次只跑一個，第一個部署 PR 通常在第二個 image 建好之前就合併了。
+- **人開的 PR 可能不小心改到 overlay 的 image**：如果 PR 分支落後 main（例如 dev / prod 已經被 bump 過），PR 的 diff 會把 `overlays/*/kustomization.yaml` 的 image 改回舊版，合併後 dev 或 prod 就會退版。目前 CI 沒有檢查這件事，只能在開 PR 前先把 main 合併進來，並確認 `git diff --stat origin/main` 裡沒有 overlays（2026-10-05 實際差點發生）。建議之後在 CI 加檢查（見 README 的 Roadmap）。
 - 只改 `deploy/`、`docs/`、`specs/`、`*.md` 的合併不會建置 image，dev 也不會更新；需要時在 main 上手動執行 CI。
 
 ## 歷史改寫後的恢復步驟

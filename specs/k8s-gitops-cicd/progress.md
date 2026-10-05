@@ -657,3 +657,4 @@
 - **流程失誤**：為了取得 exit code，我刪除了 dev 的 api pod（08:08:34、08:09:11）。dev 只有 1 個 api 副本，SSE 因此短暫中斷。這是破壞性操作，依協議應該先通知 QA、等 QA 回覆才執行，我卻是事後才告知。之後所有會中斷服務的叢集操作，一律先通知、等回覆。24 小時觀察期間不再做任何破壞性操作。
 - 測試窗口（告警歷史判讀用）：v0.1.1 07:21:29–07:24:17、AC2 07:26:12–07:27:22、AC10 07:28:39–07:28:45、AC4 07:31:50–07:35:16、AC3 07:35:47–07:39:22、AC12 07:40:54–07:55:34、AC13 08:00:14–08:06:10、exit code 08:08:34–08:09:40。
 - 差點出錯（已避免）：開證據 PR 前，feat 落後 main 的 dev / prod overlay（#43、#44 的 bump），diff 會讓 dev、prod 退回舊版。已先把 origin/main 合併進 feat，diff 只剩 7 個預期的檔案。之後開 PR 前一律先合併 main，並確認 `git diff --stat origin/main` 裡沒有 overlays。
+- team lead：overlay 被人開的 PR 誤改的風險，不能只靠「記得先 merge main」。已寫進 docs/cicd.md 的已知限制，README 的 Roadmap 加一項 CI 檢查建議。這次 spec 不實作（屬於新增範圍）。

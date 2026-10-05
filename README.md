@@ -137,6 +137,7 @@ cd frontend && npm ci && npm test        # 前端
 
 - ~~Kubernetes 部署~~、~~GitHub Actions CI/CD~~：已完成（[spec k8s-gitops-cicd](specs/k8s-gitops-cicd/spec.md)）
 - **雲端叢集**：把 k3d 換成雲端的 k3s / 受管 Kubernetes，只改環境覆寫（網址、storage class、資源）
+- **CI 檢查 overlay 的 image**：如果 PR 修改了 `deploy/apps/cube/overlays/*/kustomization.yaml` 的 `images` 區塊，但作者不是 cube-developer[bot]、也沒有 `deploy/*` label，就讓 CI 失敗或至少發出警告，避免人開的 PR 讓 dev / prod 退版（見 [docs/cicd.md](docs/cicd.md)〈已知限制〉）
 - **大版本升級**：Spring Boot 4、Node 26、TypeScript 7 等，各自另開 spec 處理（Dependabot 只開 minor / patch 與安全更新）
 
 ## 專案結構
