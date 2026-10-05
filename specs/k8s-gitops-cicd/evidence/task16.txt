@@ -1,0 +1,24 @@
+# task 16 evidence (automatic dev deployment, AC7)
+
+Timeline (UTC, 2026-10-05) - PR #11 (deploy-dev.yml) merged by the user:
+  02:20:42  PR #11 merged -> main f44c7ba
+  02:20:44  CI push main, run 37255027560 (images built: sha-f44c7ba) - success ~02:25:00
+  02:25:00  Deploy dev, run 37255312832 (workflow_run): image jobs = success
+  02:25:16  PR #12 "deploy(dev): sha-f44c7ba" opened by app/cube-developer, label deploy/dev, auto-merge on
+            files: deploy/apps/cube/overlays/dev/kustomization.yaml only; commit author cube-developer[bot]
+            checks: changes/manifests/secrets pass, backend/frontend/images skipped, ci-ok pass
+  02:26:38  PR #12 auto-merged (squash) -> main 4536ab0
+  02:27:33  Argo CD synced cube-dev: backend-api spec image sha-f44c7ba@sha256:0309a8b9...
+  02:33:26  dev fully rolled out (backend-api x2, frontend, backend-worker-0 all on sha-f44c7ba; image pulls slow)
+  => merge to dev running the new image: 12 min 44 s (AC7: within 15 min). dev SSE OK (10 prices / 5 s).
+  prod unchanged: all prod pods still sha-d04f3f1.
+
+No loop:
+  CI push main on 4536ab0 (run 37255426316): images skipped (deploy-only change)
+  Deploy dev run 37255484778: "image jobs: skipped" -> "No new images ... nothing to deploy." (no new PR)
+  Deploy dev run 37255421959 on f44c7ba: skipped (the workflow_run of the PR #12 CI on branch deploy/dev - not main push)
+
+Note: the GitHub App the user created is named "cube-developer" (not "cube-deployer"); the workflow reads the
+slug from the token, nothing hard-coded. Task 19's claude-review exclusion must use cube-developer[bot].
+
+Still to verify: two merges in a row -> one bump PR, dev ends on the newer image (concurrency + fixed branch).

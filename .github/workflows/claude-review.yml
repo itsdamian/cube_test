@@ -1,0 +1,59 @@
+# Claude Code review of every pull request (spec k8s-gitops-cicd, requirement 25; plan: Claude).
+# Advisory only - not a required check. Comments only: never edits, commits or merges.
+# Skipped for: fork PRs (no secrets / abuse), drafts, Dependabot and the deploy App's image-bump
+# PRs (version-only diffs). Repeated pushes cancel the previous review (cost control, req. 28).
+name: Claude review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions: {}
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'cube-developer[bot]' &&
+      !startsWith(github.event.pull_request.head.ref, 'deploy/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The base branch is checked out (official security guidance); the PR is read with gh.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1.0.241
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token (contents: read) instead of the Claude App token the action
+          # would fetch via OIDC: the App token can write, and the action's tag mode adds git
+          # add/commit/push tools and auto-commits leftover changes when it ends (QA, task 19).
+          # With this token any push fails, so Claude cannot create commits at all.
+          github_token: ${{ github.token }}
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            Review this pull request (read it with `gh pr view` and `gh pr diff`). Focus on:
+            correctness and bugs, security (also GitHub Actions permissions and triggers, and
+            Kubernetes manifests: probes, resources, NetworkPolicy, RBAC), tests, and whether it
+            fits specs/k8s-gitops-cicd/spec.md. Be concise; skip style nits.
+            Post one top-level summary with `gh pr comment`, and inline comments with
+            mcp__github_inline_comment__create_inline_comment (confirmed: true) for specific lines.
+            Propose concrete changes as GitHub suggestion blocks (```suggestion) in inline comments.
+            Never edit files, commit, push, approve or merge. Write in Traditional Chinese.
+          claude_args: |
+            --max-turns 15
+            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --disallowedTools "Edit,Write,Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr review:*),Bash(gh workflow:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*),Bash(git add:*),Bash(git rm:*)"

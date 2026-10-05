@@ -90,10 +90,10 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - **反向驗證**：故意弄壞告警規則，`manifests` job 失敗
 - [x] 13. **Branch protection 與 AC5 的「無法合併」部分**：👤 清單 5（main ruleset：必要 PR + `ci-ok`、禁止 force push）— done when: 故意讓一個後端測試失敗的 draft 測試 PR → `ci-ok` 紅燈、合併按鈕不可用（截圖）；驗證後關閉 PR 並刪除分支。Claude 的分析部分在 task 19 補上
 - [x] 14. **main 推送 image 到 GHCR**：👤 使用者合併 Phase A–D 目前為止的 PR 到 main（PR 說明要寫清楚：此時 main 已包含 `deploy/`，但 root Application 尚未指向 main，所以叢集不會有任何變化，QA C3）；👤 清單 7（GHCR package 設為 Public）— done when: main 上的 CI 推出 `ghcr.io/itsdamian/cube-backend:sha-<7>` 與 `cube-frontend:sha-<7>`，manifest list 包含 amd64 與 arm64；匿名 `docker pull` 成功；Trivy 報告出現在 Security 分頁
-- [ ] 15. **切換為 GitOps**：root Application 指向 `main`（dev / prod overlay 改用 GHCR 的 `sha-*`）；🤝 由 QA 獨立執行一次 AC1 — done when:
+- [x] 15. **切換為 GitOps**：root Application 指向 `main`（dev / prod overlay 改用 GHCR 的 `sha-*`）；🤝 由 QA 獨立執行一次 AC1 — done when:
   - **AC1**：`cluster-down` → `cluster-up` 從零建置 30 分鐘內完成（計時包含下載，比 AC 更嚴格），Argo CD 顯示所有 Application Synced / Healthy；**QA 獨立重建一次**。
   - **AC10**：`kubectl scale deploy/frontend -n cube-dev --replicas=3` 被 Argo CD 改回；prod 的同樣操作只顯示 OutOfSync（selfHeal 關閉）
-- [ ] 16. **dev 自動部署（`deploy-dev.yml`）**：🏁 👤 使用者先把 `deploy-dev.yml` 合併到 main；👤 清單 6（建立 GitHub App `cube-deployer` 與 secrets）；🤝（會改變 dev 的版本）— done when（證據必須由 **main 上的 workflow 版本**觸發後取得）:
+- [x] 16. **dev 自動部署（`deploy-dev.yml`）**：🏁 👤 使用者先把 `deploy-dev.yml` 合併到 main；👤 清單 6（建立 GitHub App `cube-deployer` 與 secrets）；🤝（會改變 dev 的版本）— done when（證據必須由 **main 上的 workflow 版本**觸發後取得）:
   - **AC7**：合併一個小改動到 main 後 15 分鐘內，dev 的 Pod image tag = 該 merge commit 的 `sha-<7>`，prod 不變（記錄完整時間軸）；
   - 固定分支 `deploy/dev` + concurrency：連續合併兩個 PR 時只有一個 bump PR，dev 最後跑的是較新的版本；
   - bump PR 合併後**沒有**再產生新的 bump（無迴圈）
@@ -111,7 +111,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
   — done when:
   - **AC5**：失敗 PR 上出現 Claude 的失敗分析留言；**依 QA K8，這個失敗 PR 要用非 draft**（draft 本身就無法合併，無法單獨證明是 `ci-ok` 擋下），記錄 `mergeStateStatus` / `mergeable_state` 或「Required statuses must pass」的截圖；**不得用 `gh pr merge` 實際嘗試**。非 draft 的測試 PR 超出目前的授權（draft + test-only），需要使用者另外同意；
-  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；**「@claude 幫我把這個改掉並 commit」→ 只回覆 ```suggestion，不產生任何 commit**；`claude.yml` 的 `contents: read`、allowedTools 只有讀取 + 留言類（2026-10-04 變更）；
+  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；**「@claude 幫我把這個改掉並 commit」→ 只回覆 ```suggestion，不產生任何 commit**；**在 issue 上「@claude 刪掉 X」→ 沒有 `claude/` 分支、沒有任何 commit**（QA：action 的 tag mode 會自動加入 git add / rm / push 工具，結束時還會 auto-commit；改用 workflow 的 `github.token`（contents: read）＋ deny git add / rm 來防止）；`claude.yml` 的 `contents: read`、allowedTools 只有讀取 + 留言類（2026-10-04 變更）；
   - bump PR 與 Dependabot PR **沒有**觸發 review；main 失敗時寫入單一 issue；
   - `@claude` 與 CI 失敗分析的證據必須由 **main 上的 workflow 版本**觸發後取得；
   - 記錄 Console 用量，以及每個 Claude run 的耗時與回合數（action 輸出），作為 `--max-turns` 是否合適的依據（QA C5）

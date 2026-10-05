@@ -447,3 +447,59 @@
   - `concurrency: deploy-dev`，依序執行、不取消。
   - 已建立 `deploy/dev`、`deploy/prod` 兩個 label。
 - **待使用者**：清單第 6 項（建立 GitHub App `cube-deployer` 與兩個 secret）→ 合併含 `deploy-dev.yml` 的 PR 到 main（🏁）。
+
+## 2026-10-05 02:40 — task 16：dev 自動部署實測（AC7 ✅）
+- 使用者合併 PR #11 → main CI 建出 `sha-f44c7ba` → deploy-dev 開出 **PR #12**（作者 `cube-developer[bot]`，只改 dev overlay，`ci-ok` 綠燈）→ **自動合併** → Argo CD 同步 dev → 全部 rollout 完成。**從合併到 dev 跑上新 image：12 分 44 秒**（AC7 要求 15 分鐘內）。prod 維持 `sha-d04f3f1`。完整時間軸在 `evidence/task16.txt`。
+- **沒有迴圈**：bump 合併後的 main CI 跳過 images；deploy-dev 判斷「image jobs: skipped」而結束，沒有開新的 PR。
+- 使用者建立的 App 名稱是 **`cube-developer`**。workflow 從 token 讀取名稱，沒有寫死；但 task 19 的 claude-review 排除條件要改用 `cube-developer[bot]`。
+- **另外修正一個不穩定的測試**：PR #9 合併後，main 的 CI run 37185194261 因 `SseBroadcasterMetricsTest` 失敗。原因是 register() 會在 sender thread 上補送最新價格，與 onTicks 有時序競爭，瀏覽器可能收到兩次。改為斷言「計數 = 實際寫出的 price 事件數」。本機連跑 8 次都通過；尚未合併到 main。
+- **尚未驗證**：連續合併兩個 PR → 只有一個 bump PR、dev 最後跑的是較新的版本（concurrency + 固定分支）。需要使用者連續合併兩個會建 image 的 PR。
+
+## 2026-10-05 03:00 — task 17 / 18 的檔案（還沒合併、還沒實測）
+- 先把 origin/main 合併回 feat（`49264a2`），讓 feat 包含 bot 的 dev bump（`sha-f44c7ba`）。
+- **`.github/workflows/release.yml`**（task 17）：推 `vX.Y.Z` tag 時依序執行：
+  1. 確認 tag 在 main 上；
+  2. 讀取 tag commit 上 dev overlay 的 tag@digest（QA M3：tag 常打在沒有 image 的 bump / 文件 commit 上）；
+  3. 確認那個 `sha-*` 的 commit 上 `ci-ok` 為 success（只認 github-actions app 回報的）；
+  4. `imagetools create` 把同一個 digest 標上 `vX.Y.Z` 與 `X.Y`，不重建；
+  5. `gh release create --generate-notes`；
+  6. 用 App token 開「prod 升級到 vX.Y.Z」PR（只改 prod overlay、label `deploy/prod`、**不開 auto-merge**）。
+- **`.github/release.yml`**：release notes 分類；排除 deploy/* 與 test-only 的 PR。
+- **`.github/dependabot.yml`**（task 18）：maven、npm（frontend）、github-actions、docker（/、/frontend），每週檢查；minor / patch 依生態系分組。
+- 本機 actionlint 通過；dev overlay 的解析邏輯以目前檔案試跑成功。
+- **Task 19 的檔案**（還沒實測）：`claude-review.yml`、`claude.yml`、`claude-ci-failure.yml`，都使用 `anthropics/claude-code-action@cab360f…`（v1.0.241，釘 SHA）。
+  - 三個都**只留言**：allowedTools 只有讀取與留言類工具；disallowedTools 包含 Edit / Write / git commit / git push / gh pr merge / gh api / gh pr review / gh workflow / gh release / gh repo；`contents: read`。
+  - review：排除 fork、draft、dependabot、`cube-developer[bot]` 以及 `deploy/*` 分支；sticky comment；concurrency 取消舊的 review；`--max-turns 15`。
+  - @claude：`--append-system-prompt` 要求只留言、用 ```suggestion 提修改；`--max-turns 20`。
+  - CI 失敗分析：PR 留言，main 失敗寫進同一個「main CI 失敗」issue；只讀 log、不 checkout / 執行失敗的程式碼；`--max-turns 10`。
+  - 同時支援 `ANTHROPIC_API_KEY` 與 `CLAUDE_CODE_OAUTH_TOKEN` 兩種 secret，擇一設定即可。本機 actionlint 通過。
+
+## 2026-10-05 03:20 — tasks 15、16 QA PASS
+- **AC1 PASS**（QA 獨立重建 #3，main 4536ab0）：從零開始 **14 分 55 秒**（cluster-up 自報 874 秒），完全沒有人工介入；14/14 Synced/Healthy、沒有 app condition、cube Pod 的 restarts 都是 0、dev / prod 都有 SSE。
+  - wave 等待正確：kube-prometheus-stack 轉為 Healthy 的同一秒才建立 wave -10，cube-* 的 retryCount 為 0。
+  - 下載最久的是 kube-state-metrics（425 秒）。
+  - 重建 #2 因 Mac 睡眠作廢。
+  - → 勾選 15。
+- **Task 16 QA PASS** → 勾選 16。「連續合併兩個 PR」的 concurrency 驗證，會在下一批 PR（測試修正 + task 17–19）連續合併時補上，證據寫進 task16.txt。
+- QA C1–C3 處理：
+  - C1：kustomize image 改以 tag + digest 釘住（deploy-dev、release、validate-manifests）。
+  - C2：App 名稱是 `cube-developer`，claude-review 已改用；task 21 的 contributor 檢查也會用這個名稱。
+  - C3：目前 ruleset 的 strict=false，不會發生；docs 會註明「若開啟 strict，PR 開著時 main 前進會讓 auto-merge 卡住，要等下一次 bump」。
+
+## 2026-10-05 03:50 — tasks 17–19 設計審查：19 FAIL → 修正，18 D1 → 修正
+- QA：17 PASS；18 PASS + D1；19 review / ci-failure PASS，**claude.yml FAIL**。
+- **claude.yml FAIL（QA 從 action@cab360f 原始碼找到，我已逐一確認）**：
+  1. tag mode 會自動在 allowedTools 加入 `git add`、`git commit`、`git rm` 與 `scripts/git-push.sh` wrapper（`src/modes/tag/index.ts`），我的 deny 只擋了 commit / push；
+  2. 在 issue 上執行時，結束時會把沒有 commit 的變更自動 commit 並 push 到 `claude/` 分支（`branch-cleanup.ts`），不受工具權限限制；
+  3. 預設使用 OIDC 換來的 Claude App token（`token.ts`，有寫入權限），workflow 的 `contents: read` 管不到它。
+  - **修正**：三個 workflow 都改傳 `github_token: ${{ github.token }}`（action 的 `OVERRIDE_GITHUB_TOKEN`，即 workflow 自己的 token，權限是 `contents: read`），任何 push 都會失敗；拿掉 `id-token: write`（不再需要 OIDC）；deny 再加上 `git add` / `git rm`。副作用：留言者會顯示為 `github-actions[bot]`，不是 claude[bot]，這對「contributor 只有本人」反而更好。
+  - task 19 的完成條件加入 issue 上的負向測試。
+- **D1（Tomcat 覆寫不會被 Dependabot 追蹤）**：CI 的 backend job 新增一個步驟，比較 Spring Boot（parent 版本）所管理的 Tomcat 與 pom 的覆寫值。一旦 Boot 管理的版本 ≥ 覆寫值，就發出 `::warning` 提醒移除覆寫，避免靜默釘住舊版。本機試跑：Boot 3.5.16 管理 10.1.55、覆寫 10.1.60 → 不警告；反向（覆寫 10.1.50）→ 會警告。
+- actionlint 通過。
+
+## 2026-10-05 04:15 — `/install-github-app` 的 PR #13 已合併進 main → 以 PR #14 修正
+- 使用者執行 `/install-github-app` 時，它自動開出 **PR #13「Add Claude Code GitHub Workflow」**，已合併（`69d1e66`，03:04:29Z）。內容是官方預設的 `claude.yml` 與 `claude-code-review.yml`：
+  - 使用 OIDC 換來的 Claude App token（有寫入權限），而且沒有工具限制——正是 QA 在 task 19 找到的「Claude 可以產生 commit」的情況，違反 2026-10-04「只留言」的決定。目前只有對 repo 有寫入權限的人（使用者本人）能觸發。
+  - `claude-code-review.yml` 會和我們的 `claude-review.yml` 重複 review。
+- 處理：把 main 合併回 feat（`8a462c3`），衝突的 `claude.yml` **採用我們只能留言的版本**，並**刪除** `claude-code-review.yml`。等 PR #14 合併後，main 就恢復成只能留言的設定。
+- 提醒使用者：在 PR #14 合併之前，不要在 issue / PR 留言 `@claude`。
