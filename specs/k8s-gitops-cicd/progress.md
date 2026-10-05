@@ -562,3 +562,6 @@
   - 我的 session 紀錄在 03:33–03:37:11 之間沒有任何工具呼叫。整個 session 只有一次 `gh pr ready 24`，是 04:01 做 K8 時，當時回報「already ready for review」。
   - 這個事件觸發了 claude-review run 37260112716（03:36:31Z，success，triggering actor itsdamian）。所以 PR #24 也意外驗證了「非 draft 時會有自動 review」。
   - 使用者、team lead、QA 用的都是同一個 itsdamian 帳號，無法從 GitHub 端分辨是誰。
+  - 補記：PR #24 的 ready_for_review 是使用者本人在 GitHub UI 按的。使用者在主 session 確認，由 team lead 轉達。
+- 防降版實測 (b)：Re-run 37261627710（attempt 2，04:05Z），結果 success。log 為 `CI built sha-443d5d8, compared with sha-da515fd: skip: 443d5d8 is older than da515fd`，commit 步驟 skipped，沒有新的 PR，main 不變。
+- 手動執行 CI 實測 (a)：`gh workflow run ci.yml --ref main` → run 37262054235（HEAD 9a1b6e4），進行中。
