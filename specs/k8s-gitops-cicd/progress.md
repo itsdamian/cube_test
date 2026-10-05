@@ -517,3 +517,5 @@
   - QA K8 的非 draft 失敗 PR，需要使用者同意；
   - main 失敗時寫入單一 issue；
   - 測試完關閉 PR #24、刪除 test/claude-negative。
+- QA 回覆：task 19 部分驗收 PASS（AC5 分析、AC6 負向測試、Dependabot 排除），暫不勾選。`--max-turns` 15 列為觀察項目。
+  - task 21 預警：contributors 多了 `DamianAstralweb`，來自 init commit `e0ac72a`（damian@astralwebinc.com），需要使用者決定。
