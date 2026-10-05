@@ -592,3 +592,4 @@
 - AC11：draft PR #37 加入 log4j-core 2.14.1。images (cube-backend) 在「Fail on fixable CRITICAL」步驟失敗（CVE-2021-44228/45046），Security 分頁出現 code scanning alert #35。PR 已關閉、分支已刪除。Claude CI 失敗分析的留言正確。
 - AC14：gitleaks 綠燈、secret scanning 0 個警示（push protection 開啟）、git grep 沒有命中金鑰格式。
 - AC15 和 Tomcat 覆寫的處理寫在 evidence/task18.txt。Tomcat 的人工追蹤項目會在 task 20 寫進 docs/cicd.md。交給 QA。
+- 更正（QA AC14 CONCERN）：「唯一命中是 sha256 前綴」不正確。我的 pattern 要求值至少 12 個字元，漏掉了本機開發用的預設 DB 密碼 currency（docker-compose.yml、application.yml、docs/configuration.md）。evidence 已修正，(a) 接受並寫進文件或 (b) 改用 .env，等 team lead 決定。

@@ -18,9 +18,18 @@
   - GitHub secret scanning: 0 alerts (open or closed). Settings: secret_scanning enabled,
     secret_scanning_push_protection enabled, dependabot_security_updates enabled.
   - git grep on origin/main (excluding *.sealed.yaml) for AWS keys, private key headers, ghp_/github_pat_,
-    sk-ant-, Slack xox?-, Google AIza keys: no match. password/secret/token assignments with a long value:
-    one match, specs/k8s-gitops-cicd/evidence/task11.txt:10, a 12-character sha256 PREFIX of the grafana
-    admin password (fingerprint used to compare, not the password).
+    sk-ant-, Slack xox?-, Google AIza keys: no match.
+  - Plain-text passwords (CORRECTED after QA: my first pattern required a 12+ character value and missed
+    short ones). `git grep -i password` finds the local-development default database password "currency"
+    (spec 1, Docker Compose / local run, not used by Kubernetes):
+      docker-compose.yml:50  POSTGRES_PASSWORD: currency
+      docker-compose.yml:67  SPRING_DATASOURCE_PASSWORD: currency
+      src/main/resources/application.yml  default of SPRING_DATASOURCE_PASSWORD
+      docs/configuration.md:40  documents that default
+    Kubernetes takes the DB password from the CNPG-generated Secret cube-db-app (secretKeyRef), Grafana from a
+    SealedSecret, Argo CD from its generated initial secret - none in plain text.
+    Also: evidence/task11.txt:10 holds a 12-character sha256 prefix of the grafana password (a fingerprint).
+    Decision pending (team lead): (a) accept the local defaults and document them, or (b) read them from .env.
 
 ## AC15 - Dependabot PRs run the full CI
   First batch #17-#23 (2026-10-05): every PR ran the full CI (no secrets needed); e.g. #23 all green;
