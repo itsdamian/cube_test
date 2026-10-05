@@ -117,3 +117,21 @@
   15:54 local time is this test), Kafka writes/s, SSE pushes/s, SSE connections, Kafka consumer lag,
   JVM heap, GC, HTTP rate and latency. Taken with a copy of scripts/screenshot.mjs that sends the Grafana
   admin credentials as a Basic auth header (password read from the Secret into an env var, never printed).
+
+## AC13 - load on API / SSE: HPA scales out within its range and back (prod, 08:00:14-08:06:08 UTC)
+  08:00:14  kubectl apply -k deploy/loadtest -n cube-prod (k6 ramping-arrival-rate: 30 s to 1000 it/s,
+            2 m 30 s at 1000 it/s, 15 s down; two requests per iteration: history + converted)
+  HPA backend-api (2-4, CPU target 70%):
+    08:00:14  2/2 cpu 5%
+    08:00:44  2 -> desired 4, cpu 222%
+    08:00:55  4/4
+    08:05:58  desired 2 (cpu 6%, after the 5 min scale-down stabilisation)
+    08:06:08  2/2
+  k6: 333,338 requests, 1709 req/s; p95 43.12 ms, p99 134 ms, max 595 ms; http_req_failed 0.00%
+      (6 of 333,338) - thresholds p(95)<500 ms and rate<1% passed. dropped_iterations 6581 (k6's 100 VUs
+      averaged 854 it/s of the 1000 target).
+      The 6 failures: all at 08:00:20, the k6 pod's first second, "dial tcp 10.43.91.240:8080: connect:
+      connection refused" - the same as in task 10 (kube-router applying NetworkPolicy to a new pod ~1 s
+      late; "plausible but unproven", docs/kubernetes.md).
+  After: 2 backend-api pods, restarts 0; job api-load Completed (removed 10 min later by its TTL);
+  cube-prod Synced / Healthy.
