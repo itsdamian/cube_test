@@ -447,3 +447,10 @@
   - `concurrency: deploy-dev`，依序執行、不取消。
   - 已建立 `deploy/dev`、`deploy/prod` 兩個 label。
 - **待使用者**：清單第 6 項（建立 GitHub App `cube-deployer` 與兩個 secret）→ 合併含 `deploy-dev.yml` 的 PR 到 main（🏁）。
+
+## 2026-10-05 02:40 — task 16：dev 自動部署實測（AC7 ✅）
+- 使用者合併 PR #11 → main CI 建出 `sha-f44c7ba` → deploy-dev 開出 **PR #12**（作者 `cube-developer[bot]`，只改 dev overlay，`ci-ok` 綠燈）→ **自動合併** → Argo CD 同步 dev → 全部 rollout 完成。**從合併到 dev 跑上新 image：12 分 44 秒**（AC7 要求 15 分鐘內）。prod 維持 `sha-d04f3f1`。完整時間軸在 `evidence/task16.txt`。
+- **沒有迴圈**：bump 合併後的 main CI 跳過 images；deploy-dev 判斷「image jobs: skipped」而結束，沒有開新的 PR。
+- 使用者建立的 App 名稱是 **`cube-developer`**。workflow 從 token 讀取名稱，沒有寫死；但 task 19 的 claude-review 排除條件要改用 `cube-developer[bot]`。
+- **另外修正一個不穩定的測試**：PR #9 合併後，main 的 CI run 37185194261 因 `SseBroadcasterMetricsTest` 失敗。原因是 register() 會在 sender thread 上補送最新價格，與 onTicks 有時序競爭，瀏覽器可能收到兩次。改為斷言「計數 = 實際寫出的 price 事件數」。本機連跑 8 次都通過；尚未合併到 main。
+- **尚未驗證**：連續合併兩個 PR → 只有一個 bump PR、dev 最後跑的是較新的版本（concurrency + 固定分支）。需要使用者連續合併兩個會建 image 的 PR。
