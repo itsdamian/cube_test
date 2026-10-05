@@ -53,3 +53,21 @@ Still to verify: two merges in a row -> one bump PR, dev ends on the newer image
       04:11:07  auto-merged -> main 073faf4
       04:12:03  all dev app pods on sha-9a1b6e4; SSE 13 price events in 6 s; prod unchanged (sha-d04f3f1)
       GHCR sha-9a1b6e4 digests = dev overlay digests (backend d4b0282b..., frontend b485dce2...).
+
+## Open bump PR updated in place (task 21 step 5, 2026-10-05, UTC; approved by the team lead)
+  05:36:20  manual CI run 37268530033 on main 3028179 (never built before) -> sha-3028179
+  05:39:38  Deploy dev 37268763976 opened bump PR #41 "deploy(dev): sha-3028179", deploy/dev head 06f4967,
+            auto-merge on
+  05:39:58  gh pr merge 41 --disable-auto (engineer; auto-merge OFF, nothing merged)
+  06:05:36  user merged PR #40 -> main 48fcc38 (a newer commit while #41 was still open)
+            CI run 37270697637 on 48fcc38 built sha-48fcc38
+  06:09:01  Deploy dev 37270963972:
+              "CI built sha-48fcc38, compared with sha-e1d7db5: bump"   (main's overlay)
+              "CI built sha-48fcc38, compared with sha-3028179: bump"   (the open deploy/dev)
+              "PR #41: dev -> sha-48fcc38 (auto-merge on)"
+  06:09:19  same PR #41: deploy/dev force-pushed 06f4967 -> 33bf4b8; title "deploy(dev): sha-48fcc38"; diff now
+            newTag sha-e1d7db5 -> sha-48fcc38; auto-merge re-enabled by app/cube-developer (SQUASH)
+  06:10:23  PR #41 auto-merged -> main a619bec
+  06:11:23  all dev pods on sha-48fcc38; SSE 15 events in 6 s. No second bump PR was created.
+  Finding: the PR BODY was not updated (still described sha-3028179) - gh pr edit only set the title.
+  Fixed in deploy-dev.yml (title and body are both updated); the next in-place update verifies it.

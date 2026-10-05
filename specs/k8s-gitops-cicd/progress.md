@@ -632,3 +632,4 @@
 - 問題（QA）：使用者用 squash 合併，feat 上已經被 squash 的舊 commit 不會成為 main 的祖先，所以每個新 PR 的 commit 列表都會重複出現這些舊 commit。diff 是對的，只是列表很雜。
 - 做法：每次 PR 合併後，先確認 `git diff origin/main feat` 只剩還沒開 PR 的新變更，再把 feat/k8s-gitops-cicd 重設到 origin/main，用 `--force-with-lease` 推送。還沒合併的變更會在重設後重新套用，不會丟掉。仍在原本的授權範圍內（feat 分支）。另開短分支（fix/*、docs/*）的提議撤回。
 - 第一次重設：#40 合併之後（main 48fcc38），重新套用的只有這筆紀錄。
+- task 21 第 5 步（已有 bump PR 時就地更新）實測 PASS：PR #41 號碼不變，deploy/dev 06f4967 → 33bf4b8，標題和 diff 換成 sha-48fcc38，auto-merge 由 app 重新開啟，06:10:23 合併，dev 換成 sha-48fcc38。發現 PR body 沒有更新，已修正 deploy-dev.yml（標題和 body 一起更新）。docs/cicd.md 的已知限制改為「已實測」。詳見 evidence/task16.txt。
