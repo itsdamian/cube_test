@@ -1,0 +1,8 @@
+# expect: Degraded
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: cube-dev, namespace: argocd}
+spec: {}
+status:
+  health: {status: Degraded, message: "Deployment backend-api has 0 available replicas"}
+  sync: {status: Synced, revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}

@@ -18,7 +18,7 @@ cd frontend && npm run dev            # 前端開發伺服器 :5173，/api 代�
 
 - **backend**：`./mvnw -B verify`（runner 上的 Docker 跑 Testcontainers），測試同樣不連外部來源。
 - **frontend**：`npm ci`、`npm test`、`npm run lint`、`npm run build`。
-- **manifests**：Kubernetes manifests 的 kustomize + kubeconform 驗證、告警規則的 `promtool` 測試（`scripts/test-alert-rules.sh`）、部署與發布檢查腳本的測試（`scripts/test-dev-bump-decision.sh`、`scripts/test-release-preflight.sh`）、actionlint。這些在本機也可以直接執行。
+- **manifests**：Kubernetes manifests 的 kustomize + kubeconform 驗證、告警規則的 `promtool` 測試（`scripts/test-alert-rules.sh`）、部署與發布檢查腳本的測試（`scripts/test-dev-bump-decision.sh`、`scripts/test-release-preflight.sh`）、Argo CD Application 健康判斷的測試（`scripts/test-argocd-health.sh`）、actionlint。這些在本機也可以直接執行。
 - **secrets**、**images**：gitleaks 與 Trivy 掃描、多架構 image 建置。
 
 `ci-ok` 彙總所有結果，是合併到 main 唯一的必要 check。只改文件或 `deploy/` 的 PR 會跳過建置與測試。完整說明見 [cicd.md](cicd.md)。

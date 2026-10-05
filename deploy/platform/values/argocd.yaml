@@ -13,21 +13,49 @@ configs:
     timeout.reconciliation: 60s
     timeout.reconciliation.jitter: 0s
     # App of apps: let the root Application wait for each child to be Healthy before moving to
-    # the next sync wave (Argo CD dropped Application health in 1.8; this is the documented
-    # snippet). Without it waves only order the CREATION: on a slow first build the cube apps
-    # synced before kube-prometheus-stack had created its CRDs and failed for good (QA, task 15).
+    # the next sync wave (Argo CD dropped Application health in 1.8). Without it waves only order
+    # the CREATION: on a slow first build the cube apps synced before kube-prometheus-stack had
+    # created its CRDs and failed for good (QA, task 15).
+    # The documented snippet only passes health.status through, but a child that was just created
+    # (or is still syncing) can report Healthy for a moment - the next wave then started ~5 min
+    # early (QA W1, task 21). So a child counts as Healthy only when it is not syncing, and its
+    # last sync succeeded at the revision Git has now: Synced, or OutOfSync because of a manual
+    # change after a successful sync (prod has no selfHeal - requiring Synced would block the root
+    # Application forever). Multi-source apps keep their revisions in the "revisions" arrays.
+    # Unit-tested in CI: scripts/test-argocd-health.sh (deploy/platform/tests/application-health/).
     resource.customizations.health.argoproj.io_Application: |
-      hs = {}
-      hs.status = "Progressing"
-      hs.message = ""
-      if obj.status ~= nil then
-        if obj.status.health ~= nil then
-          hs.status = obj.status.health.status
-          if obj.status.health.message ~= nil then
-            hs.message = obj.status.health.message
-          end
-        end
+      local function revs(t)
+        if t == nil then return nil end
+        if t.revisions ~= nil and #t.revisions > 0 then return table.concat(t.revisions, ",") end
+        if t.revision ~= nil and t.revision ~= "" then return t.revision end
+        return nil
       end
+      hs = {status = "Progressing", message = "waiting for the first health assessment"}
+      if obj.status == nil or obj.status.health == nil then return hs end
+      local health = obj.status.health
+      if health.status ~= "Healthy" then
+        hs.status = health.status
+        hs.message = health.message or ""
+        return hs
+      end
+      local op = obj.status.operationState
+      local sync = obj.status.sync
+      if op ~= nil and (op.phase == "Running" or op.phase == "Terminating") then
+        hs.message = "sync in progress"
+        return hs
+      end
+      if sync ~= nil and sync.status == "Synced" then
+        hs.status = "Healthy"
+        hs.message = health.message or ""
+        return hs
+      end
+      local current = revs(sync)
+      if op ~= nil and op.phase == "Succeeded" and current ~= nil and revs(op.syncResult) == current then
+        hs.status = "Healthy"
+        hs.message = "OutOfSync after a successful sync of the current revision (manual change)"
+        return hs
+      end
+      hs.message = "not synced to the current revision yet"
       return hs
 controller:
   # Caches every resource it manages (kube-prometheus-stack, Strimzi and CNPG CRDs, both
