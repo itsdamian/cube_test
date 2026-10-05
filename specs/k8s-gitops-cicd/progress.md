@@ -669,3 +669,4 @@
   - pmset 沒有睡眠，restarts 0。
 - 待決定：NodeClockNotSynchronising 整段都是 firing，是 k3d 中 node-exporter 的永久誤報（QA N1），交給 team lead 決定（關掉這條規則，或寫進文件）。
 - QA N1（team lead 選 (a)）：停用 kube-prometheus-stack 的 NodeClockNotSynchronising（k3d 中永遠 firing）。helm template 比對：134 → 133 條，只少了這一條；NodeClockSkewDetected 保留（offset 0，沒有 firing）。docs/kubernetes.md 已註明。
+- N1 合併後驗證 PASS：Prometheus 的 alerting rules 從 137 變成 136，NodeClockNotSynchronising 已移除，cube 的 3 條告警還在；ALERTS 和 Alertmanager 都沒有這條告警。另外：合併後 40 秒主機就闔上螢幕睡眠（用電池），叢集停擺到 10:44Z，sync 因此延遲約 74 分鐘。這發生在觀察窗口之後，不影響告警歷史的結果。
