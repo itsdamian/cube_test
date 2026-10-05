@@ -190,3 +190,14 @@
     counters reset when pods are replaced).
   Platform alerts: Watchdog (heartbeat, expected); NodeClockNotSynchronising firing the whole window - a
     permanent false positive of node-exporter inside k3d (QA N1, decision with the team lead).
+
+## N1 - NodeClockNotSynchronising disabled (PR #46)
+  09:31:07Z  PR #46 merged by the user -> main 84ef4e5
+  09:31:47Z  host entered 'Clamshell Sleep' on battery (pmset), then only DarkWake / Maintenance Sleep until
+             ~10:44Z: the cluster was paused, the sync started only at 10:44:47Z. After the shortened
+             alert window (06:46-09:23), so the alert-history result is not affected.
+  10:45:37  kube-prometheus-stack Synced / Healthy at 84ef4e5 (hook job admission-create completed in 3 s)
+  10:46:17  Prometheus rules API: 136 alerting rules (QA baseline 137), NodeClockNotSynchronising absent,
+            PriceIngestStalled / PricePushStalled / IngestDuplicated present
+  10:46:18  ALERTS{alertname="NodeClockNotSynchronising"}: no series; Alertmanager alerts: InfoInhibitor,
+            Watchdog only. 14/14 Applications Synced / Healthy.

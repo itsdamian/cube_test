@@ -669,3 +669,6 @@
   - pmset 沒有睡眠，restarts 0。
 - 待決定：NodeClockNotSynchronising 整段都是 firing，是 k3d 中 node-exporter 的永久誤報（QA N1），交給 team lead 決定（關掉這條規則，或寫進文件）。
 - QA N1（team lead 選 (a)）：停用 kube-prometheus-stack 的 NodeClockNotSynchronising（k3d 中永遠 firing）。helm template 比對：134 → 133 條，只少了這一條；NodeClockSkewDetected 保留（offset 0，沒有 firing）。docs/kubernetes.md 已註明。
+- N1 合併後驗證 PASS：Prometheus 的 alerting rules 從 137 變成 136，NodeClockNotSynchronising 已移除，cube 的 3 條告警還在；ALERTS 和 Alertmanager 都沒有這條告警。另外：合併後 40 秒主機就闔上螢幕睡眠（用電池），叢集停擺到 10:44Z，sync 因此延遲約 74 分鐘。這發生在觀察窗口之後，不影響告警歷史的結果。
+- claude-ci-failure 穩定性檢查（team lead 要求）：最近 100 次 run 中有 2 次 failure，都是 Dependabot 觸發，已在 PR #26 修正；之後所有符合條件的 CI 失敗都有分析留言（3/3）。品質問題：PR #40 的分析把原因誤判為「檔案不存在」，因為 job 只 checkout main。已修正：允許唯讀的 gh pr diff / gh pr view，並在提示詞說明。合併後用 draft 測試 PR 驗證。「main 失敗 → issue」仍未實測，已寫進 docs/cicd.md 的已知限制。
+- QA C47：CI 失敗分析多了讀 diff 的步驟，task 19 時已用到 10/10 回合，--max-turns 從 10 調到 15，docs/cicd.md 列出三個 workflow 的上限。
