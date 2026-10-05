@@ -108,7 +108,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
   - **AC8**：**tag 打在 bump commit 上**的 `v0.1.0` → GitHub Release（自動變更說明）、GHCR 的 `v0.1.0` 與 dev 是同一個 digest、自動開出 prod PR（diff 只有 prod 的 image）；合併前 prod 不變，合併後 15 分鐘內升級。
   - **AC9**：revert 該 commit 後 prod 回到前一版。
   - 反向驗證：在一個沒有通過 CI 的 sha 上打 tag 時，release 失敗並說明原因
-- [ ] 18. **安全掃描**：`dependabot.yml`（maven / npm / github-actions / docker，分組）；👤 清單 8（Dependabot、secret scanning、push protection）— done when:
+- [x] 18. **安全掃描**：`dependabot.yml`（maven / npm / github-actions / docker，分組）；👤 清單 8（Dependabot、secret scanning、push protection）— done when:
   - **AC11**：draft 測試 PR 引入已知 CRITICAL 漏洞的版本 → `images` job 失敗、Security 分頁顯示報告，驗證後關閉；
   - **Tomcat 覆寫（team lead 條件）**：確認 Dependabot（maven）看得到 `tomcat.version` 覆寫的 tomcat-embed-*；若看不到（屬性只被 Boot BOM 使用），改用 Dependabot 能追蹤的寫法並驗證，或在文件中列為人工追蹤項目（QA）；
   - **AC14**：gitleaks 綠燈 + secret scanning 沒有警示 + `git grep` 常見模式沒有命中；

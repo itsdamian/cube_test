@@ -594,3 +594,4 @@
 - AC15 和 Tomcat 覆寫的處理寫在 evidence/task18.txt。Tomcat 的人工追蹤項目會在 task 20 寫進 docs/cicd.md。交給 QA。
 - 更正（QA AC14 CONCERN）：「唯一命中是 sha256 前綴」不正確。我的 pattern 要求值至少 12 個字元，漏掉了本機開發用的預設 DB 密碼 currency（docker-compose.yml、application.yml、docs/configuration.md）。evidence 已修正，(a) 接受並寫進文件或 (b) 改用 .env，等 team lead 決定。
 - team lead 決定 AC14 選 (a)：本機預設值 currency 不改，task 20 的文件加註說明（已寫進 tasks.md）。compose 的 postgres 沒有開 host port、只在 internal 網路，已確認。
+- task 18 QA PASS，已勾選（AC11、AC15 PASS；AC14 (a)，QA 已在叢集確認 secretKeyRef 注入、CNPG 密碼不是 currency）。
