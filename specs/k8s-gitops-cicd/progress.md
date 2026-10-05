@@ -518,7 +518,7 @@
   - main 失敗時寫入單一 issue；
   - 測試完關閉 PR #24、刪除 test/claude-negative。
 - QA 回覆：task 19 部分驗收 PASS（AC5 分析、AC6 負向測試、Dependabot 排除），暫不勾選。`--max-turns` 15 列為觀察項目。
-  - task 21 預警：contributors 多了 `DamianAstralweb`，來自 init commit `e0ac72a`（damian@astralwebinc.com），需要使用者決定。
+  - task 21 預警：contributors 多了 `DamianAstralweb`，來自 init commit `e0ac72a`（作者為使用者的舊工作 email），需要使用者決定。
 
 ## 2026-10-05 12:00 — team lead 預告：spec 結案後改寫 main 歷史（清除 Claude trailer）
 - release.yml：overlay 裡 `sha-*` 對應的 commit 找不到時（例如歷史改寫後），錯誤訊息改成說明原因和處理方式：等 CI 重建 image、dev bump 合併後再打 tag。actionlint 通過。
@@ -527,7 +527,7 @@
   - 文件不寫死 commit hash；
   - App 名稱統一用 cube-developer。
 - 建議 team lead 在同一次改寫中，把 init commit `e0ac72a` 的作者改成 itsdamian，這樣 contributors 就不會出現 DamianAstralweb（需使用者決定）。
-- 使用者決定（team lead 轉達）：DamianAstralweb 的處理是由使用者把 damian@astralwebinc.com 移到 itsdamian 帳號並驗證，不改寫 e0ac72a 的作者。之後改寫 main 時只拿掉 Claude trailer。
+- 使用者決定（team lead 轉達）：DamianAstralweb 的處理是由使用者把該工作 email 移到 itsdamian 帳號並驗證，不改寫 e0ac72a 的作者。之後改寫 main 時只拿掉 Claude trailer。
 
 ## 2026-10-05 12:20 — Dependabot：不開大版本升級 PR（team lead 轉達使用者的決定）
 - team lead 依使用者授權合併了 #17、#19，並關閉 #18、#20–#23（「@dependabot ignore this major version」）。
@@ -640,3 +640,6 @@
 - prod 漂移測試：frontend 改成 3 個副本 → cube-prod 是 Healthy/OutOfSync，root 是 Healthy/Synced，沒有卡住（第 4 條規則有效）。已恢復成 2 個副本。
 - cube-dev 在 06:23–06:30 Degraded：開機初期 HPA 還拿不到 metrics，屬於預期行為。節點記憶體 10847Mi。
 - 接下來：使用者合併 #42 → dev bump → 開始 24 小時觀察 → v0.1.1 → 重跑 AC。
+
+## 2026-10-05 14:55 — 文件中的 email 改成描述文字（使用者決定，team lead 轉達：「a, 不用改寫」）
+- spec.md 和 progress.md 中的 email 改成描述文字，只改目前的版本，不改寫歷史。`git grep` 檢查個人、工作和公司 email 網域，工作樹中沒有命中（evidence/ 也包含在內）。之後引用作者一律寫成「itsdamian <個人 email>」。

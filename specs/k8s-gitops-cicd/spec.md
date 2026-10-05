@@ -108,7 +108,7 @@ Status: CONFIRMED
 - **Claude Code**：使用 Anthropic 官方的 GitHub 整合（Claude GitHub App / claude-code-action）。API key 或 OAuth token 由使用者本人建立並存成 GitHub secret，agent 不經手任何金鑰。Claude API 會產生用量費用，需有觸發限制（需求 28）。
 - **使用者本人必須執行的步驟**：建立 API key、設定 GitHub secrets、安裝 GitHub App、開啟 branch protection、調整 Docker 記憶體、安裝系統工具（kind/k3d/helm 等）。agent 只提供指令與說明。
 - **本 spec 開始前的前提**：前一份 spec 的 task 28（AC13 斷網測試）由使用者另行完成，不阻擋本 spec。
-- **commit 身份**：本 repo 的 commit 一律使用 `itsdamian <greetinitsdamian@gmail.com>`（已設定 repo local config）。
+- **commit 身份**：本 repo 的 commit 一律使用 GitHub 帳號 itsdamian 的個人 email（已設定 repo local config）。
 
 ## Decisions（2026-10-01 使用者確認）
 
