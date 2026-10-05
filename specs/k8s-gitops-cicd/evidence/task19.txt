@@ -65,3 +65,18 @@ Test PR: #24 (draft, label test-only, branch test/claude-negative). Test issue: 
   - main CI failure -> one shared issue "main CI 失敗" (needs a failing push to main; only the user
     merges to main - to be done only if the user wants it, otherwise left to the first real failure).
   PR #24 closed and test/claude-negative deleted after K8 (2026-10-05).
+
+## Reliability review of claude-ci-failure (2026-10-06, team lead request)
+  Last 100 runs: success 3, failure 2, skipped 61.
+  - failure 37258892633 / 37259028515 (2026-10-05 03:18 / 03:20): "Workflow initiated by non-human actor:
+    dependabot" - CI failures of Dependabot PRs; the action refuses bot actors. Expected; fixed by skipping
+    Dependabot-triggered runs (PR #26, merged 03:56). No failure since.
+  - success 37259242453 (PR #24, test failure), 37264892020 (PR #37, Trivy CRITICAL), 37268800257 (PR #40,
+    manifests): every eligible CI failure after the fix got its analysis comment (7-10 turns, ~0.09-0.11 USD).
+  - skipped 61: successful CI runs, push / deploy runs and Dependabot - the job's if: condition.
+  Quality finding: PR #40's analysis named the right job, step and error, but the wrong cause ("the test files do
+  not exist"). The job checks out the default branch only (by design: never the PR's code), and the files
+  were added by the PR. Fix: allow the read-only `gh pr diff` / `gh pr view` and tell Claude that the checkout
+  is the default branch and to read the PR diff before concluding about a file. To verify after merging: a
+  draft test-only PR whose failure involves a file it adds.
+  Still untested: main failure -> one issue "main CI 失敗" (main has not failed since the workflow exists).

@@ -109,7 +109,7 @@ flowchart TD
 
 - 自動 review：PR 開啟、更新或標為 ready for review 時執行；fork、draft、Dependabot、cube-developer[bot] 與 `deploy/*` 分支都會跳過。
 - `@claude`：在 PR 或 issue 留言提問。Claude **只能留言**：要它改程式碼時，它會留下 ```suggestion 區塊，由你在 GitHub 上按 Commit suggestion。它不能 commit、push、合併或核准 PR（workflow 用的是只有讀取權限的 token，工具也只允許讀取與留言）。
-- CI 失敗分析：只讀 log，不 checkout、不執行 PR 的程式碼；Dependabot 觸發的失敗會跳過。
+- CI 失敗分析：讀失敗的 log，並用 `gh pr diff` 讀 PR 的變更內容（只讀文字）；不 checkout、不執行 PR 的程式碼。Dependabot 觸發的失敗會跳過，因為 action 不接受由 bot 觸發的 run。
 - 成本：每個 workflow 都有 `--max-turns` 上限與 concurrency；實測一次 review 約 0.2 USD，一次問答或失敗分析約 0.07–0.11 USD。
 
 ## 需要人工追蹤
@@ -120,6 +120,7 @@ flowchart TD
 
 - 「已有 dev 部署 PR 開著時，第二次升級改為更新同一個 PR」：已實測（2026-10-05）。同一個 PR 被 force-push、標題與 diff 都換成新的 image，auto-merge 重新開啟，dev 最後是比較新的版本。實際上很少發生：main 的 CI 一次只跑一個，第一個部署 PR 通常在第二個 image 建好之前就合併了。
 - **人開的 PR 可能不小心改到 overlay 的 image**：如果 PR 分支落後 main（例如 dev / prod 已經被 bump 過），PR 的 diff 會把 `overlays/*/kustomization.yaml` 的 image 改回舊版，合併後 dev 或 prod 就會退版。目前 CI 沒有檢查這件事，只能在開 PR 前先把 main 合併進來，並確認 `git diff --stat origin/main` 裡沒有 overlays（2026-10-05 實際差點發生）。建議之後在 CI 加檢查（見 README 的 Roadmap）。
+- **main 的 CI 失敗時寫入單一 issue「main CI 失敗」：尚未實測**。claude-ci-failure 上線之後，main 還沒有失敗過；會在第一次真正失敗時驗證。
 - 只改 `deploy/`、`docs/`、`specs/`、`*.md` 的合併不會建置 image，dev 也不會更新；需要時在 main 上手動執行 CI。
 
 ## 歷史改寫後的恢復步驟
