@@ -1,6 +1,6 @@
 # 設定與執行環境
 
-[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [驗收步驟](acceptance.md)
+[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [Kubernetes](kubernetes.md) · [CI/CD](cicd.md) · [驗收步驟](acceptance.md)
 
 ## 需要的工具
 
@@ -37,7 +37,7 @@ open http://localhost:3000              # 30 秒內可看到跳動的 BTC-USD �
 
 | 變數 | 預設 | 說明 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/currency` / `currency` / `currency` | 資料庫 |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/currency` / `currency` / `currency` | 資料庫。密碼 `currency` 只是本機開發用的預設值（compose 的 PostgreSQL 只在 `internal` 網路，沒有對外 port）；Kubernetes 上由 CloudNativePG 產生的 Secret 注入，不會使用這個預設值 |
 | `SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT` | `5000` | 取連線逾時（毫秒）；DB 掛掉時 readiness 約 5 秒內回 503 |
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka |
 | `APP_FEED_PRIMARY_URL` ★ / `APP_FEED_BACKUP_URL` ★ | Coinbase / Kraken 的 wss 網址 | 價格來源 |

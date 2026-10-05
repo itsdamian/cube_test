@@ -595,3 +595,22 @@
 - 更正（QA AC14 CONCERN）：「唯一命中是 sha256 前綴」不正確。我的 pattern 要求值至少 12 個字元，漏掉了本機開發用的預設 DB 密碼 currency（docker-compose.yml、application.yml、docs/configuration.md）。evidence 已修正，(a) 接受並寫進文件或 (b) 改用 .env，等 team lead 決定。
 - team lead 決定 AC14 選 (a)：本機預設值 currency 不改，task 20 的文件加註說明（已寫進 tasks.md）。compose 的 postgres 沒有開 host port、只在 internal 網路，已確認。
 - task 18 QA PASS，已勾選（AC11、AC15 PASS；AC14 (a)，QA 已在叢集確認 secretKeyRef 注入、CNPG 密碼不是 currency）。
+
+## 2026-10-05 15:30 — task 20 文件整併 → 交給 QA
+- 新增 `docs/kubernetes.md`：
+  - 叢集架構圖、需要的環境、從零建立（cluster-up.sh）、網址與登入方式、`/etc/hosts` 備案；
+  - Sealed Secrets 私鑰的備份與還原；DB 密碼說明（AC14 (a)）；
+  - 日常操作、禁止的操作（擴 worker、prod 手動刪除不會補回、selfHeal 會改回手動修改、明文 Secret）；
+  - 疑難排解（GHCR 必須 public、StatefulSet CrashLoop 要確認後才刪 Pod、kube-router 第一秒的現象標為「合理但未證實」、記憶體）。
+- `docs/cicd.md` 補齊：
+  - 流程圖、workflow 一覽、CI job；
+  - GitHub 設定逐步說明（Actions 權限、auto-merge、ruleset、cube-developer App、labels、GHCR、Code security、Claude）；
+  - 發布與 prod 升級（AC8 步驟）、回滾；
+  - Dependabot 不開大版本、Claude Code 只留言與成本、Tomcat 人工追蹤、已知限制（`gh pr edit` 路徑未實測）；
+  - 原有的歷史改寫恢復步驟和 Re-run 警告。
+- README：
+  - 功能亮點、K8s / CI/CD 架構圖、技術棧、快速開始加上叢集版本、文件連結；
+  - 開發方式：Claude Code 署名、兩份 spec 的文件對照、cube-developer[bot] 與 Dependabot 的說明；
+  - Roadmap、專案結構。
+- 其他：`docs/testing.md` 加〈CI〉、`docs/configuration.md` 的 DB 密碼註記；各文件導覽列加入 Kubernetes 和 CI/CD。
+- 驗證：check_md_links 通過（82 個連結）。文件中沒有寫死 commit hash，只用 PR 編號和時間。實際數字（記憶體約 10 GB、儀表板名稱「cube 概覽」、policy 名稱、DB 名稱）已在叢集上查證。

@@ -1,6 +1,6 @@
 # 驗收步驟（Acceptance Criteria）
 
-[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [驗收步驟](acceptance.md)
+[← 回到 README](../README.md) · [設定](configuration.md) · [API](api.md) · [測試](testing.md) · [Kubernetes](kubernetes.md) · [CI/CD](cicd.md) · [驗收步驟](acceptance.md)
 
 對應 [`specs/realtime-btc-kafka-react/spec.md`](../specs/realtime-btc-kafka-react/spec.md) 的 AC1–AC15。環境變數見 [configuration.md](configuration.md)。
 
