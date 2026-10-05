@@ -36,11 +36,11 @@ patches:
     kind: Cluster
     name: cube-db
 images:
-- digest: sha256:3db3e4bb90bd27224c971857c3abbe967fe8173c9bcbf0adb99dd7160566e59d
+- digest: sha256:d4b0282b834e02c354b179ed5e51f40bce80037f6af41561cff9e1ebac504d0e
   name: ghcr.io/itsdamian/cube-backend
   newName: ghcr.io/itsdamian/cube-backend
-  newTag: sha-d04f3f1
-- digest: sha256:6b5ab954c86e0b81c5af9bef062ab314119f1e626e30969e2cd065159cc7c89c
+  newTag: v0.1.0
+- digest: sha256:b485dce23e766308343dea3fc1ea6ab888ab13cec6a9848881679a5aa912c632
   name: ghcr.io/itsdamian/cube-frontend
   newName: ghcr.io/itsdamian/cube-frontend
-  newTag: sha-d04f3f1
+  newTag: v0.1.0
