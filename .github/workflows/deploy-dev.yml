@@ -81,6 +81,8 @@ jobs:
         run: |
           tag="sha-${SHA::7}"
           overlay=deploy/apps/cube/overlays/dev
+          # The first newTag (cube-backend) stands for both: this workflow always bumps backend and
+          # frontend together to the same sha-<7>.
           newtag() { sed -n 's/^ *newTag: //p' | head -1; }
           current=$(newtag < "$overlay/kustomization.yaml")
           # A bump PR may still be open: deploy/dev then already points at a newer image than main.

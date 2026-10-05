@@ -542,3 +542,4 @@
 - `scripts/test-dev-bump-decision.sh`：8 個案例加上用法錯誤，本機全部通過；加入 CI manifests job。
 - 用真實歷史模擬：4b84cc4 和 0d65315 → skip（比較舊）；89ca79a → skip（相同）。
 - 加進 PR #26。合併後要實測：Re-run 一個舊的 Deploy dev run，應該 skip，dev 不變。
+- QA：0051652 設計 PASS（9/9、shellcheck 0）。G1：在註解寫明 backend 和 frontend 一定一起 bump；G2 轉給 team lead。
