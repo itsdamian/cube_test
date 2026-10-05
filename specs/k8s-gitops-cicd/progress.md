@@ -643,3 +643,10 @@
 
 ## 2026-10-05 14:55 — 文件中的 email 改成描述文字（使用者決定，team lead 轉達：「a, 不用改寫」）
 - spec.md 和 progress.md 中的 email 改成描述文字，只改目前的版本，不改寫歷史。`git grep` 檢查個人、工作和公司 email 網域，工作樹中沒有命中（evidence/ 也包含在內）。之後引用作者一律寫成「itsdamian <個人 email>」。
+
+## 2026-10-05 14:58 — task 21：24 小時告警觀察期（與 QA 約定）
+- 起點 2026-10-05 06:46Z（dev 換成 sha-433598f 之後）。
+- 刻意測試（v0.1.1 的 prod rollout、AC3、AC4、AC10、AC12、AC13）都要記錄開始和結束時間。每個窗口的結束時間要延長「`for` 長度 + 一個 evaluation 週期 + 恢復時間」，只在延長後的範圍內出現的才算預期告警。
+- 測試窗口和主機中斷以外的時間，加總至少 20 小時，不足就延長觀察期。主機中斷以 `pmset -g log` 的 Sleep/Wake 和電源事件為準。
+- AC12 必須在 ALERTS 中看到 firing 和恢復。刻意測試該觸發但沒有觸發的告警也要記錄。
+- 資料以 Prometheus 的 `ALERTS` / `ALERTS_FOR_STATE` 為準（retention 3 天、PVC 5Gi），3 天內完成擷取，並用 Alertmanager API 對照。
