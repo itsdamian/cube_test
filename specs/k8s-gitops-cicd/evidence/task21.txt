@@ -125,7 +125,7 @@
     08:00:14  2/2 cpu 5%
     08:00:44  2 -> desired 4, cpu 222%
     08:00:55  4/4
-    08:05:58  desired 2 (cpu 6%, after the 5 min scale-down stabilisation)
+    08:05:58  desired 2 (cpu 6%; k6 finished 08:03:39, then the 120 s scale-down stabilisation of the HPA spec)
     08:06:08  2/2
   k6: 333,338 requests, 1709 req/s; p95 43.12 ms, p99 134 ms, max 595 ms; http_req_failed 0.00%
       (6 of 333,338) - thresholds p(95)<500 ms and rate<1% passed. dropped_iterations 6581 (k6's 100 VUs
@@ -135,3 +135,31 @@
       late; "plausible but unproven", docs/kubernetes.md).
   After: 2 backend-api pods, restarts 0; job api-load Completed (removed 10 min later by its TTL);
   cube-prod Synced / Healthy.
+
+## Resources (08:07 UTC, dev + prod + platform running; after AC13) vs plan (16 GB recommendation)
+  Docker Desktop memory 16.06 GiB; docker stats k3d-cube-server-0 9.685 GiB (60%); kubectl top node 9913Mi.
+  Pod working set per namespace (GB):   measured   plan (steady state)
+    cube-prod                             2.21       2.7   (HPA 2; max 4 ~3.6)
+    cube-dev                              1.69       1.9
+    monitoring (kube-prometheus-stack)    1.49       1.15  (+30%: Prometheus 817Mi, Grafana 539Mi)
+    argocd                                1.02       0.6   (+70%: application controller 799Mi, limit 1Gi)
+    strimzi / cnpg / sealed-secrets       0.27 / 0.05 / 0.02   0.35 / 0.1 / 0.03
+    traefik / kube-system pods            0.04 / 0.08  (plan's 0.8 for the k3s server also counts the
+                                                        k3s process itself, outside any pod)
+  Sum of pods ~6.9 GB (plan 7.7 incl. k3s); QA: pod peak in the last 2 h 7849Mi (during AC13). The node
+  (incl. k3s and page cache) stays at ~60% of 16 GB: the 16 GB recommendation holds; 12 GB would be tight.
+  Largest pods: prometheus 817Mi, argocd-application-controller 799Mi, Kafka prod 795Mi / dev 749Mi,
+  Grafana 539Mi, prod worker 430Mi, prod api 409/394Mi.
+
+## Contributors (GitHub API, 08:10 UTC)
+  itsdamian (User, 158), cube-developer[bot] (Bot, 14), dependabot[bot] (Bot, 3), DamianAstralweb (User, 1)
+  - the two bots are accepted (user decision (a), README 〈開發方式〉).
+  - DamianAstralweb = the init commit e0ac72a (the user's old work email); the user moves that email to the
+    itsdamian account (decision b) - pending, re-check after the user confirms.
+  - Claude is not a contributor. "Co-authored-by: Claude" trailers exist only on 98 commits of the first spec
+    (2026-09-29..30); none in this spec's commits; the team lead removes them in the planned history rewrite.
+
+## Still open
+  - Exit code of an api pod replaced during a rollout (QA saw "Error"): capture with kubectl get pod -w at the
+    next dev bump.
+  - 24 h alert history: window from 2026-10-05 06:46Z; capture after 2026-10-06 06:46Z (rules in progress.md).
