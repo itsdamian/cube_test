@@ -65,8 +65,9 @@ flowchart TD
 6. **GHCR**：第一次 CI 在 main 推送 image 後，到你的帳號 → Packages，把 `cube-backend`、`cube-frontend` 的 visibility 改成 **Public**（叢集沒有 pull secret）。
 7. **Code security**：Settings → Code security，開啟 Dependabot alerts、Dependabot security updates、Secret scanning 與 Push protection。
 8. **Claude Code**：
-   - 在本機的 `claude` 中執行 `/install-github-app`，安裝 Claude GitHub App。它可能會自動開一個加入預設 workflow 的 PR，**不要合併**：這個 repo 已經有自己的、只能留言的版本。
-   - 執行 `claude setup-token` 產生 token，存成 repo secret `CLAUDE_CODE_OAUTH_TOKEN`（或改用 API key，存成 `ANTHROPIC_API_KEY`）。
+   - 只需要一個 repo secret：執行 `claude setup-token` 產生 token，存成 `CLAUDE_CODE_OAUTH_TOKEN`（或改用 API key，存成 `ANTHROPIC_API_KEY`）。
+   - **不需要安裝 Claude GitHub App**：三個 workflow 都改用 workflow 自己的 token（只有讀取權限，加上留言所需的權限）留言，留言者會顯示為 github-actions[bot]。App 預設有 Contents 寫入權限，已經裝了的話可以解除安裝，或把權限降到只讀。
+   - 本機 `claude` 的 `/install-github-app` 可以幫你設定 secret，但它會另外開一個加入預設 workflow 的 PR，**不要合併**：這個 repo 已經有自己的、只能留言的版本。
    - 在 Anthropic Console 設定每月用量上限。
 
 ## 發布新版本與 prod 升級

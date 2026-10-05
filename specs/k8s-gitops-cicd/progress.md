@@ -614,3 +614,4 @@
   - Roadmap、專案結構。
 - 其他：`docs/testing.md` 加〈CI〉、`docs/configuration.md` 的 DB 密碼註記；各文件導覽列加入 Kubernetes 和 CI/CD。
 - 驗證：check_md_links 通過（82 個連結）。文件中沒有寫死 commit hash，只用 PR 編號和時間。實際數字（記憶體約 10 GB、儀表板名稱「cube 概覽」、policy 名稱、DB 名稱）已在叢集上查證。
+- QA task 20 CONCERN 的處理：D20-1 已修正（cicd.md：不需要 Claude GitHub App，只需要 token secret）。README 指向 k8s qa-review.md 的連結先改成「spec 結案時加入」，因為那個檔案沒有被追蹤。team lead 建議由我 commit QA 檔案的快照，但被權限檢查擋下，交給使用者決定。

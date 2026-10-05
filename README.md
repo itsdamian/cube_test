@@ -127,7 +127,7 @@ cd frontend && npm ci && npm test        # 前端
 | 技術方案、替代方案、風險 | [plan.md](specs/realtime-btc-kafka-react/plan.md) | [plan.md](specs/k8s-gitops-cicd/plan.md) |
 | 可驗證的 task 與 done-when | [tasks.md](specs/realtime-btc-kafka-react/tasks.md) | [tasks.md](specs/k8s-gitops-cicd/tasks.md) |
 | 工程師的交付紀錄 | [progress.md](specs/realtime-btc-kafka-react/progress.md) | [progress.md](specs/k8s-gitops-cicd/progress.md) |
-| QA 的審查紀錄 | [qa-review.md](specs/realtime-btc-kafka-react/qa-review.md) | [qa-review.md](specs/k8s-gitops-cicd/qa-review.md) |
+| QA 的審查紀錄 | [qa-review.md](specs/realtime-btc-kafka-react/qa-review.md) | （spec 結案時加入） |
 
 實作由兩個 Claude agent 互相驗證：工程師 agent 每完成一個 task 就 commit 並交給 QA agent；QA 在獨立 worktree 實際 build / test、做反向驗證，判定 PASS / FAIL / CONCERN。FAIL 必須先修好才能做下一個 task；偏離 spec / plan 的改動要回到使用者決定。
 
