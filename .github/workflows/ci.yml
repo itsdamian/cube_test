@@ -94,6 +94,8 @@ jobs:
           ours=$(./mvnw -B -q -ntp help:evaluate -Dexpression=tomcat.version -DforceStdout)
           managed=$(curl -fsSL "https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/$boot/spring-boot-dependencies-$boot.pom" \
             | sed -n 's:.*<tomcat.version>\(.*\)</tomcat.version>.*:\1:p' | head -1)
+          # Fail loudly instead of silently passing when the BOM cannot be read (Claude review on PR #14).
+          [[ -n "$managed" ]] || { echo "::warning file=pom.xml::could not read the Tomcat version managed by Spring Boot $boot; check the override by hand"; exit 0; }
           echo "Spring Boot $boot manages Tomcat $managed; pom.xml overrides it with $ours"
           if [[ "$(printf '%s\n%s\n' "$ours" "$managed" | sort -V | tail -1)" == "$managed" ]]; then
             echo "::warning file=pom.xml::Spring Boot $boot already manages Tomcat $managed (>= the override $ours): remove <tomcat.version> from pom.xml"
