@@ -34,6 +34,8 @@ for line in body:
 EOF
 
 cp "$FIXTURES"/*.yaml "$WORK/"
+# The argocd image runs as a non-root user: let it read the (mktemp, 700) directory.
+chmod 755 "$WORK"; chmod 644 "$WORK"/*.yaml
 # One container for all fixtures; prints "<file> <status>" per fixture.
 results=$(docker run --rm -v "$WORK:/work:ro" -w /work --entrypoint sh "$ARGOCD_IMAGE" -c '
   for f in [0-9]*.yaml; do
