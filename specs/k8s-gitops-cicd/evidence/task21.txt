@@ -57,3 +57,17 @@
     ValidatingAdmissionPolicy 'cube-single-ingest-worker' ... denied request
   07:34:49  HPA minReplicas back to 2; 07:34:52 cube-prod Synced (the 3rd api pod goes after the HPA
             scale-down stabilisation window)
+
+## AC3 - deleting the Kafka and PostgreSQL pods keeps the data (prod, 07:35:47-07:39:22 UTC)
+  07:35:47  test alert in prod (none existed): POST /api/alerts {BTC-USD ABOVE 1000000} -> id 1 (kept: it can
+            never fire at today's prices and documents the test)
+  BEFORE 07:35:47: currency=5 price_alert=1 alert_event=0 candle=84 ticks=20113
+                   earliest=06:25:33.80576 latest=07:35:46.739457
+            ticks with event_time <= 07:35:47.410621: 20114
+  07:35:47  kubectl -n cube-prod delete pod cube-kafka-dual-role-0 cube-db-1
+  07:36:12  both pods Ready again (Strimzi / CloudNativePG recreated them on the same PVCs)
+  AFTER 07:39:22: currency=5 price_alert=1 alert_event=0 candle=88 ticks=21003
+                  earliest=06:25:33.80576 (unchanged) latest=07:39:21.645505
+            ticks with event_time <= 07:35:47.410621: 20114 (unchanged)
+  /api/alerts still returns alert id 1; currencies [EUR, GBP, JPY, TWD, USD]; SSE 24 price events in 10 s
+  Kafka cube-kafka Ready True; CNPG cube-db "Cluster in healthy state"; backend pods restarts 0
