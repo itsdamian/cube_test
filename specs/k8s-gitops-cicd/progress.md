@@ -578,3 +578,10 @@
   - 文件辨識時間點時，一律用「PR 編號＋合併時間」，不用 hash。
 - feat 和 main 對齊的方式：把 origin/main 合併進 feat（不 rebase、不 force push）。PR 的 diff 只會剩新的變更，已確認。之後的 PR 描述會請使用者用「Create a merge commit」合併。
 - 手動執行 CI 實測 (a) PASS：CI 37262054235 → Deploy dev 37262301114 → PR #33 → dev 換成 sha-9a1b6e4（04:12:03）。詳見 evidence/task16.txt。
+
+## 2026-10-05 14:25 — task 17：v0.1.0 發布、release 檢查重構（team lead 核准方案 A）
+- v0.1.0：使用者推送 tag（annotated → 073faf4）。release run 37262771582 成功；GHCR v0.1.0 = 0.1 = sha-9a1b6e4（同 digest）；prod PR #34 沒有 auto-merge，只改 prod overlay。使用者在 04:19:22 合併（squash）。
+- 負向測試：把 release.yml 的三個檢查（tag 在 main、讀 dev overlay、ci-ok）抽成 `scripts/release-preflight.sh`。release.yml 改成呼叫它，行為不變，錯誤訊息保留原文。
+  - `CI_STATUS_CMD` 可以換成 stub。`scripts/test-release-preflight.sh` 有 11 個案例（含 overlay 不存在、格式錯誤），加入 CI manifests job。shellcheck 通過。
+  - 用真實 GitHub 資料跑 4 個案例：不在 main → 拒絕；ci-ok failure → 拒絕；commit 不存在 → 拒絕；v0.1.0 → 通過。輸出在 evidence/task17.txt。
+  - 下一次正式 release（v0.1.1）要記錄「重構後的 release.yml 實際跑通」。

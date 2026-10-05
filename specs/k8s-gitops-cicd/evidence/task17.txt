@@ -1,0 +1,68 @@
+# task 17 evidence (release and prod upgrade, AC8 / AC9; negative release checks)
+
+## AC8 - v0.1.0 on a bump commit (2026-10-05, UTC)
+  Prerequisites (04:12Z): main HEAD 073faf4 "deploy(dev): sha-9a1b6e4 (#33)" (a bump commit);
+    overlays/dev = sha-9a1b6e4 (backend sha256:d4b0282b..., frontend sha256:b485dce2...);
+    ci-ok on 9a1b6e4 = success; no earlier tags or Releases.
+  Tag pushed by the user: v0.1.0, annotated, tagger itsdamian, -> 073faf4
+    git fetch origin && git tag -a v0.1.0 073faf4 -m "v0.1.0" && git push origin v0.1.0
+  04:16:13  GitHub Release v0.1.0 created (not draft, not prerelease); notes generated with
+            .github/release.yml: Dependencies (#17, #19) and Other changes; no deploy/* PR listed.
+  04:16:19-04:16:55  Release run 37262771582 success:
+            "cube-backend: sha-9a1b6e4@sha256:d4b0282b..." / "cube-frontend: sha-9a1b6e4@sha256:b485dce2..."
+            "sha-9a1b6e4 (9a1b6e4177acad411b1cf74c66c54b919420e986): ci-ok success"
+  GHCR (docker buildx imagetools inspect):
+            cube-backend  v0.1.0 = 0.1 = sha-9a1b6e4 = sha256:d4b0282b834e02c354b179ed5e51f40bce80037f6af41561cff9e1ebac504d0e
+            cube-frontend v0.1.0 = 0.1 = sha-9a1b6e4 = sha256:b485dce23e766308343dea3fc1ea6ab888ab13cec6a9848881679a5aa912c632
+            -> re-tagged, not rebuilt; same digests as dev.
+  PR #34 "prod 升級到 v0.1.0": author app/cube-developer, label deploy/prod, autoMergeRequest null;
+            only deploy/apps/cube/overlays/prod/kustomization.yaml: digest 3db3e4bb.../6b5ab954... ->
+            d4b0282b.../b485dce2..., newTag sha-d04f3f1 -> v0.1.0.
+  04:18:00  prod unchanged before the merge: all prod pods sha-d04f3f1.
+  04:19:22  PR #34 merged by the user -> main 3a90d3b (squash).
+
+## Negative release checks - scripts/release-preflight.sh (the same script release.yml runs)
+Unit tests with a ci-ok stub (scripts/test-release-preflight.sh, also in the CI manifests job):
+  ok    images passed CI (exit 0)
+  ok    overlay from the tagged commit (exit 0)
+  ok    tag not on main (exit 1)
+  ok    images did not pass CI (exit 1)
+  ok    one of the two images failed CI (exit 1)
+  ok    image commit gone (rewritten) (exit 1)
+  ok    overlay file missing (exit 1)
+  ok    no overlay in the tagged commit (exit 1)
+  ok    overlay without images (exit 1)
+  ok    overlay tag not sha-<7> (exit 1)
+  ok    writes the step outputs
+
+Real GitHub data (gh api check-runs, local run; overlays for 2 and 3 are copies of the v0.1.0 overlay
+with only newTag changed):
+  # 2026-10-05T04:20:03Z, real GitHub data (gh api check-runs), main = 3a90d3b (after the PR #34 merge)
+  
+  ## 1. tag on a commit that is not on main (PR #24 head, never merged)
+  $ VERSION=v0.0.91 scripts/release-preflight.sh 09877993da425827fdf4200b90aaf430d085cb0c
+  ::error::v0.0.91 (09877993da425827fdf4200b90aaf430d085cb0c) is not on main
+  exit=1
+  
+  ## 2. tag on main, overlay pointing at sha-0987799 (that commit's ci-ok is failure on GitHub)
+  $ VERSION=v0.0.92 scripts/release-preflight.sh 073faf4 failed.yaml
+  cube-backend: sha-0987799@sha256:d4b0282b834e02c354b179ed5e51f40bce80037f6af41561cff9e1ebac504d0e
+  cube-frontend: sha-0987799@sha256:b485dce23e766308343dea3fc1ea6ab888ab13cec6a9848881679a5aa912c632
+  sha-0987799 (09877993da425827fdf4200b90aaf430d085cb0c): ci-ok failure
+  ::error::images sha-0987799 did not pass CI
+  exit=1
+  
+  ## 3. tag on main, overlay pointing at a commit that does not exist (as after a history rewrite)
+  $ VERSION=v0.0.93 scripts/release-preflight.sh 073faf4 gone.yaml
+  cube-backend: sha-0000000@sha256:d4b0282b834e02c354b179ed5e51f40bce80037f6af41561cff9e1ebac504d0e
+  cube-frontend: sha-0000000@sha256:b485dce23e766308343dea3fc1ea6ab888ab13cec6a9848881679a5aa912c632
+  ::error::images sha-0000000: commit 0000000 is not in the repository's history (rewritten?). Release only after CI has rebuilt the images and the dev bump PR has merged, then tag again.
+  exit=1
+  
+  ## 4. positive: the real v0.1.0 commit, overlay read from the commit
+  $ VERSION=v0.1.0 scripts/release-preflight.sh 073faf4
+  cube-backend: sha-9a1b6e4@sha256:d4b0282b834e02c354b179ed5e51f40bce80037f6af41561cff9e1ebac504d0e
+  cube-frontend: sha-9a1b6e4@sha256:b485dce23e766308343dea3fc1ea6ab888ab13cec6a9848881679a5aa912c632
+  sha-9a1b6e4 (9a1b6e4177acad411b1cf74c66c54b919420e986): ci-ok success
+  exit=0
+  
