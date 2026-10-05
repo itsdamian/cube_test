@@ -558,3 +558,7 @@
   - 沒有嘗試合併。之後已關閉 PR #24，並刪除 test/claude-negative。
 - QA PR #29 審查 PASS，使用者已合併。P1 寫進 docs/cicd.md：同一個 commit 再次手動執行 CI 會覆寫 sha-<7>，digest 會改變。
 - 更正：Re-run 會用原本那次 run 當時的 workflow 檔案。防降版檢查加入之前建立的 Deploy dev run 沒有這道檢查，不能 Re-run。docs/cicd.md 已寫明；實測只用之後建立的 run。
+- 稽核補記：PR #24 在 03:36:29Z 被改成 ready_for_review（actor itsdamian），**不是我做的**。
+  - 我的 session 紀錄在 03:33–03:37:11 之間沒有任何工具呼叫。整個 session 只有一次 `gh pr ready 24`，是 04:01 做 K8 時，當時回報「already ready for review」。
+  - 這個事件觸發了 claude-review run 37260112716（03:36:31Z，success，triggering actor itsdamian）。所以 PR #24 也意外驗證了「非 draft 時會有自動 review」。
+  - 使用者、team lead、QA 用的都是同一個 itsdamian 帳號，無法從 GitHub 端分辨是誰。
