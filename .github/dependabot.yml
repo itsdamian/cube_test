@@ -1,5 +1,7 @@
 # Dependency update PRs (spec k8s-gitops-cicd, requirement 19). They run the full CI like any PR
 # (no secrets needed). Minor / patch updates are grouped per ecosystem to keep the PR count low.
+# Major versions are ignored everywhere: each one is planned in its own spec (user decision
+# 2026-10-05, after #18 and #20-#23). Security updates are not affected by this ignore list.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -8,18 +10,30 @@ updates:
     groups:
       maven-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: npm
     directory: /frontend
     schedule: {interval: weekly}
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule: {interval: weekly}
     groups:
       actions:
         patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: docker
     directories: [/, /frontend]
     schedule: {interval: weekly}
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

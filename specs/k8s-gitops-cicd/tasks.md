@@ -118,7 +118,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
 ## Phase E — 文件與總驗收
 
-- [ ] 20. **文件整併**（README〈開發方式〉另加：dev 部署 PR 由 cube-developer[bot]（GitHub App 的實際名稱，文件一律用這個名稱）自動建立並合併，相依更新由 Dependabot 提出；本專案以 Claude Code 協助開發的署名）：`docs/kubernetes.md`（從零建立、日常操作、禁止操作：擴 worker；prod 手動刪除不會自動補回；Sealed Secrets 備份；`/etc/hosts` 備案）、`docs/cicd.md`（流程圖、GitHub 設定逐步說明、發布與回滾；說明「main 歷史改寫後，要等 CI 重建 image、dev bump 合併之後才能發布」——team lead 2026-10-05）；文件不寫死任何 commit hash、README（架構圖加 K8s / CI/CD、Roadmap 更新）、`docs/testing.md`（CI 說明）— done when: `python3 scripts/check_md_links.py` 通過；QA 只照文件能完成 AC1 的重建與 AC8 的發布步驟
+- [ ] 20. **文件整併**（README〈開發方式〉另加：dev 部署 PR 由 cube-developer[bot]（GitHub App 的實際名稱，文件一律用這個名稱）自動建立並合併，相依更新由 Dependabot 提出；本專案以 Claude Code 協助開發的署名）：`docs/kubernetes.md`（從零建立、日常操作、禁止操作：擴 worker；prod 手動刪除不會自動補回；Sealed Secrets 備份；`/etc/hosts` 備案）、`docs/cicd.md`（流程圖、GitHub 設定逐步說明、發布與回滾；說明「main 歷史改寫後，要等 CI 重建 image、dev bump 合併之後才能發布」——team lead 2026-10-05；Dependabot 不開大版本升級 PR，大版本改由另開 spec 處理，安全更新不受影響）；文件不寫死任何 commit hash、README（架構圖加 K8s / CI/CD、Roadmap 更新）、`docs/testing.md`（CI 說明）— done when: `python3 scripts/check_md_links.py` 通過；QA 只照文件能完成 AC1 的重建與 AC8 的發布步驟
 - [ ] 21. **總驗收**：**在 task 15 之後的 GitOps 叢集上**（GHCR image、Argo CD 管理）逐條執行 AC1–AC15；**AC2–AC4、AC10、AC12、AC13 必須在這個叢集上重跑，不沿用 Phase C 的證據**（Phase C 的證據保留作為早期驗證，QA M2）；檢查 24 小時的告警歷史，確認沒有誤報（QA C4）；證據（指令輸出、run / PR / Release 連結、截圖、時間軸）整理到 progress.md 的對照表 — done when: 15 條 AC 都有證據且通過（AC15 依 plan 的判定方式）；未通過的已修正並重新驗證；QA 對每條給出 PASS
 
 ## Acceptance Criteria 對照
