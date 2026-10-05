@@ -28,3 +28,11 @@
   => 2 m 33 s to pods / 2 m 48 s to Healthy. prod final version = v0.1.1.
 
 ## Open bump PR updated in place (step 5) - see evidence/task16.txt (PR #41); body fix PR #42.
+
+## AC2 - both environments live, data separated (07:26:12-07:27:22 UTC)
+  http://dev.cube.localhost/ 200, http://cube.localhost/ 200
+  SSE 60 s each (same time): dev 127 price events, max gap 1.2 s; prod 132, max gap 1.2 s
+  prod currencies before: [EUR, GBP, JPY, TWD, USD]
+  POST dev /api/currencies {"code":"CHF","name":"瑞士法郎"} -> id 6
+  dev after: [CHF, EUR, GBP, JPY, TWD, USD]    prod after: [EUR, GBP, JPY, TWD, USD]  (unaffected)
+  cleanup: DELETE dev /api/currencies/6 -> dev back to [EUR, GBP, JPY, TWD, USD]
