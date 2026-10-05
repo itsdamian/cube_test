@@ -565,3 +565,4 @@
   - 補記：PR #24 的 ready_for_review 是使用者本人在 GitHub UI 按的。使用者在主 session 確認，由 team lead 轉達。
 - 防降版實測 (b)：Re-run 37261627710（attempt 2，04:05Z），結果 success。log 為 `CI built sha-443d5d8, compared with sha-da515fd: skip: 443d5d8 is older than da515fd`，commit 步驟 skipped，沒有新的 PR，main 不變。
 - 手動執行 CI 實測 (a)：`gh workflow run ci.yml --ref main` → run 37262054235（HEAD 9a1b6e4），進行中。
+- 使用者決定（team lead 轉達）：守衛加入前的 33 個 Deploy dev run 不刪除，只在文件警告。docs/cicd.md 新增〈不要 Re-run 舊的 Deploy dev run〉。
