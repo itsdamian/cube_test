@@ -467,3 +467,9 @@
 - **`.github/release.yml`**：release notes 分類；排除 deploy/* 與 test-only 的 PR。
 - **`.github/dependabot.yml`**（task 18）：maven、npm（frontend）、github-actions、docker（/、/frontend），每週檢查；minor / patch 依生態系分組。
 - 本機 actionlint 通過；dev overlay 的解析邏輯以目前檔案試跑成功。
+- **Task 19 的檔案**（還沒實測）：`claude-review.yml`、`claude.yml`、`claude-ci-failure.yml`，都使用 `anthropics/claude-code-action@cab360f…`（v1.0.241，釘 SHA）。
+  - 三個都**只留言**：allowedTools 只有讀取與留言類工具；disallowedTools 包含 Edit / Write / git commit / git push / gh pr merge / gh api / gh pr review / gh workflow / gh release / gh repo；`contents: read`。
+  - review：排除 fork、draft、dependabot、`cube-developer[bot]` 以及 `deploy/*` 分支；sticky comment；concurrency 取消舊的 review；`--max-turns 15`。
+  - @claude：`--append-system-prompt` 要求只留言、用 ```suggestion 提修改；`--max-turns 20`。
+  - CI 失敗分析：PR 留言，main 失敗寫進同一個「main CI 失敗」issue；只讀 log、不 checkout / 執行失敗的程式碼；`--max-turns 10`。
+  - 同時支援 `ANTHROPIC_API_KEY` 與 `CLAUDE_CODE_OAUTH_TOKEN` 兩種 secret，擇一設定即可。本機 actionlint 通過。

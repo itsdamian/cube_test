@@ -1,0 +1,58 @@
+# Claude analyses failed CI runs (spec k8s-gitops-cicd, requirement 27; plan: Claude).
+# PR failures -> a comment on the PR; failures on main -> one shared issue "main CI 失敗"
+# (commented when open, created otherwise). Read-only: it reads the logs with gh, never checks
+# out or runs the failed code (workflow_run runs with secrets), never edits or commits.
+# Fork PRs are excluded (workflow_run.pull_requests is empty for them).
+#
+# workflow_run runs the copy of this file on main only.
+name: Claude CI failure analysis
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  analyse:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      ((github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0] != null) ||
+       (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    concurrency:
+      group: claude-ci-failure-${{ github.event.workflow_run.id }}
+      cancel-in-progress: true
+    steps:
+      # Base branch only (never the failed head): the analysis reads logs, not code it runs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1.0.241
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            The CI workflow failed: ${{ github.event.workflow_run.html_url }}
+            Event: ${{ github.event.workflow_run.event }}, branch: ${{ github.event.workflow_run.head_branch }},
+            commit: ${{ github.event.workflow_run.head_sha }}, PR: ${{ github.event.workflow_run.pull_requests[0].number || 'none' }}
+            1. Read the failed logs: `gh run view ${{ github.event.workflow_run.id }} --log-failed`.
+            2. Explain in Traditional Chinese: which job/step failed, the most likely cause, a suggested
+               fix and the relevant files (you may read files in the repo). Do not run any code.
+            3. Post it: for a PR, `gh pr comment <PR> --body ...`; for main, find the open issue titled
+               "main CI 失敗" (`gh issue list --state open --search "main CI 失敗 in:title"`) and
+               comment on it with `gh issue comment`, or create it with `gh issue create` if none is open.
+            Never edit files, commit, push, re-run workflows or merge.
+          claude_args: |
+            --max-turns 10
+            --allowedTools "Read,Glob,Grep,Bash(gh run view:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue create:*)"
+            --disallowedTools "Edit,Write,Bash(gh pr merge:*),Bash(gh api:*),Bash(gh workflow:*),Bash(gh run rerun:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*)"
