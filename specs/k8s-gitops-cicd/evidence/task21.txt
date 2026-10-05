@@ -36,3 +36,11 @@
   POST dev /api/currencies {"code":"CHF","name":"瑞士法郎"} -> id 6
   dev after: [CHF, EUR, GBP, JPY, TWD, USD]    prod after: [EUR, GBP, JPY, TWD, USD]  (unaffected)
   cleanup: DELETE dev /api/currencies/6 -> dev back to [EUR, GBP, JPY, TWD, USD]
+
+## AC10 - a manual change in dev is reverted by Argo CD (07:28:39-07:28:45 UTC)
+  before: cube-dev deploy/frontend spec.replicas=1
+  07:28:39.2  kubectl -n cube-dev scale deploy/frontend --replicas=3
+  07:28:40    spec.replicas back to 1 after 1.2 s (selfHeal); 5 s later spec=1 ready=1
+  cube-dev Synced / Healthy; operationState initiatedBy automated, Succeeded 07:28:40Z
+  (prod has no selfHeal by design: a manual change there stays OutOfSync until the next sync - shown in the
+   AC1 #2 drift test, frontend 3 replicas: cube-prod Healthy/OutOfSync, root not blocked.)
