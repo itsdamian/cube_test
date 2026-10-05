@@ -75,7 +75,7 @@ Status: CONFIRMED
 
 ### Claude Code 整合
 25. PR 開啟或更新時，Claude Code 自動做 code review，以 PR 留言或 review comments 呈現；review 是輔助意見，不作為必要 status check。
-26. 在 PR 或 issue 留言 `@claude` 可以請 Claude Code 回答問題或提出修改建議；任何程式碼修改都以新 commit 推到該 PR 分支或開新 PR，由人審核後才合併，不能直接推 main。
+26. 在 PR 或 issue 留言 `@claude` 可以請 Claude Code 回答問題或提出修改建議；**Claude 只留言、不推任何 commit**：修改建議以 GitHub 的 suggested changes（```suggestion 區塊）放在行內留言，由使用者自己按「Commit suggestion」套用（commit 屬於使用者本人）；不能合併、不能直接推 main。（2026-10-04 變更，見〈Decisions〉）
 27. CI 失敗時，Claude Code 自動分析失敗的 log，在 PR 留言說明可能原因與修法建議。
 28. Claude Code 的觸發有成本控制：只在指定事件觸發、限制每次執行的回合數，fork 來的 PR 不觸發（避免 secret 外洩與濫用）。
 
@@ -118,6 +118,7 @@ Status: CONFIRMED
 - prod 升級：tag 後自動開 PR，使用者合併才升級（dev 自動部署）
 - 監控：兩個環境共用一套 Prometheus + Grafana（monitoring namespace），以 namespace 區分
 - 加碼：安全掃描、監控、HPA、版本發布、Claude Code 整合全部納入
+- **2026-10-04（使用者經 team lead 轉達，team lead 核准）**：`@claude` 改為只能留言、不能推 commit（需求 26）。原因：使用者希望 GitHub contributor 只有本人；claude[bot] 的 commit 合併後會讓 Claude 出現在 contributor 列表，squash merge 也會加上 Co-authored-by。部署 App（cube-deployer[bot]）與 Dependabot 的 commit 則接受出現在 contributor 中，README 會說明。
 
 ## Open Questions
 

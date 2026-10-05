@@ -1,0 +1,119 @@
+# Deploy to dev (spec k8s-gitops-cicd, requirement 14; plan: CD).
+#
+# When CI on main succeeds AND built new images, point overlays/dev at them (tag + digest) on the
+# fixed branch "deploy/dev", keep ONE pull request open for it and turn on auto-merge. Argo CD
+# then syncs dev from main. prod is never touched here.
+#
+#   - workflow_run only runs the copy of this file on main: merge it before it can trigger.
+#   - The PR is opened with a GitHub App token: PRs opened with GITHUB_TOKEN do not trigger
+#     workflows, so the required check ci-ok would never report and the PR could never merge.
+#   - No loop: the bump only changes deploy/, CI on main then builds no images, and this
+#     workflow stops at "images built?".
+#   - concurrency (not cancelled): two merges in a row are bumped one after the other on the same
+#     branch / PR, so an older image can never overwrite a newer one (QA C2).
+#   - Only reads public images and writes to deploy/dev; never runs code from a pull request.
+name: Deploy dev
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read            # read the CI run's jobs
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      REGISTRY: ghcr.io/itsdamian
+      BRANCH: deploy/dev
+    steps:
+      - name: Did that CI run build new images?
+        id: built
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          results=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name | startswith("images (")) | .conclusion] | unique | join(",")')
+          echo "image jobs: ${results:-none}"
+          if [[ "$results" == "success" ]]; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            echo "No new images (deploy-only or docs change): nothing to deploy."
+          fi
+
+      - name: GitHub App token (cube-deployer)
+        if: steps.built.outputs.built == 'true'
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.DEPLOYER_APP_ID }}
+          private-key: ${{ secrets.DEPLOYER_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.built.outputs.built == 'true'
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Point overlays/dev at sha-<7>@digest
+        if: steps.built.outputs.built == 'true'
+        id: bump
+        run: |
+          tag="sha-${SHA::7}"
+          overlay=deploy/apps/cube/overlays/dev
+          if grep -q "newTag: $tag" "$overlay/kustomization.yaml"; then
+            echo "dev already runs $tag"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          args=()
+          for image in cube-backend cube-frontend; do
+            digest=$(docker buildx imagetools inspect "$REGISTRY/$image:$tag" --format '{{json .Manifest.Digest}}' | tr -d '"')
+            [[ "$digest" == sha256:* ]] || { echo "::error::no digest for $image:$tag"; exit 1; }
+            args+=("$REGISTRY/$image=$REGISTRY/$image:$tag@$digest")
+          done
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" -w "/repo/$overlay" \
+            registry.k8s.io/kustomize/kustomize:v5.8.0 edit set image "${args[@]}"
+          git diff --stat
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit to deploy/dev, open or update the PR, enable auto-merge
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          bot_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git commit -am "deploy(dev): $TAG" -m "Built by CI run $RUN_ID from $SHA."
+          git push --force origin "$BRANCH"
+          pr=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+          if [[ -z "$pr" ]]; then
+            pr=$(gh pr create --head "$BRANCH" --base main --label deploy/dev \
+              --title "deploy(dev): $TAG" \
+              --body "Points the dev environment at the images CI built from $SHA ($TAG, pinned by digest). Merged automatically once ci-ok passes; Argo CD then syncs dev. prod is not changed." \
+              | grep -oE '[0-9]+$')
+          else
+            gh pr edit "$pr" --title "deploy(dev): $TAG"
+          fi
+          gh pr merge "$pr" --auto --squash
+          echo "PR #$pr: dev -> $TAG (auto-merge on)"

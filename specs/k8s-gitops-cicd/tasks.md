@@ -111,14 +111,14 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
   — done when:
   - **AC5**：失敗 PR 上出現 Claude 的失敗分析留言；**依 QA K8，這個失敗 PR 要用非 draft**（draft 本身就無法合併，無法單獨證明是 `ci-ok` 擋下），記錄 `mergeStateStatus` / `mergeable_state` 或「Required statuses must pass」的截圖；**不得用 `gh pr merge` 實際嘗試**。非 draft 的測試 PR 超出目前的授權（draft + test-only），需要使用者另外同意；
-  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；
+  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；**「@claude 幫我把這個改掉並 commit」→ 只回覆 ```suggestion，不產生任何 commit**；`claude.yml` 的 `contents: read`、allowedTools 只有讀取 + 留言類（2026-10-04 變更）；
   - bump PR 與 Dependabot PR **沒有**觸發 review；main 失敗時寫入單一 issue；
   - `@claude` 與 CI 失敗分析的證據必須由 **main 上的 workflow 版本**觸發後取得；
   - 記錄 Console 用量，以及每個 Claude run 的耗時與回合數（action 輸出），作為 `--max-turns` 是否合適的依據（QA C5）
 
 ## Phase E — 文件與總驗收
 
-- [ ] 20. **文件整併**：`docs/kubernetes.md`（從零建立、日常操作、禁止操作：擴 worker；prod 手動刪除不會自動補回；Sealed Secrets 備份；`/etc/hosts` 備案）、`docs/cicd.md`（流程圖、GitHub 設定逐步說明、發布與回滾）、README（架構圖加 K8s / CI/CD、Roadmap 更新）、`docs/testing.md`（CI 說明）— done when: `python3 scripts/check_md_links.py` 通過；QA 只照文件能完成 AC1 的重建與 AC8 的發布步驟
+- [ ] 20. **文件整併**（README〈開發方式〉另加：dev 部署 PR 由 cube-deployer[bot] 自動建立並合併，相依更新由 Dependabot 提出；本專案以 Claude Code 協助開發的署名）：`docs/kubernetes.md`（從零建立、日常操作、禁止操作：擴 worker；prod 手動刪除不會自動補回；Sealed Secrets 備份；`/etc/hosts` 備案）、`docs/cicd.md`（流程圖、GitHub 設定逐步說明、發布與回滾）、README（架構圖加 K8s / CI/CD、Roadmap 更新）、`docs/testing.md`（CI 說明）— done when: `python3 scripts/check_md_links.py` 通過；QA 只照文件能完成 AC1 的重建與 AC8 的發布步驟
 - [ ] 21. **總驗收**：**在 task 15 之後的 GitOps 叢集上**（GHCR image、Argo CD 管理）逐條執行 AC1–AC15；**AC2–AC4、AC10、AC12、AC13 必須在這個叢集上重跑，不沿用 Phase C 的證據**（Phase C 的證據保留作為早期驗證，QA M2）；檢查 24 小時的告警歷史，確認沒有誤報（QA C4）；證據（指令輸出、run / PR / Release 連結、截圖、時間軸）整理到 progress.md 的對照表 — done when: 15 條 AC 都有證據且通過（AC15 依 plan 的判定方式）；未通過的已修正並重新驗證；QA 對每條給出 PASS
 
 ## Acceptance Criteria 對照

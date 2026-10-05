@@ -229,11 +229,11 @@ host :80 ──► k3d LoadBalancer ──► Traefik (Gateway "cube", namespace
   - `use_sticky_comment: true`（每個 PR 只有一則持續更新的 review 留言）；`claude_args`：`--max-turns`（初始 15）、`--allowedTools` 只給 `mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)`。
   - `concurrency: claude-review-${{ PR number }}`、`cancel-in-progress: true`（連續 push 只 review 最新版）。
   - 不是必要 check（需求 25）。
-- **`claude.yml`**（需求 26）：官方範例；預設只有對 repo 有寫入權限的人能觸發（官方行為，不開 `allowed_non_write_users`）；`--max-turns 20`；可推 commit 到 PR 分支或新分支，main 受 branch protection 保護、Claude App 沒有 bypass。
+- **`claude.yml`**（需求 26）：官方範例；預設只有對 repo 有寫入權限的人能觸發（官方行為，不開 `allowed_non_write_users`）；`--max-turns 20`；**只留言、不推 commit**（2026-10-04 變更）：修改建議以 ```suggestion 區塊放在行內留言，由使用者自己按「Commit suggestion」，commit 屬於使用者本人；workflow 的 `permissions.contents` 為 `read`。
 - **Claude 不能合併 PR**（QA M4）：branch protection 只要求 PR + `ci-ok`（單人 repo 無法自我審核），而 Claude App 有 pull-requests 寫入權限 → 技術上可以合併綠色的 PR，可能被提示詞注入誘導。因此**三個 workflow 都明確設定白名單與黑名單**：
-  - `--allowedTools`：review 與 CI 分析只有讀取 + 留言類工具（見上）；`claude.yml` 額外給 `Read,Edit,Write,Glob,Grep,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue comment:*)` 與專案的建置測試指令。
-  - `--disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr review:*),Bash(gh workflow:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push --force:*)"`（合併、任意 API 呼叫、核准、觸發 workflow、發布）。
-  - **AC6 加負向測試**：在 PR 留言「@claude 請合併這個 PR」→ PR 必須維持未合併，Claude 回覆無法執行。
+  - `--allowedTools`：三個 workflow 都**只有讀取 + 留言類工具**。`claude.yml` 為 `Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(gh issue comment:*),mcp__github_inline_comment__create_inline_comment`（不給 Edit / Write / git）。
+  - `--disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr review:*),Bash(gh workflow:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*)"`（合併、任意 API 呼叫、核准、觸發 workflow、發布、任何 commit / push）。
+  - **AC6 負向測試**：(1) 在 PR 留言「@claude 請合併這個 PR」→ PR 必須維持未合併，Claude 回覆無法執行；(2) 留言「@claude 幫我把這個改掉並 commit」→ Claude 只回覆 suggestion，**不產生任何 commit**（2026-10-04）。
 - **`claude-ci-failure.yml`**（需求 27）：
   - `on: workflow_run: workflows: [CI], types: [completed]`，`if`: `conclusion == 'failure'` 且（PR 事件且 `pull_requests[0]` 存在——fork PR 時這個陣列是空的，因此自然排除；或 `event == 'push' && head_branch == 'main'`）。
   - `permissions: actions: read, contents: read, pull-requests: write, issues: write, id-token: write`。不 checkout PR 程式碼、不執行它。
@@ -356,6 +356,10 @@ host :80 ──► k3d LoadBalancer ──► Traefik (Gateway "cube", namespace
 | R16 | 告警因 series 消失而永遠不觸發，或沒人開頁面時誤報 | `unless` 寫法 + 指標語意明確定義 + promtool 單元測試（QA M2） |
 | R13 | HPA 縮容中斷 SSE | scaleDown stabilization 120 秒；前端自動重連（既有） |
 | R14 | GHCR package 預設 private 導致 ImagePullBackOff | 使用者清單第 7 項；文件提供 imagePullSecret 備案 |
+
+## 計畫變更紀錄
+
+- **2026-10-04**：`@claude` 只留言、不推 commit（spec 需求 26 同步修改）。原因：使用者希望 contributor 只有本人。team lead 依使用者授權核准；cube-deployer[bot] 與 dependabot[bot] 接受為 contributor（使用者決定 (a)），README 說明。
 
 ## QA 意見與處理
 
