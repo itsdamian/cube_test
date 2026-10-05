@@ -587,3 +587,8 @@
   - 下一次正式 release（v0.1.1）要記錄「重構後的 release.yml 實際跑通」。
 - AC9：使用者對 #34 按 Revert，開出 PR #35，04:37:19 合併。04:39:05 prod 回到 sha-d04f3f1（digest 和 v0.1.0 之前相同），04:39:15 Healthy，SSE 正常。
 - task 17 QA PASS，已勾選（AC8、AC9、preflight 負向測試）。依 team lead 核准，「重構後的 release.yml 實際跑通」移到 task 21：v0.1.1 要在 task 20 的 feat PR 合併後發布，prod 最終版本 = v0.1.1。prod 暫時維持 sha-d04f3f1（使用者的最終決定由 team lead 轉達）。
+
+## 2026-10-05 14:50 — task 18：AC11、AC14 驗證
+- AC11：draft PR #37 加入 log4j-core 2.14.1。images (cube-backend) 在「Fail on fixable CRITICAL」步驟失敗（CVE-2021-44228/45046），Security 分頁出現 code scanning alert #35。PR 已關閉、分支已刪除。Claude CI 失敗分析的留言正確。
+- AC14：gitleaks 綠燈、secret scanning 0 個警示（push protection 開啟）、git grep 沒有命中金鑰格式。
+- AC15 和 Tomcat 覆寫的處理寫在 evidence/task18.txt。Tomcat 的人工追蹤項目會在 task 20 寫進 docs/cicd.md。交給 QA。
