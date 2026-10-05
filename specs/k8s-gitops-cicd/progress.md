@@ -577,3 +577,4 @@
   - main 上的對應內容，看 squash commit 標題裡的 PR 編號（`git log origin/main --grep '(#26)'`）。
   - 文件辨識時間點時，一律用「PR 編號＋合併時間」，不用 hash。
 - feat 和 main 對齊的方式：把 origin/main 合併進 feat（不 rebase、不 force push）。PR 的 diff 只會剩新的變更，已確認。之後的 PR 描述會請使用者用「Create a merge commit」合併。
+- 手動執行 CI 實測 (a) PASS：CI 37262054235 → Deploy dev 37262301114 → PR #33 → dev 換成 sha-9a1b6e4（04:12:03）。詳見 evidence/task16.txt。

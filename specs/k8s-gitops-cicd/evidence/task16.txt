@@ -37,3 +37,19 @@ Still to verify: two merges in a row -> one bump PR, dev ends on the newer image
   before the second image existed, so this run produced two sequential PRs, not one updated PR. The
   "update the open PR" path (gh pr edit) would only run if a bump arrives while the previous bump PR is
   still waiting for ci-ok; not observed here.
+
+## Downgrade guard and manual CI run (2026-10-05, UTC; PR #26 and #29 on main)
+  (b) Re-run of an old Deploy dev run - only runs created after the guard merged contain it (a Re-run
+      uses the workflow file of the original run; see docs/cicd.md):
+      Deploy dev 37261627710 (originally bumped dev to sha-443d5d8, PR #31), Re-run = attempt 2 at 04:05Z
+      while main's overlay was sha-da515fd:
+        "CI built sha-443d5d8, compared with sha-da515fd: skip: 443d5d8 is older than da515fd, which dev
+         runs now (re-run of an old run?)" - conclusion success, commit/PR step skipped, no PR, main unchanged.
+  (a) Manual CI run on main: gh workflow run ci.yml --ref main
+      04:06:02  CI run 37262054235 (event workflow_dispatch, head 9a1b6e4 = bump commit of #32): all jobs
+                success, images built and pushed as sha-9a1b6e4
+      04:09:45  Deploy dev 37262301114: "CI built sha-9a1b6e4, compared with sha-da515fd: bump"
+      04:10:03  PR #33 "deploy(dev): sha-9a1b6e4" (commit message: "Built by CI run 37262054235")
+      04:11:07  auto-merged -> main 073faf4
+      04:12:03  all dev app pods on sha-9a1b6e4; SSE 13 price events in 6 s; prod unchanged (sha-d04f3f1)
+      GHCR sha-9a1b6e4 digests = dev overlay digests (backend d4b0282b..., frontend b485dce2...).
