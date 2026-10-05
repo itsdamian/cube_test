@@ -1,0 +1,8 @@
+# expect: Missing
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: cube-dev, namespace: argocd}
+spec: {}
+status:
+  health: {status: Missing}
+  sync: {status: OutOfSync, revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}

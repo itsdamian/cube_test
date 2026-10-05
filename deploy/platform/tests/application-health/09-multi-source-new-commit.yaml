@@ -1,0 +1,11 @@
+# expect: Progressing
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: kube-prometheus-stack, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: OutOfSync, revision: null, revisions: ["91.8.2", "4444444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]}
+  operationState:
+    phase: Succeeded
+    syncResult: {revision: "", revisions: ["91.8.2", "3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}

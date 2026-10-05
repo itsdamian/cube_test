@@ -1,0 +1,11 @@
+# expect: Healthy
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: cube-dev, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: Synced, revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+  operationState:
+    phase: Succeeded
+    syncResult: {revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}

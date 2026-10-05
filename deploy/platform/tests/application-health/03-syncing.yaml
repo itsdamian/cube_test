@@ -1,0 +1,10 @@
+# expect: Progressing
+# A sync is running: the resources may still be appearing.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: cube-dev, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: Synced, revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+  operationState: {phase: Running}

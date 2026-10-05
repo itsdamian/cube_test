@@ -616,3 +616,14 @@
 - 驗證：check_md_links 通過（82 個連結）。文件中沒有寫死 commit hash，只用 PR 編號和時間。實際數字（記憶體約 10 GB、儀表板名稱「cube 概覽」、policy 名稱、DB 名稱）已在叢集上查證。
 - QA task 20 CONCERN 的處理：D20-1 已修正（cicd.md：不需要 Claude GitHub App，只需要 token secret）。README 指向 k8s qa-review.md 的連結先改成「spec 結案時加入」，因為那個檔案沒有被追蹤。team lead 建議由我 commit QA 檔案的快照，但被權限檢查擋下，交給使用者決定。
 - task 20 QA 複查 PASS，已勾選。只照文件重建 AC1 併入 task 21。
+
+## 2026-10-05 13:50 — task 21：AC1（只照文件）PASS；QA W1，修正 Application 健康判斷
+- QA AC1（只照 docs/kubernetes.md）：10m59s，14/14 Synced/Healthy，文件沒有缺漏。
+- QA W1：kube-prometheus-stack 在 05:24:41 短暫顯示 Healthy，root 就提前約 5 分 40 秒進入下一個 wave（這次靠運氣沒出錯）。原因：health Lua 只看 health.status。
+- 修正（team lead 核准，以我的設計為準）：子 Application 只有在沒有同步中，而且最後一次同步成功、版本就是 Git 目前的版本時，才算 Healthy。
+  - Synced，或者是同步成功後的手動漂移（prod 沒有 selfHeal，避免 root 卡死）。
+  - multi-source app 比較 revisions 陣列（QA 提醒）。
+- `scripts/test-argocd-health.sh` 和 12 個 fixture：首次建立、同步中、Terminating、Synced、prod 漂移、新 commit 未同步、multi-source 漂移 / 新 commit、雙方都沒有 revision、Degraded、Missing。用叢集同一版的 argocd CLI（v3.5.3，digest 固定）評估，加入 CI manifests job。
+  - 12/12 通過；舊的 Lua 有 6 個案例失敗（測試能分辨新舊）。
+  - 叢集上 14 個 live Application 用新 Lua 評估全部 Healthy。
+- 接下來：feat PR → 使用者合併 → QA 再照文件重建（用 operationState 時間確認 wave 順序）→ 24 小時觀察 → v0.1.1 → 重跑 AC。

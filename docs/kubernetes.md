@@ -145,7 +145,7 @@ kubectl -n cube-prod get hpa backend-api
 
 - **Pod 一直 `ImagePullBackOff`**：GHCR 的 `cube-backend` / `cube-frontend` package 必須是 **Public**（GitHub → 你的帳號 → Packages → package settings → Change visibility）。叢集沒有設定 pull secret。
 - **修好設定後，StatefulSet 的 Pod 還是卡在 `CrashLoopBackOff`**：StatefulSet 不會替換一直沒有 Ready 的舊 Pod，新的 spec 套不上去。先確認 StatefulSet 已經是新的 spec（`kubectl get sts <name> -o yaml`），**確定那個 Pod 真的卡住**之後再刪除它：`kubectl delete pod <name>-0`。
-- **Application 卡在 Progressing / OutOfSync**：`kubectl -n argocd get application <name> -o yaml` 看 `status.conditions` 與 `operationState.message`。Argo CD 會以 10 秒起、最長 5 分鐘的間隔無限重試；元件之間依 sync wave 等前一批 Healthy 才繼續。
+- **Application 卡在 Progressing / OutOfSync**：`kubectl -n argocd get application <name> -o yaml` 看 `status.conditions` 與 `operationState.message`。Argo CD 會以 10 秒起、最長 5 分鐘的間隔無限重試；元件之間依 sync wave 等前一批 Healthy 才繼續。root Application 判斷子 Application 是否 Healthy 時，要求它沒有在同步中，而且最後一次同步成功、版本就是 Git 目前的版本（`deploy/platform/values/argocd.yaml` 的 Lua，測試在 `scripts/test-argocd-health.sh`）。
 - **Argo CD controller 被 OOMKilled**：它要快取所有被管理的資源，目前設定 request 512Mi / limit 1Gi（`deploy/platform/values/argocd.yaml`）。
 - **新建立的 Pod 第一秒連不到同 namespace 的服務**：k6 測試時觀察過一次，研判是 kube-router 套用 NetworkPolicy 比 Pod 啟動晚約 1 秒（**合理但未證實**）。用戶端重試即可，應用程式本身都有重試。
 - **記憶體不夠**：dev + prod + 平台全部跑起來時，k3d 節點約用 10 GB。Docker 只分配 8 GB 時，Grafana、Argo CD 等元件可能被 OOMKilled，請調到 16 GB。

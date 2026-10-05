@@ -1,0 +1,9 @@
+# expect: Progressing
+# QA W1: briefly Healthy before its first sync started (nothing deployed yet, no operationState).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: kube-prometheus-stack, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: OutOfSync, revisions: ["91.8.2", "3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}

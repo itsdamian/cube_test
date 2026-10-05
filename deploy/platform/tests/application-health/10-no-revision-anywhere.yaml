@@ -1,0 +1,12 @@
+# expect: Progressing
+# Neither side has a revision: nil / "" must not count as "the same revision".
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: kube-prometheus-stack, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: OutOfSync, revision: ""}
+  operationState:
+    phase: Succeeded
+    syncResult: {revision: ""}

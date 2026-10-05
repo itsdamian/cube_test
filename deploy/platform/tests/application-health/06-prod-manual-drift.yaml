@@ -1,0 +1,13 @@
+# expect: Healthy
+# prod has no selfHeal: after a manual change it stays OutOfSync, but its last sync succeeded at
+# the current revision - the root Application must not wait for it forever.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: cube-prod, namespace: argocd}
+spec: {}
+status:
+  health: {status: Healthy}
+  sync: {status: OutOfSync, revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+  operationState:
+    phase: Succeeded
+    syncResult: {revision: 3028179aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
