@@ -658,3 +658,14 @@
 - 測試窗口（告警歷史判讀用）：v0.1.1 07:21:29–07:24:17、AC2 07:26:12–07:27:22、AC10 07:28:39–07:28:45、AC4 07:31:50–07:35:16、AC3 07:35:47–07:39:22、AC12 07:40:54–07:55:34、AC13 08:00:14–08:06:10、exit code 08:08:34–08:09:40。
 - 差點出錯（已避免）：開證據 PR 前，feat 落後 main 的 dev / prod overlay（#43、#44 的 bump），diff 會讓 dev、prod 退回舊版。已先把 origin/main 合併進 feat，diff 只剩 7 個預期的檔案。之後開 PR 前一律先合併 main，並確認 `git diff --stat origin/main` 裡沒有 overlays。
 - team lead：overlay 被人開的 PR 誤改的風險，不能只靠「記得先 merge main」。已寫進 docs/cicd.md 的已知限制，README 的 Roadmap 加一項 CI 檢查建議。這次 spec 不實作（屬於新增範圍）。
+
+## 2026-10-05 17:30 — task 21：告警觀察期依使用者決定縮短（team lead 轉達）
+- 使用者決定不等滿 24 小時，改用已累積的時間。QA 擷取的實際窗口是 06:46–09:23Z，157 分鐘。team lead 轉達時說「約 3.5 小時」，實際以 QA 的資料為準。tasks.md 的 done-when 已註明。
+- QA 列出的涵蓋事件（詳見 evidence/task21.txt）：
+  - IngestDuplicated{cube-dev} 只有 pending 15 秒（#43 rollout 時新舊 worker 重疊），沒有 firing；
+  - PriceIngestStalled{cube-dev} firing 07:54:30–07:55:15，在 AC12 窗口內；
+  - PricePushStalled 沒有出現；測試窗口外沒有 firing → 沒有誤報；
+  - 該觸發但沒觸發的：沒有；
+  - pmset 沒有睡眠，restarts 0。
+- 待決定：NodeClockNotSynchronising 整段都是 firing，是 k3d 中 node-exporter 的永久誤報（QA N1），交給 team lead 決定（關掉這條規則，或寫進文件）。
+- QA N1（team lead 選 (a)）：停用 kube-prometheus-stack 的 NodeClockNotSynchronising（k3d 中永遠 firing）。helm template 比對：134 → 133 條，只少了這一條；NodeClockSkewDetected 保留（offset 0，沒有 firing）。docs/kubernetes.md 已註明。

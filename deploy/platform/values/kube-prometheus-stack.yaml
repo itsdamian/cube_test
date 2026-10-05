@@ -1,4 +1,11 @@
 # One Prometheus / Grafana / Alertmanager for both environments (spec requirement 21).
+defaultRules:
+  disabled:
+    # k3d / Docker Desktop: the node's clock is managed by the host VM and no NTP daemon runs in it,
+    # so node_timex_sync_status is always 0 and this alert fires forever (task 21, QA N1) - a
+    # permanently firing alert teaches people to ignore alerts. NodeClockSkewDetected (the actual
+    # offset) stays enabled. Re-enable on a cloud cluster.
+    NodeClockNotSynchronising: true
 prometheus:
   prometheusSpec:
     retention: 3d

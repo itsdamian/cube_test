@@ -151,4 +151,5 @@ kubectl -n cube-prod get hpa backend-api
 - **NetworkPolicy 不會切斷已經建立的連線**：k3s 的 kube-router 只對新的連線套用 NetworkPolicy，已建立的長連線（例如 worker 對交易所的 WebSocket）會繼續運作，直到它自己斷線。要讓新的規則立即生效，就要讓 Pod 重新連線（例如刪除 Pod）。這是 task 21 的 AC12 測試中實際觀察到的。
 - **刪除 PostgreSQL Pod 後，資料庫約 3 分鐘無法寫入**：CloudNativePG 刪除 Pod 時會先 smart shutdown，等待現有連線結束，最多 180 秒（`smartShutdownTimeout`），之後新的 Pod 才會建立。這段期間 readiness 失敗，worker 寫不進資料庫。資料不會遺失：價格仍在 Kafka，資料庫恢復後 consumer 會補寫。
 - **換版時舊的 backend Pod 顯示 `Error`**：屬於正常現象。JVM 因為收到 SIGTERM 而結束時，退出碼是 143（128 + 15），Kubernetes 把任何非 0 的退出碼都標成 `Error`。log 會顯示正常的關閉順序（SSE 連線、Kafka client、資料庫連線池依序關閉），約 5 秒內結束，遠低於 45 秒的 terminationGracePeriodSeconds。
+- **`NodeClockNotSynchronising` 已停用**：k3d / Docker Desktop 的節點時鐘由 host VM 管理，裡面沒有 NTP，`node_timex_sync_status` 永遠是 0，這條 kube-prometheus-stack 預設告警會一直 firing。一直 firing 的告警會讓人習慣忽略告警，所以在 `deploy/platform/values/kube-prometheus-stack.yaml` 用 `defaultRules.disabled` 停用。真正的時鐘偏差仍由 `NodeClockSkewDetected` 監控。換到雲端叢集時要重新啟用。
 - **記憶體不夠**：dev + prod + 平台全部跑起來時，k3d 節點約用 10 GB。Docker 只分配 8 GB 時，Grafana、Argo CD 等元件可能被 OOMKilled，請調到 16 GB。
