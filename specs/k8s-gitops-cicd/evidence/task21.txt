@@ -1,0 +1,30 @@
+# task 21 evidence (final acceptance on the GitOps cluster)
+
+## AC1 - rebuild from zero following only docs/kubernetes.md (QA)
+  #1 2026-10-05 05:19:41Z-05:30:43Z, main 3028179: 10 m 59 s, 14/14 Synced/Healthy, no gaps in the docs.
+     QA W1: kube-prometheus-stack reported Healthy for a moment while still syncing; the next sync wave
+     started ~5 min 40 s early. Fixed in PR #40 (Application health Lua + scripts/test-argocd-health.sh).
+  #2 2026-10-05 06:12:35Z start, main a619bec (with the fix): 18 m 40 s, 14/14, restarts 0.
+     kube-prometheus-stack "Healthy but Running" at 06:18:16 and 06:19:05 -> Progressing, root waited;
+     kps really done 06:19:36, wave -10 created 06:21:15. prod drift (frontend 3 replicas): cube-prod
+     Healthy/OutOfSync, root Healthy/Synced - no deadlock; restored to 2.
+
+## v0.1.1 with the refactored release.yml (task 21 condition)
+  Tag v0.1.1 pushed by the user (annotated, tagger itsdamian) -> 77f6eea "deploy(dev): sha-433598f (#43)".
+  Prerequisites (06:47Z): dev overlay sha-433598f, ci-ok on 433598f success, GHCR digests = overlay.
+  07:19:23-07:19:49  Release run 37277094630 success; step "Tag on main, images dev runs at this commit,
+            and those images passed CI" runs scripts/release-preflight.sh "$GITHUB_SHA":
+              cube-backend: sha-433598f@sha256:21c671d1...   cube-frontend: sha-433598f@sha256:d591f9a3...
+              sha-433598f (433598fdc272...): ci-ok success
+            -> the refactored release.yml ran end to end.
+  GHCR: cube-backend v0.1.1 = 0.1 = sha256:21c671d1d26106bba93d7713b355de1a14afe984fcff45f3784575435e6322d2
+        cube-frontend v0.1.1 = 0.1 = sha256:d591f9a3c87b11ca7c52b664fd751a4da81078c340b1c6e15ad83fa20fa2c786
+        (0.1 moved from v0.1.0's digests to v0.1.1's, as designed)
+  Release v0.1.1 (not draft). Prod PR #44 by app/cube-developer, auto-merge off, only overlays/prod
+  (sha-d04f3f1 -> v0.1.1 with digests).
+  07:21:29  PR #44 merged by the user -> main 3bea556
+  07:24:02  all prod app pods on v0.1.1 and Ready (api x2, worker-0, frontend x2), restarts 0
+  07:24:17  cube-prod Healthy (briefly Degraded during the rollout); prod SSE 13 events in 6 s
+  => 2 m 33 s to pods / 2 m 48 s to Healthy. prod final version = v0.1.1.
+
+## Open bump PR updated in place (step 5) - see evidence/task16.txt (PR #41); body fix PR #42.

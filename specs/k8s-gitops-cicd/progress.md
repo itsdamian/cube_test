@@ -650,3 +650,4 @@
 - 測試窗口和主機中斷以外的時間，加總至少 20 小時，不足就延長觀察期。主機中斷以 `pmset -g log` 的 Sleep/Wake 和電源事件為準。
 - AC12 必須在 ALERTS 中看到 firing 和恢復。刻意測試該觸發但沒有觸發的告警也要記錄。
 - 資料以 Prometheus 的 `ALERTS` / `ALERTS_FOR_STATE` 為準（retention 3 天、PVC 5Gi），3 天內完成擷取，並用 Alertmanager API 對照。
+- v0.1.1：release run 37277094630 用重構後的 release.yml 跑通（log 有 release-preflight.sh 的輸出）。PR #44 在 07:21:29 合併，07:24:02 prod 全部換成 v0.1.1，07:24:17 Healthy。prod 最終版本 = v0.1.1。證據在 evidence/task21.txt。
