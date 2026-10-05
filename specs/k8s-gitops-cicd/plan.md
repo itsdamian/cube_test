@@ -360,6 +360,8 @@ host :80 ──► k3d LoadBalancer ──► Traefik (Gateway "cube", namespace
 ## 計畫變更紀錄
 
 - **2026-10-04**：`@claude` 只留言、不推 commit（spec 需求 26 同步修改）。原因：使用者希望 contributor 只有本人。team lead 依使用者授權核准；cube-deployer[bot] 與 dependabot[bot] 接受為 contributor（使用者決定 (a)），README 說明。
+- **2026-10-05**：task 16 的 done-when 從「連續合併只有一個 bump PR」改成「dev 最後跑較新的版本（一個被更新的 PR 或兩個依序合併的 PR）」。原因：main CI 依序執行，第一個 bump PR 通常在第二個 image 建好前就合併了；spec 要保證的是 dev 不退版。QA 建議，team lead 核准。`gh pr edit` 路徑留到 task 21 實測。
+- **2026-10-05**：Dependabot 對所有 ecosystem 忽略 semver-major，大版本另開 spec 處理（使用者決定，team lead 轉達）；安全更新不受影響。
 
 ## QA 意見與處理
 

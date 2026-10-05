@@ -22,3 +22,18 @@ Note: the GitHub App the user created is named "cube-developer" (not "cube-deplo
 slug from the token, nothing hard-coded. Task 19's claude-review exclusion must use cube-developer[bot].
 
 Still to verify: two merges in a row -> one bump PR, dev ends on the newer image (concurrency + fixed branch).
+
+## Two merges in a row (2026-10-05, UTC) - Dependabot #17 and #19 merged by the team lead 7 s apart
+  03:36:11  #17 merged -> main 4b84cc4     CI run 37260091893 starts
+  03:36:18  #19 merged -> main 89ca79a     CI run 37260100885 QUEUED (concurrency ci-refs/heads/main,
+                                            push runs are not cancelled): main CI runs one at a time
+  03:39:40  PR #27 "deploy(dev): sha-4b84cc4" (cube-developer[bot], branch deploy/dev) -> 03:40:53 auto-merged 269d820
+  03:43:24  PR #28 "deploy(dev): sha-89ca79a" (same fixed branch, new PR because #27 had merged) -> 03:44:24 auto-merged bfafd9e
+  03:46:18  all dev app pods on sha-89ca79a (backend-api, backend-worker-0, frontend); cube-dev Synced,
+            briefly Degraded during the rollout, Healthy at 03:46:39
+  03:46:55  dev SSE (http://dev.cube.localhost/api/stream): status LIVE, 18 events in 6 s
+  prod unchanged: sha-d04f3f1.
+  => dev ends on the NEWER image; order kept. Because main CI is serialised, the first bump PR merged
+  before the second image existed, so this run produced two sequential PRs, not one updated PR. The
+  "update the open PR" path (gh pr edit) would only run if a bump arrives while the previous bump PR is
+  still waiting for ci-ok; not observed here.

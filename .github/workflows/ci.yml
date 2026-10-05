@@ -3,7 +3,8 @@
 #   changes   -> which kind of files changed (code vs. deploy/docs only)
 #   backend   -> ./mvnw verify (Testcontainers: Kafka + PostgreSQL on the runner's Docker)
 #   frontend  -> npm ci, test, lint, build
-#   manifests -> kustomize + kubeconform, Argo CD apps up to date, promtool rule tests, actionlint
+#   manifests -> kustomize + kubeconform, Argo CD apps up to date, promtool rule tests, deploy-dev
+#                decision tests, actionlint
 #   secrets   -> gitleaks over the whole history
 #   images    -> backend / frontend for linux/amd64 + linux/arm64, Trivy scan; pushed to GHCR only
 #                from main
@@ -94,6 +95,8 @@ jobs:
           ours=$(./mvnw -B -q -ntp help:evaluate -Dexpression=tomcat.version -DforceStdout)
           managed=$(curl -fsSL "https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/$boot/spring-boot-dependencies-$boot.pom" \
             | sed -n 's:.*<tomcat.version>\(.*\)</tomcat.version>.*:\1:p' | head -1)
+          # Fail loudly instead of silently passing when the BOM cannot be read (Claude review on PR #14).
+          [[ -n "$managed" ]] || { echo "::warning file=pom.xml::could not read the Tomcat version managed by Spring Boot $boot; check the override by hand"; exit 0; }
           echo "Spring Boot $boot manages Tomcat $managed; pom.xml overrides it with $ours"
           if [[ "$(printf '%s\n%s\n' "$ours" "$managed" | sort -V | tail -1)" == "$managed" ]]; then
             echo "::warning file=pom.xml::Spring Boot $boot already manages Tomcat $managed (>= the override $ours): remove <tomcat.version> from pom.xml"
@@ -136,6 +139,8 @@ jobs:
         run: scripts/validate-manifests.sh
       - name: promtool check + test of the alert rules
         run: scripts/test-alert-rules.sh
+      - name: Deploy dev never downgrades (decision script tests)
+        run: scripts/test-dev-bump-decision.sh
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
 

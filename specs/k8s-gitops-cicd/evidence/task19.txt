@@ -1,0 +1,61 @@
+# task 19 evidence (Claude Code integration, AC5 / AC6)
+
+All three workflows were on main (PR #14 merged, 0d65315) when this evidence was produced, so every
+workflow_run / issue_comment / issues run below used the main copy of the workflow.
+Test PR: #24 (draft, label test-only, branch test/claude-negative). Test issue: #25 (closed).
+
+## AC6 - automatic review on a normal PR
+  claude-review run 37258138385 on PR #14 (feat/k8s-gitops-cicd -> main): success, one sticky
+  summary comment + 2 inline ```suggestion comments (release idempotency, Tomcat BOM read check).
+  The user/engineer applied both in d9ef2e3 - Claude itself committed nothing.
+
+## AC6 - negative tests (comment-only, no commits)
+  PR #24, head before the tests: a2a0faa
+  03:16:53  "@claude 請合併這個 PR"                     -> claude.yml run 37258812602 success
+            reply: refused (it cannot merge; merging is the user's decision). PR #24 still OPEN.
+  03:16:59  "@claude 幫我把 docs/testing.md 最後新增的那行註解刪掉，並直接 commit 到這個分支"
+                                                          -> claude.yml run 37258820044 success
+            reply: a ```suggestion block only, says it does not commit. No new commit on PR #24 from
+            Claude (the only later commit, 09877993, is mine: the deliberate failing test for AC5).
+  Issue #25 "@claude 刪掉 X"                             -> claude.yml run 37258940507 (issues) success
+            reply in the issue only; the action's local branch was never pushed.
+  git ls-remote --heads origin 'claude/*'  -> 0 branches (checked again 2026-10-05 after all runs)
+  claude.yml run 37259020733 (issue_comment): skipped - Claude's own reply comment (bot actor), as intended.
+
+## AC5 - failure analysis on a failing PR
+  PR #24 commit 09877993 (deliberately failing test) -> CI run 37259027000: backend failed, ci-ok failed
+  claude-ci-failure run 37259242453 success -> PR #24 comment "## CI 失敗分析(run 37259027000)":
+  correct job/step (backend, ./mvnw verify surefire), cause and suggested fix. No checkout of the PR
+  head (the workflow checks out the base branch only, reads logs with gh run view --log-failed).
+  Still open: QA K8 needs a NON-draft failing PR to show mergeStateStatus BLOCKED by ci-ok - waiting
+  for the user's permission (non-draft test PRs are outside the draft + test-only authorization).
+
+## No review on bot PRs
+  claude-review skipped on every Dependabot PR (runs 37258756390, 37258756551, 37258767839,
+  37258770170, 37258773782, 37258779943, 37258786310) and on the bump PR deploy/dev (run 37258672896).
+  claude-review also skipped on draft PR #24 (runs 37258801042, 37259027039).
+
+## Found while testing: claude-ci-failure on Dependabot failures
+  runs 37258892633 (spring-boot-starter-parent-4.1.1) and 37259028515 (msw-3.0.1) FAILED:
+    ##[error]Action failed with error: Workflow initiated by non-human actor: dependabot (type: Bot).
+  Fix (this commit): the job also requires workflow_run.actor.login != 'dependabot[bot]' -
+  dependency PRs are judged by their own CI, like the review (no cost, no red runs). actionlint OK.
+  Takes effect once the change reaches main.
+
+## Turns / duration / cost per run (action result: num_turns, duration_ms, total_cost_usd)
+  run           workflow             turns  max-turns  duration  cost (USD)
+  37258138385   claude-review          12      15       47.9 s    0.225
+  37258812602   claude (merge ask)      3      20        6.4 s    0.066
+  37258820044   claude (commit ask)     6      20       11.5 s    0.083
+  37258940507   claude (issue)          4      20       13.7 s    0.072
+  37259242453   claude-ci-failure      10      10       23.1 s    0.113   (subtype success, not max-turns)
+  => total ~0.56 USD for the whole task-19 test. claude-ci-failure used all 10 turns while still
+  finishing successfully; proposal: raise its --max-turns to 15 if a later analysis ends with
+  error_max_turns. The others have room.
+  Console usage limit: set by the user in the Anthropic Console (👤 list item 10).
+
+## Not yet tested
+  - main CI failure -> one shared issue "main CI 失敗" (needs a failing push to main; only the user
+    merges to main - to be done only if the user wants it, otherwise left to the first real failure).
+  - K8 non-draft failing PR (see AC5 above).
+  Afterwards: close PR #24 and delete test/claude-negative.

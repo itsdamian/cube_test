@@ -67,8 +67,9 @@ jobs:
           FRONTEND_TAG: ${{ steps.images.outputs.frontend_tag }}
         run: |
           for tag in $(printf '%s\n' "$BACKEND_TAG" "$FRONTEND_TAG" | sort -u); do
+            # Not found also after a rewrite of main's history: the image's commit no longer exists.
             commit=$(git rev-parse --verify --quiet "${tag#sha-}^{commit}") \
-              || { echo "::error::commit ${tag#sha-} not found"; exit 1; }
+              || { echo "::error::images $tag: commit ${tag#sha-} is not in the repository's history (rewritten?). Release only after CI has rebuilt the images and the dev bump PR has merged, then tag again."; exit 1; }
             result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit/check-runs?check_name=ci-ok" \
               --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion] | first // "missing"')
             echo "$tag ($commit): ci-ok $result"
@@ -94,7 +95,8 @@ jobs:
       - name: GitHub Release with generated notes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$VERSION" --verify-tag --generate-notes --title "$VERSION"
+        # Idempotent: a re-run after a later step failed must not stop here (Claude review on PR #14).
+        run: gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --verify-tag --generate-notes --title "$VERSION"
 
       - name: GitHub App token (cube-developer)
         id: app
@@ -125,6 +127,9 @@ jobs:
           git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
           git commit -am "deploy(prod): $VERSION" -m "Release $VERSION: the images dev ran at $GITHUB_SHA, re-tagged without a rebuild."
           git push --force origin "$branch"
+          if gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number' | grep -q .; then
+            echo "prod upgrade PR for $VERSION already open (re-run): branch updated"; exit 0
+          fi
           gh pr create --head "$branch" --base main --label deploy/prod \
             --title "prod 升級到 $VERSION" \
             --body "Upgrades **prod** to release [$VERSION](https://github.com/$GITHUB_REPOSITORY/releases/tag/$VERSION): the same image digests dev ran at the tagged commit (no rebuild).

@@ -503,3 +503,43 @@
   - `claude-code-review.yml` 會和我們的 `claude-review.yml` 重複 review。
 - 處理：把 main 合併回 feat（`8a462c3`），衝突的 `claude.yml` **採用我們只能留言的版本**，並**刪除** `claude-code-review.yml`。等 PR #14 合併後，main 就恢復成只能留言的設定。
 - 提醒使用者：在 PR #14 合併之前，不要在 issue / PR 留言 `@claude`。
+
+## 2026-10-05 11:40 — task 19 驗證（PR #14 合併後，用 main 上的 workflow）→ 交給 QA
+- 證據：`evidence/task19.txt`（run ID、PR #24 head、每個 run 的回合數 / 耗時 / 費用）。
+- AC6：
+  - PR #14 自動 review 正常（sticky 摘要加 2 則 inline suggestion，已在 d9ef2e3 套用）。
+  - 「請合併」被拒絕；「直接 commit」只給 suggestion；issue #25 沒有 commit、遠端沒有任何 `claude/*` 分支。
+  - Dependabot PR 與 deploy/dev bump PR 都沒有觸發 review。
+- AC5：PR #24 上的失敗分析留言正確（run 37259242453）。
+- 發現：Dependabot 觸發的 claude-ci-failure 失敗（action 拒絕 bot 發起的 run）。修正：job 條件排除 `dependabot[bot]`，合併到 main 後生效。
+- 費用：整個測試約 0.56 USD。claude-ci-failure 用滿 10 回合但成功結束，先不調整。
+- 尚未完成：
+  - QA K8 的非 draft 失敗 PR，需要使用者同意；
+  - main 失敗時寫入單一 issue；
+  - 測試完關閉 PR #24、刪除 test/claude-negative。
+- QA 回覆：task 19 部分驗收 PASS（AC5 分析、AC6 負向測試、Dependabot 排除），暫不勾選。`--max-turns` 15 列為觀察項目。
+  - task 21 預警：contributors 多了 `DamianAstralweb`，來自 init commit `e0ac72a`（damian@astralwebinc.com），需要使用者決定。
+
+## 2026-10-05 12:00 — team lead 預告：spec 結案後改寫 main 歷史（清除 Claude trailer）
+- release.yml：overlay 裡 `sha-*` 對應的 commit 找不到時（例如歷史改寫後），錯誤訊息改成說明原因和處理方式：等 CI 重建 image、dev bump 合併後再打 tag。actionlint 通過。
+- tasks.md task 20：
+  - docs/cicd.md 要說明「歷史改寫後要等重建才能發布」；
+  - 文件不寫死 commit hash；
+  - App 名稱統一用 cube-developer。
+- 建議 team lead 在同一次改寫中，把 init commit `e0ac72a` 的作者改成 itsdamian，這樣 contributors 就不會出現 DamianAstralweb（需使用者決定）。
+- 使用者決定（team lead 轉達）：DamianAstralweb 的處理是由使用者把 damian@astralwebinc.com 移到 itsdamian 帳號並驗證，不改寫 e0ac72a 的作者。之後改寫 main 時只拿掉 Claude trailer。
+
+## 2026-10-05 12:20 — Dependabot：不開大版本升級 PR（team lead 轉達使用者的決定）
+- team lead 依使用者授權合併了 #17、#19，並關閉 #18、#20–#23（「@dependabot ignore this major version」）。
+- `.github/dependabot.yml` 四個 ecosystem 都加上 `ignore: '*' semver-major`。GitHub 文件明寫：「`update-types` only affects version updates, not security updates」，所以安全更新仍然會開。
+- task 20：docs/cicd.md 要寫一句說明。這個修改加進 PR #26。
+- task 16 補充證據（連續兩次合併）：#17、#19 → bump PR #27（sha-4b84cc4）、#28（sha-89ca79a）依序自動合併，dev 最後是比較新的版本，prod 不變。詳見 evidence/task16.txt。
+- team lead 核准 task 16 done-when 修改（tasks.md、plan 變更紀錄已更新；task 16 原本已勾選）。附帶條件已寫進 task 21：實測 `gh pr edit` 路徑，做不到就在 docs/cicd.md 寫明「未經實測」。
+
+## 2026-10-05 12:50 — dev 不退版的保護（team lead 要求現在加入）
+- 問題：deploy-dev 只看 workflow_run 的 sha 決定部署哪個版本。Re-run 一個舊的 run 會讓 dev 退版。另外，bump PR 還開著時 Re-run 舊的 run，會 force-push 蓋掉比較新的 deploy/dev。
+- `scripts/dev-bump-decision.sh`：輸出 bump / bump-unknown-current / skip: 原因。比較的對象是 main 的 overlay，以及（如果存在）`deploy/dev` 分支的 overlay。
+- `scripts/test-dev-bump-decision.sh`：8 個案例加上用法錯誤，本機全部通過；加入 CI manifests job。
+- 用真實歷史模擬：4b84cc4 和 0d65315 → skip（比較舊）；89ca79a → skip（相同）。
+- 加進 PR #26。合併後要實測：Re-run 一個舊的 Deploy dev run，應該 skip，dev 不變。
+- QA：0051652 設計 PASS（9/9、shellcheck 0）。G1：在註解寫明 backend 和 frontend 一定一起 bump；G2 轉給 team lead。
