@@ -485,3 +485,14 @@
   - C1：kustomize image 改以 tag + digest 釘住（deploy-dev、release、validate-manifests）。
   - C2：App 名稱是 `cube-developer`，claude-review 已改用；task 21 的 contributor 檢查也會用這個名稱。
   - C3：目前 ruleset 的 strict=false，不會發生；docs 會註明「若開啟 strict，PR 開著時 main 前進會讓 auto-merge 卡住，要等下一次 bump」。
+
+## 2026-10-05 03:50 — tasks 17–19 設計審查：19 FAIL → 修正，18 D1 → 修正
+- QA：17 PASS；18 PASS + D1；19 review / ci-failure PASS，**claude.yml FAIL**。
+- **claude.yml FAIL（QA 從 action@cab360f 原始碼找到，我已逐一確認）**：
+  1. tag mode 會自動在 allowedTools 加入 `git add`、`git commit`、`git rm` 與 `scripts/git-push.sh` wrapper（`src/modes/tag/index.ts`），我的 deny 只擋了 commit / push；
+  2. 在 issue 上執行時，結束時會把沒有 commit 的變更自動 commit 並 push 到 `claude/` 分支（`branch-cleanup.ts`），不受工具權限限制；
+  3. 預設使用 OIDC 換來的 Claude App token（`token.ts`，有寫入權限），workflow 的 `contents: read` 管不到它。
+  - **修正**：三個 workflow 都改傳 `github_token: ${{ github.token }}`（action 的 `OVERRIDE_GITHUB_TOKEN`，即 workflow 自己的 token，權限是 `contents: read`），任何 push 都會失敗；拿掉 `id-token: write`（不再需要 OIDC）；deny 再加上 `git add` / `git rm`。副作用：留言者會顯示為 `github-actions[bot]`，不是 claude[bot]，這對「contributor 只有本人」反而更好。
+  - task 19 的完成條件加入 issue 上的負向測試。
+- **D1（Tomcat 覆寫不會被 Dependabot 追蹤）**：CI 的 backend job 新增一個步驟，比較 Spring Boot（parent 版本）所管理的 Tomcat 與 pom 的覆寫值。一旦 Boot 管理的版本 ≥ 覆寫值，就發出 `::warning` 提醒移除覆寫，避免靜默釘住舊版。本機試跑：Boot 3.5.16 管理 10.1.55、覆寫 10.1.60 → 不警告；反向（覆寫 10.1.50）→ 會警告。
+- actionlint 通過。

@@ -111,7 +111,7 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 
   — done when:
   - **AC5**：失敗 PR 上出現 Claude 的失敗分析留言；**依 QA K8，這個失敗 PR 要用非 draft**（draft 本身就無法合併，無法單獨證明是 `ci-ok` 擋下），記錄 `mergeStateStatus` / `mergeable_state` 或「Required statuses must pass」的截圖；**不得用 `gh pr merge` 實際嘗試**。非 draft 的測試 PR 超出目前的授權（draft + test-only），需要使用者另外同意；
-  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；**「@claude 幫我把這個改掉並 commit」→ 只回覆 ```suggestion，不產生任何 commit**；`claude.yml` 的 `contents: read`、allowedTools 只有讀取 + 留言類（2026-10-04 變更）；
+  - **AC6**：正常 PR 有自動 review（sticky comment），`@claude` 提問有回覆；**負向測試「@claude 請合併這個 PR」→ PR 維持未合併**；**「@claude 幫我把這個改掉並 commit」→ 只回覆 ```suggestion，不產生任何 commit**；**在 issue 上「@claude 刪掉 X」→ 沒有 `claude/` 分支、沒有任何 commit**（QA：action 的 tag mode 會自動加入 git add / rm / push 工具，結束時還會 auto-commit；改用 workflow 的 `github.token`（contents: read）＋ deny git add / rm 來防止）；`claude.yml` 的 `contents: read`、allowedTools 只有讀取 + 留言類（2026-10-04 變更）；
   - bump PR 與 Dependabot PR **沒有**觸發 review；main 失敗時寫入單一 issue；
   - `@claude` 與 CI 失敗分析的證據必須由 **main 上的 workflow 版本**觸發後取得；
   - 記錄 Console 用量，以及每個 Claude run 的耗時與回合數（action 輸出），作為 `--max-turns` 是否合適的依據（QA C5）

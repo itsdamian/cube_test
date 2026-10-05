@@ -85,6 +85,19 @@ jobs:
       # Testcontainers finds the runner's Docker by itself; tests never reach real price/FX
       # sources (test profile, NoExternalCallsGuardTest).
       - run: ./mvnw -B -ntp verify
+      # pom.xml overrides tomcat.version (CVE fix) - a property Dependabot does not track because
+      # only the Spring Boot BOM uses it. Warn as soon as the Boot release in use manages the same
+      # or a newer Tomcat, so the override is removed instead of silently pinning an old version.
+      - name: Is the Tomcat override still needed?
+        run: |
+          boot=$(./mvnw -B -q -ntp help:evaluate -Dexpression=project.parent.version -DforceStdout)
+          ours=$(./mvnw -B -q -ntp help:evaluate -Dexpression=tomcat.version -DforceStdout)
+          managed=$(curl -fsSL "https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/$boot/spring-boot-dependencies-$boot.pom" \
+            | sed -n 's:.*<tomcat.version>\(.*\)</tomcat.version>.*:\1:p' | head -1)
+          echo "Spring Boot $boot manages Tomcat $managed; pom.xml overrides it with $ours"
+          if [[ "$(printf '%s\n%s\n' "$ours" "$managed" | sort -V | tail -1)" == "$managed" ]]; then
+            echo "::warning file=pom.xml::Spring Boot $boot already manages Tomcat $managed (>= the override $ours): remove <tomcat.version> from pom.xml"
+          fi
 
   frontend:
     name: frontend

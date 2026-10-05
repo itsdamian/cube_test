@@ -26,7 +26,6 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write
     concurrency:
       group: claude-ci-failure-${{ github.event.workflow_run.id }}
       cancel-in-progress: true
@@ -40,6 +39,11 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token (contents: read) instead of the Claude App token the action
+          # would fetch via OIDC: the App token can write, and the action's tag mode adds git
+          # add/commit/push tools and auto-commits leftover changes when it ends (QA, task 19).
+          # With this token any push fails, so Claude cannot create commits at all.
+          github_token: ${{ github.token }}
           prompt: |
             REPO: ${{ github.repository }}
             The CI workflow failed: ${{ github.event.workflow_run.html_url }}
@@ -55,4 +59,4 @@ jobs:
           claude_args: |
             --max-turns 10
             --allowedTools "Read,Glob,Grep,Bash(gh run view:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue create:*)"
-            --disallowedTools "Edit,Write,Bash(gh pr merge:*),Bash(gh api:*),Bash(gh workflow:*),Bash(gh run rerun:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*)"
+            --disallowedTools "Edit,Write,Bash(gh pr merge:*),Bash(gh api:*),Bash(gh workflow:*),Bash(gh run rerun:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*),Bash(git add:*),Bash(git rm:*)"
