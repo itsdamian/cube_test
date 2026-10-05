@@ -1,0 +1,134 @@
+# Release (spec k8s-gitops-cicd, requirements 15, 16, 24; plan: CD).
+#
+# Pushing a semver tag vX.Y.Z on main:
+#   1. picks the images dev runs at the tagged commit (overlays/dev): tags are often put on a
+#      deploy-only or docs commit that has no sha-<7> image of its own (QA M3);
+#   2. checks that the commit those images were built from passed CI (ci-ok);
+#   3. re-tags the SAME digests as vX.Y.Z and X.Y - prod runs exactly the bytes CI tested;
+#   4. creates the GitHub Release with generated notes (.github/release.yml);
+#   5. opens "prod 升級到 vX.Y.Z" - a PR that only changes overlays/prod, label deploy/prod and
+#      NO auto-merge: prod changes only when a human merges it. Reverting that commit rolls back.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write          # create the Release
+      packages: write          # add tags to the images on GHCR
+      checks: read             # ci-ok of the image's commit
+    env:
+      VERSION: ${{ github.ref_name }}
+      REGISTRY: ghcr.io/itsdamian
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The tag must be on main
+        run: |
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$VERSION ($GITHUB_SHA) is not on main"; exit 1; }
+
+      - name: Images dev runs at this commit, and the commit they were built from
+        id: images
+        shell: python
+        run: |
+          import os, re
+          text = open("deploy/apps/cube/overlays/dev/kustomization.yaml").read()
+          blocks = re.split(r"\n(?=- )", text.split("images:", 1)[1])
+          registry = os.environ["REGISTRY"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              for image in ("cube-backend", "cube-frontend"):
+                  block = next(b for b in blocks if re.search(rf"name: {re.escape(registry)}/{image}\s", b + "\n"))
+                  tag = re.search(r"newTag: (\S+)", block).group(1)
+                  digest = re.search(r"digest: (\S+)", block).group(1)
+                  assert tag.startswith("sha-") and digest.startswith("sha256:"), (image, tag, digest)
+                  key = image.removeprefix("cube-")
+                  out.write(f"{key}_tag={tag}\n{key}_digest={digest}\n")
+                  print(f"{image}: {tag}@{digest}")
+
+      - name: Those images passed CI (ci-ok on their commit)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKEND_TAG: ${{ steps.images.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ steps.images.outputs.frontend_tag }}
+        run: |
+          for tag in $(printf '%s\n' "$BACKEND_TAG" "$FRONTEND_TAG" | sort -u); do
+            commit=$(git rev-parse --verify --quiet "${tag#sha-}^{commit}") \
+              || { echo "::error::commit ${tag#sha-} not found"; exit 1; }
+            result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit/check-runs?check_name=ci-ok" \
+              --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion] | first // "missing"')
+            echo "$tag ($commit): ci-ok $result"
+            [[ "$result" == success ]] || { echo "::error::images $tag did not pass CI"; exit 1; }
+          done
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-tag the tested digests as vX.Y.Z and X.Y (no rebuild)
+        env:
+          BACKEND_DIGEST: ${{ steps.images.outputs.backend_digest }}
+          FRONTEND_DIGEST: ${{ steps.images.outputs.frontend_digest }}
+        run: |
+          minor="${VERSION%.*}"; minor="${minor#v}"
+          docker buildx imagetools create -t "$REGISTRY/cube-backend:$VERSION" -t "$REGISTRY/cube-backend:$minor" "$REGISTRY/cube-backend@$BACKEND_DIGEST"
+          docker buildx imagetools create -t "$REGISTRY/cube-frontend:$VERSION" -t "$REGISTRY/cube-frontend:$minor" "$REGISTRY/cube-frontend@$FRONTEND_DIGEST"
+
+      - name: GitHub Release with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$VERSION" --verify-tag --generate-notes --title "$VERSION"
+
+      - name: GitHub App token (cube-developer)
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.DEPLOYER_APP_ID }}
+          private-key: ${{ secrets.DEPLOYER_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open "prod 升級到 vX.Y.Z" (merged by a human only)
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          BACKEND_DIGEST: ${{ steps.images.outputs.backend_digest }}
+          FRONTEND_DIGEST: ${{ steps.images.outputs.frontend_digest }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --quiet origin main
+          branch="deploy/prod-$VERSION"
+          git switch -C "$branch" origin/main
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" -w /repo/deploy/apps/cube/overlays/prod \
+            registry.k8s.io/kustomize/kustomize:v5.8.0 edit set image \
+            "$REGISTRY/cube-backend=$REGISTRY/cube-backend:$VERSION@$BACKEND_DIGEST" \
+            "$REGISTRY/cube-frontend=$REGISTRY/cube-frontend:$VERSION@$FRONTEND_DIGEST"
+          bot_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git commit -am "deploy(prod): $VERSION" -m "Release $VERSION: the images dev ran at $GITHUB_SHA, re-tagged without a rebuild."
+          git push --force origin "$branch"
+          gh pr create --head "$branch" --base main --label deploy/prod \
+            --title "prod 升級到 $VERSION" \
+            --body "Upgrades **prod** to release [$VERSION](https://github.com/$GITHUB_REPOSITORY/releases/tag/$VERSION): the same image digests dev ran at the tagged commit (no rebuild).
+
+          - Only \`deploy/apps/cube/overlays/prod\` changes.
+          - Merged by a human only (no auto-merge). After merging, Argo CD syncs prod within a few minutes.
+          - Roll back by reverting the merge of this PR."
