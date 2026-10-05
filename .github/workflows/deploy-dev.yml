@@ -1,8 +1,8 @@
 # Deploy to dev (spec k8s-gitops-cicd, requirement 14; plan: CD).
 #
-# When CI on main succeeds AND built new images, point overlays/dev at them (tag + digest) on the
-# fixed branch "deploy/dev", keep ONE pull request open for it and turn on auto-merge. Argo CD
-# then syncs dev from main. prod is never touched here.
+# When CI on main (a push, or a manual run) succeeds AND built new images, point overlays/dev at
+# them (tag + digest) on the fixed branch "deploy/dev", keep ONE pull request open for it and turn
+# on auto-merge. Argo CD then syncs dev from main. prod is never touched here.
 #
 #   - workflow_run only runs the copy of this file on main: merge it before it can trigger.
 #   - The PR is opened with a GitHub App token: PRs opened with GITHUB_TOKEN do not trigger
@@ -32,7 +32,7 @@ jobs:
   bump:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-24.04
     permissions:

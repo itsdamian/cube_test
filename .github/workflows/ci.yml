@@ -6,8 +6,10 @@
 #   manifests -> kustomize + kubeconform, Argo CD apps up to date, promtool rule tests, deploy-dev
 #                decision tests, actionlint
 #   secrets   -> gitleaks over the whole history
-#   images    -> backend / frontend for linux/amd64 + linux/arm64, Trivy scan; pushed to GHCR only
-#                from main
+#   images    -> backend / frontend for linux/amd64 + linux/arm64, Trivy scan, in parallel with the
+#                tests; pushed to GHCR only from main (a push, or a manual run - e.g. to rebuild
+#                after main's history was rewritten, docs/cicd.md). A pushed sha-<7> is deployable
+#                only if the whole run passed: deploy-dev and release both require ci-ok.
 #   ci-ok     -> the ONE required status check: passes if nothing failed or was cancelled
 #                (skipped jobs count as passing, so deploy-only PRs do not wait forever)
 #
@@ -20,7 +22,7 @@ on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:   # on main: rebuild, test, scan and push sha-<7> of HEAD; deploy-dev then bumps dev
 
 permissions: {}
 
@@ -52,6 +54,7 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
+          # A manual run (workflow_dispatch) has no base: it always builds everything.
           case "$EVENT" in
             pull_request) range="$PR_BASE...$PR_HEAD" ;;
             push) range="$PUSH_BEFORE..$GITHUB_SHA" ;;
@@ -179,7 +182,8 @@ jobs:
             dockerfile: frontend/Dockerfile
     env:
       IMAGE: ghcr.io/itsdamian/${{ matrix.image }}
-      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # Manual runs on other branches never push.
+      PUSH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
