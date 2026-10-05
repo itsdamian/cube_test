@@ -7,7 +7,7 @@
 #   docker build -f frontend/Dockerfile -t currency-frontend .
 # The output is plain HTML/JS/CSS, so the build stage runs natively on $BUILDPLATFORM.
 
-FROM --platform=$BUILDPLATFORM node:24.21.0-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26.10.0-alpine AS build
 WORKDIR /repo/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
