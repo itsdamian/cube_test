@@ -118,7 +118,7 @@ flowchart TD
 
 ## 已知限制
 
-- 「已有 dev 部署 PR 開著時，第二次升級改為更新同一個 PR（force-push `deploy/dev` + `gh pr edit`）」這條路徑**尚未實測**。main 的 CI 一次只跑一個，第一個部署 PR 通常在第二個 image 建好之前就合併了，所以實際上會是兩個依序合併的 PR；dev 最後一定是比較新的版本。
+- 「已有 dev 部署 PR 開著時，第二次升級改為更新同一個 PR」：已實測（2026-10-05）。同一個 PR 被 force-push、標題與 diff 都換成新的 image，auto-merge 重新開啟，dev 最後是比較新的版本。實際上很少發生：main 的 CI 一次只跑一個，第一個部署 PR 通常在第二個 image 建好之前就合併了。
 - 只改 `deploy/`、`docs/`、`specs/`、`*.md` 的合併不會建置 image，dev 也不會更新；需要時在 main 上手動執行 CI。
 
 ## 歷史改寫後的恢復步驟

@@ -129,15 +129,14 @@ jobs:
           git switch -C "$BRANCH"
           git commit -am "deploy(dev): $TAG" -m "Built by CI run $RUN_ID from $SHA."
           git push --force origin "$BRANCH"
+          body="Points the dev environment at the images CI built from $SHA ($TAG, pinned by digest). Merged automatically once ci-ok passes; Argo CD then syncs dev. prod is not changed.${NOTE:+ $NOTE}"
           pr=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
           if [[ -z "$pr" ]]; then
             pr=$(gh pr create --head "$BRANCH" --base main --label deploy/dev \
-              --title "deploy(dev): $TAG" \
-              --body "Points the dev environment at the images CI built from $SHA ($TAG, pinned by digest). Merged automatically once ci-ok passes; Argo CD then syncs dev. prod is not changed.${NOTE:+ $NOTE}" \
-              | grep -oE '[0-9]+$')
+              --title "deploy(dev): $TAG" --body "$body" | grep -oE '[0-9]+$')
           else
-            gh pr edit "$pr" --title "deploy(dev): $TAG"
-            [[ -z "$NOTE" ]] || gh pr comment "$pr" --body "$NOTE"
+            # An open bump PR (still waiting for ci-ok) is updated in place: same PR, new image.
+            gh pr edit "$pr" --title "deploy(dev): $TAG" --body "$body"
           fi
           gh pr merge "$pr" --auto --squash
           echo "PR #$pr: dev -> $TAG (auto-merge on)"
