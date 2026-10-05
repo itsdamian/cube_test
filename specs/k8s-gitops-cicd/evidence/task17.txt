@@ -20,6 +20,14 @@
             d4b0282b.../b485dce2..., newTag sha-d04f3f1 -> v0.1.0.
   04:18:00  prod unchanged before the merge: all prod pods sha-d04f3f1.
   04:19:22  PR #34 merged by the user -> main 3a90d3b (squash).
+  04:20:40  Argo CD cube-prod sync to 3a90d3b started (auto-sync on a new revision; prod has no selfHeal)
+  04:21:07  all prod app pods on v0.1.0 and Ready: backend-api x2, backend-worker-0 (sha256:d4b0282b...),
+            frontend x2 (sha256:b485dce2...); restarts 0
+  04:21:27  cube-prod Healthy (Degraded 04:20:57-04:21:27 during the rolling update)
+  04:21:26  prod SSE (http://cube.localhost/api/stream): 22 price events in 6 s
+  => merge to prod upgraded: 1 min 45 s (pods) / 2 min 5 s (Healthy); AC8 limit 15 min.
+  (Dependabot PR #30 was merged by the team lead at the same time; it only moves dev - prod timed on
+   the v0.1.0 digests only.)
 
 ## Negative release checks - scripts/release-preflight.sh (the same script release.yml runs)
 Unit tests with a ci-ok stub (scripts/test-release-preflight.sh, also in the CI manifests job):
