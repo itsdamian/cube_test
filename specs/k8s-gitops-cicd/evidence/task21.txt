@@ -44,3 +44,16 @@
   cube-dev Synced / Healthy; operationState initiatedBy automated, Succeeded 07:28:40Z
   (prod has no selfHeal by design: a manual change there stays OutOfSync until the next sync - shown in the
    AC1 #2 drift test, frontend 3 replicas: cube-prod Healthy/OutOfSync, root not blocked.)
+
+## AC4 - 3 api replicas, no duplicate prices, one exchange connection (prod, 07:31:50-07:34:52 UTC)
+  07:31:50  kubectl -n cube-prod patch hpa backend-api minReplicas 2 -> 3 (prod has no selfHeal)
+  07:32:08  3 backend-api pods Ready (57hmw, kd7d4, t7fx9) + backend-worker-0
+  Kafka btc.price.ticks partition 0 (all ticks; key = pair), window 07:33:28..07:34:29, api replicas=3:
+    offsets 19607..19855 -> records 248 = distinct eventId 248; sources {coinbase: 248}
+    (QA independently: 19353..19598, 07:32:25-07:33:26 -> 245 = 245, all coinbase)
+  cube_feed_ingest_active: backend-api x3 = 0.0, backend-worker-0 = 1.0
+  WebSocketPriceFeedClient / FeedManager log lines in the 3 api pods (10 min): 0
+  kubectl -n cube-prod scale sts/backend-worker --replicas=2 --dry-run=server ->
+    ValidatingAdmissionPolicy 'cube-single-ingest-worker' ... denied request
+  07:34:49  HPA minReplicas back to 2; 07:34:52 cube-prod Synced (the 3rd api pod goes after the HPA
+            scale-down stabilisation window)
