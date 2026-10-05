@@ -27,8 +27,15 @@ Test PR: #24 (draft, label test-only, branch test/claude-negative). Test issue: 
   claude-ci-failure run 37259242453 success -> PR #24 comment "## CI 失敗分析(run 37259027000)":
   correct job/step (backend, ./mvnw verify surefire), cause and suggested fix. No checkout of the PR
   head (the workflow checks out the base branch only, reads logs with gh run view --log-failed).
-  Still open: QA K8 needs a NON-draft failing PR to show mergeStateStatus BLOCKED by ci-ok - waiting
-  for the user's permission (non-draft test PRs are outside the draft + test-only authorization).
+  QA K8 - non-draft failing PR (user: 「同意 K8 非 draft 測試 PR」, 2026-10-05):
+    PR #24 was already non-draft: ready_for_review by itsdamian at 03:36:29Z (timeline event).
+    04:01:18  gh pr view 24: isDraft=false mergeable=MERGEABLE mergeStateStatus=BLOCKED
+              REST pulls/24: mergeable=true mergeable_state=blocked draft=false
+    checks on head 09877993: backend=FAILURE, ci-ok=FAILURE, all others success
+    ruleset main-protection: required_status_checks [ci-ok, integration 15368]; pull_request rule
+    with required_approving_review_count=0, no code owners, no thread resolution
+    => no conflict, no review needed, not a draft: the only thing blocking the merge is ci-ok. No merge
+    was attempted (no gh pr merge).
 
 ## No review on bot PRs
   claude-review skipped on every Dependabot PR (runs 37258756390, 37258756551, 37258767839,
@@ -57,5 +64,4 @@ Test PR: #24 (draft, label test-only, branch test/claude-negative). Test issue: 
 ## Not yet tested
   - main CI failure -> one shared issue "main CI 失敗" (needs a failing push to main; only the user
     merges to main - to be done only if the user wants it, otherwise left to the first real failure).
-  - K8 non-draft failing PR (see AC5 above).
-  Afterwards: close PR #24 and delete test/claude-negative.
+  PR #24 closed and test/claude-negative deleted after K8 (2026-10-05).

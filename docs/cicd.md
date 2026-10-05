@@ -29,4 +29,6 @@
 
 注意：image 和測試是並行執行的，所以 GHCR 上有 `sha-*` 不代表那個版本通過了 CI。能不能部署，以該 commit 的 `ci-ok` 為準：`Deploy dev` 只在整個 CI 成功時才更新 dev，`release.yml` 也會檢查 `ci-ok`。
 
-另外，改寫前留下的 GitHub Actions run，按「Re-run」也不會讓 dev 退版。這些 run 的 commit 已不在 main 上，防降版檢查會跳過，run 仍顯示成功，原因寫在 job summary。
+另外，GitHub 的「Re-run」會用**原本那次 run 當時的 workflow 檔案**。防降版檢查是 2026-10-05 才加入的，在那之前建立的 `Deploy dev` run（job 裡沒有 `dev-bump-decision.sh` 這一步）沒有這道檢查，**不要 Re-run**，否則 dev 會退回舊版。之後建立的 run 就算 Re-run 也不會讓 dev 退版：commit 已不在 main 上或比較舊時會跳過，run 仍顯示成功，原因寫在 job summary。
+
+`sha-*` tag 可能被覆寫：在同一個 commit 上再手動執行一次 CI，會重新建置並覆寫 GHCR 上的 `sha-<7>`。建置結果不是逐位元相同的，所以 digest 會改變。dev / prod 都用 digest 指定 image，舊的 digest 仍然可以拉取，所以目前沒有影響。但如果之後加上「清除沒有 tag 的 image」機制，可能會刪掉 prod 正在使用的 digest，加入前要先排除部署中的 digest。

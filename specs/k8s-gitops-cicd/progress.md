@@ -551,3 +551,10 @@
   - team lead 判斷不需要 `force_images` input，因為手動執行時 `changes` 本來就判定 code=true。
 - deploy-dev.yml：觸發條件接受 `workflow_dispatch` 的 run，仍限定 head_branch == main，防降版檢查照舊。
 - docs/cicd.md：新增「歷史改寫後的恢復步驟」（QA G2 的順序）。task 20 會補齊其他內容。
+
+## 2026-10-05 14:05 — QA K8 完成、PR #24 關閉；PR #29 已合併
+- 使用者同意「K8 非 draft 測試 PR」。PR #24 已經是非 draft（timeline：itsdamian 在 03:36:29Z 標成 ready for review）。
+  - mergeStateStatus=BLOCKED、mergeable_state=blocked，ci-ok=FAILURE。ruleset 要求 0 個 review，所以只有 ci-ok 在擋。
+  - 沒有嘗試合併。之後已關閉 PR #24，並刪除 test/claude-negative。
+- QA PR #29 審查 PASS，使用者已合併。P1 寫進 docs/cicd.md：同一個 commit 再次手動執行 CI 會覆寫 sha-<7>，digest 會改變。
+- 更正：Re-run 會用原本那次 run 當時的 workflow 檔案。防降版檢查加入之前建立的 Deploy dev run 沒有這道檢查，不能 Re-run。docs/cicd.md 已寫明；實測只用之後建立的 run。
