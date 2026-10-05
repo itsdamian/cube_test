@@ -65,6 +65,6 @@ jobs:
                comment on it with `gh issue comment`, or create it with `gh issue create` if none is open.
             Never edit files, commit, push, re-run workflows or merge.
           claude_args: |
-            --max-turns 10
+            --max-turns 15
             --allowedTools "Read,Glob,Grep,Bash(gh run view:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue create:*)"
             --disallowedTools "Edit,Write,Bash(gh pr merge:*),Bash(gh api:*),Bash(gh workflow:*),Bash(gh run rerun:*),Bash(gh release:*),Bash(gh repo:*),Bash(git push:*),Bash(git commit:*),Bash(git add:*),Bash(git rm:*)"

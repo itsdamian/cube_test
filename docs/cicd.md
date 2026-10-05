@@ -110,7 +110,7 @@ flowchart TD
 - 自動 review：PR 開啟、更新或標為 ready for review 時執行；fork、draft、Dependabot、cube-developer[bot] 與 `deploy/*` 分支都會跳過。
 - `@claude`：在 PR 或 issue 留言提問。Claude **只能留言**：要它改程式碼時，它會留下 ```suggestion 區塊，由你在 GitHub 上按 Commit suggestion。它不能 commit、push、合併或核准 PR（workflow 用的是只有讀取權限的 token，工具也只允許讀取與留言）。
 - CI 失敗分析：讀失敗的 log，並用 `gh pr diff` 讀 PR 的變更內容（只讀文字）；不 checkout、不執行 PR 的程式碼。Dependabot 觸發的失敗會跳過，因為 action 不接受由 bot 觸發的 run。
-- 成本：每個 workflow 都有 `--max-turns` 上限與 concurrency；實測一次 review 約 0.2 USD，一次問答或失敗分析約 0.07–0.11 USD。
+- 成本：每個 workflow 都有 `--max-turns` 上限（review 15、`@claude` 20、CI 失敗分析 15）與 concurrency；實測一次 review 約 0.2 USD，一次問答或失敗分析約 0.07–0.11 USD。
 
 ## 需要人工追蹤
 
