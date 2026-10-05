@@ -159,7 +159,15 @@
   - Claude is not a contributor. "Co-authored-by: Claude" trailers exist only on 98 commits of the first spec
     (2026-09-29..30); none in this spec's commits; the team lead removes them in the planned history rewrite.
 
+## Exit code of a replaced api pod (QA saw "Error" during a rollout) - dev, 08:08:34-08:09:40 UTC
+  The next rollout would only come with a code change, so a dev api pod was deleted instead (same SIGTERM).
+  08:09:11  kubectl -n cube-dev delete pod backend-api-f7449966b-jn4hx (watched with kubectl get pod -w)
+  terminated: exitCode 143, reason "Error", finishedAt 08:09:16 (5 s after SIGTERM; terminationGracePeriodSeconds 45)
+  log: orderly Spring shutdown - Kafka admin client / metrics closed, "Closing JPA EntityManagerFactory",
+       "HikariPool-1 - Shutdown completed."
+  => 143 = 128 + SIGTERM: a JVM ended by the signal exits 143 and Kubernetes labels every non-zero exit
+     "Error". Expected, no fix; documented in docs/kubernetes.md (troubleshooting). (A first attempt at
+     08:08:34 deleted backend-api-f7449966b-tjjg9 but the 1 s polling missed the terminated state.)
+
 ## Still open
-  - Exit code of an api pod replaced during a rollout (QA saw "Error"): capture with kubectl get pod -w at the
-    next dev bump.
   - 24 h alert history: window from 2026-10-05 06:46Z; capture after 2026-10-06 06:46Z (rules in progress.md).
