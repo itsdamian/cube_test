@@ -67,8 +67,9 @@ jobs:
           FRONTEND_TAG: ${{ steps.images.outputs.frontend_tag }}
         run: |
           for tag in $(printf '%s\n' "$BACKEND_TAG" "$FRONTEND_TAG" | sort -u); do
+            # Not found also after a rewrite of main's history: the image's commit no longer exists.
             commit=$(git rev-parse --verify --quiet "${tag#sha-}^{commit}") \
-              || { echo "::error::commit ${tag#sha-} not found"; exit 1; }
+              || { echo "::error::images $tag: commit ${tag#sha-} is not in the repository's history (rewritten?). Release only after CI has rebuilt the images and the dev bump PR has merged, then tag again."; exit 1; }
             result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit/check-runs?check_name=ci-ok" \
               --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion] | first // "missing"')
             echo "$tag ($commit): ci-ok $result"

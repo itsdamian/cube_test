@@ -519,3 +519,11 @@
   - 測試完關閉 PR #24、刪除 test/claude-negative。
 - QA 回覆：task 19 部分驗收 PASS（AC5 分析、AC6 負向測試、Dependabot 排除），暫不勾選。`--max-turns` 15 列為觀察項目。
   - task 21 預警：contributors 多了 `DamianAstralweb`，來自 init commit `e0ac72a`（damian@astralwebinc.com），需要使用者決定。
+
+## 2026-10-05 12:00 — team lead 預告：spec 結案後改寫 main 歷史（清除 Claude trailer）
+- release.yml：overlay 裡 `sha-*` 對應的 commit 找不到時（例如歷史改寫後），錯誤訊息改成說明原因和處理方式：等 CI 重建 image、dev bump 合併後再打 tag。actionlint 通過。
+- tasks.md task 20：
+  - docs/cicd.md 要說明「歷史改寫後要等重建才能發布」；
+  - 文件不寫死 commit hash；
+  - App 名稱統一用 cube-developer。
+- 建議 team lead 在同一次改寫中，把 init commit `e0ac72a` 的作者改成 itsdamian，這樣 contributors 就不會出現 DamianAstralweb（需使用者決定）。
