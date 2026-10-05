@@ -566,3 +566,14 @@
 - 防降版實測 (b)：Re-run 37261627710（attempt 2，04:05Z），結果 success。log 為 `CI built sha-443d5d8, compared with sha-da515fd: skip: 443d5d8 is older than da515fd`，commit 步驟 skipped，沒有新的 PR，main 不變。
 - 手動執行 CI 實測 (a)：`gh workflow run ci.yml --ref main` → run 37262054235（HEAD 9a1b6e4），進行中。
 - 使用者決定（team lead 轉達）：守衛加入前的 33 個 Deploy dev run 不刪除，只在文件警告。docs/cicd.md 新增〈不要 Re-run 舊的 Deploy dev run〉。
+
+## 2026-10-05 14:20 — #26、#29 都是 squash 合併：舊 hash 的對照方式
+- main 上的 443d5d8（#26）和 da515fd（#29）都只有一個 parent。feat 上的原始 commit 不在 main 的歷史中：
+  - #26：d9ef2e3…0752fd3 共 9 個；
+  - #29：714bf9a。
+  - 之前的 #6、#8、#9、#10、#14 是 merge commit。
+- 對照方式：
+  - evidence 或 progress 裡的 feat hash，到 feat 分支上找（`git log origin/feat/k8s-gitops-cicd`）；
+  - main 上的對應內容，看 squash commit 標題裡的 PR 編號（`git log origin/main --grep '(#26)'`）。
+  - 文件辨識時間點時，一律用「PR 編號＋合併時間」，不用 hash。
+- feat 和 main 對齊的方式：把 origin/main 合併進 feat（不 rebase、不 force push）。PR 的 diff 只會剩新的變更，已確認。之後的 PR 描述會請使用者用「Create a merge commit」合併。
