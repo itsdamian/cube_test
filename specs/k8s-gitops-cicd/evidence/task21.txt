@@ -65,9 +65,55 @@
                    earliest=06:25:33.80576 latest=07:35:46.739457
             ticks with event_time <= 07:35:47.410621: 20114
   07:35:47  kubectl -n cube-prod delete pod cube-kafka-dual-role-0 cube-db-1
-  07:36:12  both pods Ready again (Strimzi / CloudNativePG recreated them on the same PVCs)
+  07:36:12  Kafka pod Ready again. CORRECTION (QA): my `kubectl wait` matched the OLD cube-db-1, which was
+            still stopping - CloudNativePG smart shutdown, smartShutdownTimeout 180 s: readiness 500 from
+            07:35:57 to 07:38:47, new cube-db-1 created 07:38:49. The database could not be written for ~3 min;
+            no data was lost - the ticks were in Kafka and the persister wrote them afterwards (QA: 419 rows at
+            07:38). Documented in docs/kubernetes.md (troubleshooting).
   AFTER 07:39:22: currency=5 price_alert=1 alert_event=0 candle=88 ticks=21003
                   earliest=06:25:33.80576 (unchanged) latest=07:39:21.645505
             ticks with event_time <= 07:35:47.410621: 20114 (unchanged)
   /api/alerts still returns alert id 1; currencies [EUR, GBP, JPY, TWD, USD]; SSE 24 price events in 10 s
   Kafka cube-kafka Ready True; CNPG cube-db "Cluster in healthy state"; backend pods restarts 0
+
+## AC12 - Grafana for both environments; dev ingest stopped >= 60 s -> alert firing, then resolved
+  Method (GitOps cluster: dev has selfHeal, so scaling the worker to 0 is reverted within seconds): a
+  temporary NetworkPolicy outside Git cuts the dev worker off from the exchanges (simulated outage).
+  ---- ac12-block-feed-egress (applied with kubectl, deleted afterwards; never in Git) ----
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: {name: ac12-block-feed-egress, namespace: cube-dev}
+  spec:
+    podSelector: {matchLabels: {app.kubernetes.io/name: backend, app.kubernetes.io/component: worker}}
+    policyTypes: [Egress]
+    egress:
+      - to: [{podSelector: {}}]                                  # Kafka, PostgreSQL in cube-dev
+      - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}},
+              podSelector: {matchLabels: {k8s-app: kube-dns}}}]
+        ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+  -------------------------------------------------------------------------------------------
+  07:40:54  NP applied. From backend-worker-0: ws-feed.exchange.coinbase.com:443 BLOCKED, ws.kraken.com:443
+            BLOCKED, open.er-api.com:443 BLOCKED; cube-kafka-kafka-bootstrap:9092 OPEN, cube-db-rw:5432 OPEN;
+            DNS resolves.
+  07:40-07:52  ingest did NOT stop: tick age ~14 s, active source coinbase, no alert. kube-router applies
+            NetworkPolicy to NEW connections only; the established WebSocket kept running (conntrack).
+            Documented in docs/kubernetes.md. (My first 10 min of polling failed - the prometheus container
+            has no wget; switched to kubectl get --raw through the service proxy.)
+  07:52:50  kubectl -n cube-dev delete pod backend-worker-0 (with the NP still in place; QA agreed)
+            new pod: "[coinbase] connect failed: ClosedChannelException", same for kraken; Ready, restarts 0
+            cube_feed_last_tick_seconds of the new pod EXISTS with value NaN (no trade yet) -> the rule's
+            "time() - NaN <= 60" is false -> fires. A third case besides "stale" and "series missing";
+            promtool case 7 added (deploy/monitoring/cube-alerts.test.yaml; reverse check: expecting no alert
+            at 3 m fails).
+  07:53:31  PriceIngestStalled{namespace=cube-dev} pending     (QA: 07:53:37)
+  07:54:32  PriceIngestStalled{namespace=cube-dev} firing      (QA: 07:54:37)
+            only cube-dev; no PricePushStalled, no IngestDuplicated; prod unaffected
+  07:54:53  NP deleted; 07:55:01 "[coinbase] connected, subscribing", 07:55:04 kraken connected
+  07:55:34  ALERTS empty for cube-dev / cube-prod (resolved; QA: 07:55:28). Worker Ready, restarts 0 throughout.
+            cube-dev netpol back to the 8 from Git; cube-dev Synced / Healthy; dev SSE 21 events in 10 s.
+  Test window (for the 24 h alert history): 07:40:54-07:55:34.
+  Grafana (GitOps cluster, 3 h range, dashboard "cube 概覽"): evidence/task21-grafana-cube-dev.png and
+  task21-grafana-cube-prod.png - per environment: price freshness, source, ingest count (= 1; the dip at
+  15:54 local time is this test), Kafka writes/s, SSE pushes/s, SSE connections, Kafka consumer lag,
+  JVM heap, GC, HTTP rate and latency. Taken with a copy of scripts/screenshot.mjs that sends the Grafana
+  admin credentials as a Basic auth header (password read from the Secret into an env var, never printed).

@@ -148,4 +148,6 @@ kubectl -n cube-prod get hpa backend-api
 - **Application 卡在 Progressing / OutOfSync**：`kubectl -n argocd get application <name> -o yaml` 看 `status.conditions` 與 `operationState.message`。Argo CD 會以 10 秒起、最長 5 分鐘的間隔無限重試；元件之間依 sync wave 等前一批 Healthy 才繼續。root Application 判斷子 Application 是否 Healthy 時，要求它沒有在同步中，而且最後一次同步成功、版本就是 Git 目前的版本（`deploy/platform/values/argocd.yaml` 的 Lua，測試在 `scripts/test-argocd-health.sh`）。
 - **Argo CD controller 被 OOMKilled**：它要快取所有被管理的資源，目前設定 request 512Mi / limit 1Gi（`deploy/platform/values/argocd.yaml`）。
 - **新建立的 Pod 第一秒連不到同 namespace 的服務**：k6 測試時觀察過一次，研判是 kube-router 套用 NetworkPolicy 比 Pod 啟動晚約 1 秒（**合理但未證實**）。用戶端重試即可，應用程式本身都有重試。
+- **NetworkPolicy 不會切斷已經建立的連線**：k3s 的 kube-router 只對新的連線套用 NetworkPolicy，已建立的長連線（例如 worker 對交易所的 WebSocket）會繼續運作，直到它自己斷線。要讓新的規則立即生效，就要讓 Pod 重新連線（例如刪除 Pod）。這是 task 21 的 AC12 測試中實際觀察到的。
+- **刪除 PostgreSQL Pod 後，資料庫約 3 分鐘無法寫入**：CloudNativePG 刪除 Pod 時會先 smart shutdown，等待現有連線結束，最多 180 秒（`smartShutdownTimeout`），之後新的 Pod 才會建立。這段期間 readiness 失敗，worker 寫不進資料庫。資料不會遺失：價格仍在 Kafka，資料庫恢復後 consumer 會補寫。
 - **記憶體不夠**：dev + prod + 平台全部跑起來時，k3d 節點約用 10 GB。Docker 只分配 8 GB 時，Grafana、Argo CD 等元件可能被 OOMKilled，請調到 16 GB。
