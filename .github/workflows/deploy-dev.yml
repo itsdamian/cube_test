@@ -11,6 +11,9 @@
 #     workflow stops at "images built?".
 #   - concurrency (not cancelled): two merges in a row are bumped one after the other on the same
 #     branch / PR, so an older image can never overwrite a newer one (QA C2).
+#   - Never downgrades dev: scripts/dev-bump-decision.sh skips commits that are not on main or are
+#     older than the one dev runs (e.g. "Re-run" of an old run); after a rewrite of main's history,
+#     when dev's commit no longer exists, the bump is allowed and the PR says so.
 #   - Only reads public images and writes to deploy/dev; never runs code from a pull request.
 name: Deploy dev
 
@@ -78,9 +81,26 @@ jobs:
         run: |
           tag="sha-${SHA::7}"
           overlay=deploy/apps/cube/overlays/dev
-          if grep -q "newTag: $tag" "$overlay/kustomization.yaml"; then
-            echo "dev already runs $tag"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
-          fi
+          newtag() { sed -n 's/^ *newTag: //p' | head -1; }
+          current=$(newtag < "$overlay/kustomization.yaml")
+          # A bump PR may still be open: deploy/dev then already points at a newer image than main.
+          pending=$(git show "origin/$BRANCH:$overlay/kustomization.yaml" 2>/dev/null | newtag || true)
+          # Never downgrade dev: a manual re-run of an old run, or a run from a commit that is not
+          # on main, is skipped (successfully - nothing is broken). See the script for the rules.
+          note=""
+          for against in "$current" ${pending:+"$pending"}; do
+            decision=$(scripts/dev-bump-decision.sh "$SHA" "$against" origin/main)
+            echo "CI built $tag, compared with $against: $decision"
+            if [[ "$decision" == skip:* ]]; then
+              echo "### Deploy dev skipped"$'\n\n'"This run built \`$tag\`; compared with \`$against\` (main: \`${current:-?}\`, $BRANCH: \`${pending:-none}\`). ${decision#skip: }." >> "$GITHUB_STEP_SUMMARY"
+              echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            if [[ "$decision" == bump-unknown-current && "$against" == "$current" ]]; then
+              note="Note: current sha ${current:-?} not found in the history of main (rewritten?); allowing bump."
+              echo "::notice::$note"
+            fi
+          done
+          echo "note=$note" >> "$GITHUB_OUTPUT"
           args=()
           for image in cube-backend cube-frontend; do
             digest=$(docker buildx imagetools inspect "$REGISTRY/$image:$tag" --format '{{json .Manifest.Digest}}' | tr -d '"')
@@ -99,6 +119,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
           TAG: ${{ steps.bump.outputs.tag }}
+          NOTE: ${{ steps.bump.outputs.note }}
         run: |
           bot_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
           git config user.name "${APP_SLUG}[bot]"
@@ -110,10 +131,11 @@ jobs:
           if [[ -z "$pr" ]]; then
             pr=$(gh pr create --head "$BRANCH" --base main --label deploy/dev \
               --title "deploy(dev): $TAG" \
-              --body "Points the dev environment at the images CI built from $SHA ($TAG, pinned by digest). Merged automatically once ci-ok passes; Argo CD then syncs dev. prod is not changed." \
+              --body "Points the dev environment at the images CI built from $SHA ($TAG, pinned by digest). Merged automatically once ci-ok passes; Argo CD then syncs dev. prod is not changed.${NOTE:+ $NOTE}" \
               | grep -oE '[0-9]+$')
           else
             gh pr edit "$pr" --title "deploy(dev): $TAG"
+            [[ -z "$NOTE" ]] || gh pr comment "$pr" --body "$NOTE"
           fi
           gh pr merge "$pr" --auto --squash
           echo "PR #$pr: dev -> $TAG (auto-merge on)"

@@ -96,6 +96,13 @@ Status: CONFIRMED（team lead 依使用者授權核准，2026-10-01）
 - [x] 16. **dev 自動部署（`deploy-dev.yml`）**：🏁 👤 使用者先把 `deploy-dev.yml` 合併到 main；👤 清單 6（建立 GitHub App `cube-deployer` 與 secrets）；🤝（會改變 dev 的版本）— done when（證據必須由 **main 上的 workflow 版本**觸發後取得）:
   - **AC7**：合併一個小改動到 main 後 15 分鐘內，dev 的 Pod image tag = 該 merge commit 的 `sha-<7>`，prod 不變（記錄完整時間軸）；
   - 固定分支 `deploy/dev` + concurrency：連續合併兩個 PR 時，dev 最後跑的是較新的版本，不會被舊 image 覆蓋。可能是一個被更新的 bump PR，也可能是兩個依序合併的 bump PR（2026-10-05 修改，team lead 核准；實測為 #27 → #28）；
+  - **dev 不退版的保護（2026-10-05，team lead 要求）**：`scripts/dev-bump-decision.sh` 規則如下：
+    - new 不在 main 上 → skip；
+    - new 和 dev 目前（main 的 overlay，以及開著的 `deploy/dev`）相同或比較舊 → skip；
+    - dev 目前的 sha 不在歷史裡（例如歷史被改寫）→ 允許 bump，並在 PR 註明；
+    - skip 時 workflow 仍是 success，原因寫進 job summary。
+    
+    done when：`scripts/test-dev-bump-decision.sh` 的案例（新 > 舊、舊 < 新、相同、current 不存在、new 不在 main 等）在 CI manifests job 通過；合併到 main 後，Re-run 一個舊的 Deploy dev run 會 skip 並寫出原因，dev 不變。
   - bump PR 合併後**沒有**再產生新的 bump（無迴圈）
 - [ ] 17. **版本發布與 prod 升級（`release.yml`、`.github/release.yml`）**：👤 清單 11（推 tag、審核 prod PR）；🤝（會改變 prod 的版本）— done when:
   - **AC8**：**tag 打在 bump commit 上**的 `v0.1.0` → GitHub Release（自動變更說明）、GHCR 的 `v0.1.0` 與 dev 是同一個 digest、自動開出 prod PR（diff 只有 prod 的 image）；合併前 prod 不變，合併後 15 分鐘內升級。

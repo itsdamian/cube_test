@@ -535,3 +535,10 @@
 - task 20：docs/cicd.md 要寫一句說明。這個修改加進 PR #26。
 - task 16 補充證據（連續兩次合併）：#17、#19 → bump PR #27（sha-4b84cc4）、#28（sha-89ca79a）依序自動合併，dev 最後是比較新的版本，prod 不變。詳見 evidence/task16.txt。
 - team lead 核准 task 16 done-when 修改（tasks.md、plan 變更紀錄已更新；task 16 原本已勾選）。附帶條件已寫進 task 21：實測 `gh pr edit` 路徑，做不到就在 docs/cicd.md 寫明「未經實測」。
+
+## 2026-10-05 12:50 — dev 不退版的保護（team lead 要求現在加入）
+- 問題：deploy-dev 只看 workflow_run 的 sha 決定部署哪個版本。Re-run 一個舊的 run 會讓 dev 退版。另外，bump PR 還開著時 Re-run 舊的 run，會 force-push 蓋掉比較新的 deploy/dev。
+- `scripts/dev-bump-decision.sh`：輸出 bump / bump-unknown-current / skip: 原因。比較的對象是 main 的 overlay，以及（如果存在）`deploy/dev` 分支的 overlay。
+- `scripts/test-dev-bump-decision.sh`：8 個案例加上用法錯誤，本機全部通過；加入 CI manifests job。
+- 用真實歷史模擬：4b84cc4 和 0d65315 → skip（比較舊）；89ca79a → skip（相同）。
+- 加進 PR #26。合併後要實測：Re-run 一個舊的 Deploy dev run，應該 skip，dev 不變。
