@@ -52,7 +52,7 @@ class FeedMetricsTest {
     void whereIngestIsDisabledOnlyIngestActiveExistsAndIsZero() {
         FeedMetrics.register(null, registry);
 
-        assertThat(gauge("cube.feed.ingest.active")).isZero();
+        assertThat(gauge("cube.feed.ingest.active")).isEqualTo(1); // DELIBERATELY WRONG (task 19 CI-failure test)
         assertThat(registry.find("cube.feed.last.tick.seconds").gauge()).isNull();
         assertThat(registry.find("cube.feed.active.source").gauge()).isNull();
     }
