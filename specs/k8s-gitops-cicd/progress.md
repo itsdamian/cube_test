@@ -585,3 +585,4 @@
   - `CI_STATUS_CMD` 可以換成 stub。`scripts/test-release-preflight.sh` 有 11 個案例（含 overlay 不存在、格式錯誤），加入 CI manifests job。shellcheck 通過。
   - 用真實 GitHub 資料跑 4 個案例：不在 main → 拒絕；ci-ok failure → 拒絕；commit 不存在 → 拒絕；v0.1.0 → 通過。輸出在 evidence/task17.txt。
   - 下一次正式 release（v0.1.1）要記錄「重構後的 release.yml 實際跑通」。
+- AC9：使用者對 #34 按 Revert，開出 PR #35，04:37:19 合併。04:39:05 prod 回到 sha-d04f3f1（digest 和 v0.1.0 之前相同），04:39:15 Healthy，SSE 正常。

@@ -74,3 +74,19 @@ with only newTag changed):
   sha-9a1b6e4 (9a1b6e4177acad411b1cf74c66c54b919420e986): ci-ok success
   exit=0
   
+
+## AC9 - revert rolls prod back (2026-10-05, UTC)
+  The user clicked "Revert" on PR #34 -> PR #35 'Revert "prod 升級到 v0.1.0"' (branch
+  revert-34-deploy/prod-v0.1.0, only deploy/apps/cube/overlays/prod/kustomization.yaml), CI green, merged by
+  the user.
+  04:37:19  PR #35 merged -> main bfd73ff 'Revert "deploy(prod): v0.1.0 (#34)" (#35)'
+  04:39:05  all prod app pods back on sha-d04f3f1: backend-api x2 + backend-worker-0
+            sha256:3db3e4bb90bd27224c971857c3abbe967fe8173c9bcbf0adb99dd7160566e59d, frontend x2
+            sha256:6b5ab954c86e0b81c5af9bef062ab314119f1e626e30969e2cd065159cc7c89c (= the digests before v0.1.0)
+  04:39:15  cube-prod Healthy; prod SSE 11 price events in 6 s
+  => revert merge to prod rolled back: 1 min 46 s. dev unaffected (sha-7d6fefb, from Dependabot #30).
+
+## Still to do
+  - Next real release (v0.1.1): record that the refactored release.yml (scripts/release-preflight.sh) ran.
+  - prod now runs the version before v0.1.0 again; it moves forward with the next release (or a revert of
+    #35, the user's choice).
