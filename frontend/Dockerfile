@@ -16,7 +16,7 @@ COPY frontend ./
 RUN npm run build
 
 # Unprivileged nginx (runs as uid 101, listens on 8080) - fits Kubernetes' non-root policies.
-FROM nginxinc/nginx-unprivileged:1.31.6-alpine
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine
 # Rendered at startup by the image's entrypoint (envsubst on /etc/nginx/templates/*.template).
 ENV BACKEND_URL=http://backend:8080
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
